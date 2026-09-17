@@ -7,7 +7,7 @@ let selectedBusId = null;
 let refreshInterval = null;
 let isLoading = false;
 
-const API_BASE_URL = "https://noida-bus-tracker.onrender.com/";
+const API_BASE_URL = "https://noida-bus-tracker.onrender.com";
 
 document.addEventListener(
     "DOMContentLoaded",
