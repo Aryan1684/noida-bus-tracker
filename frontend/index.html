@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Track nearby Noida Electric Buses using live GPS data from MARGDARSHI UPSRTC."
+    >
+
+    <title>Noida Electric Bus Tracker</title>
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+</head>
+
+<body>
+
+    <div
+        id="warningModal"
+        class="modal-overlay"
+    >
+        <div class="warning-modal">
+
+            <div class="warning-icon">
+                !
+            </div>
+
+            <h2>
+                Important Notice
+            </h2>
+
+            <p>
+                Bus movement and
+                <strong>"Moving towards"</strong>
+                information shown on this website
+                is an estimate based on recent GPS
+                movement.
+            </p>
+
+            <p>
+                It may be incorrect, especially near
+                turns, junctions, route changes or when
+                GPS movement is limited.
+            </p>
+
+            <p class="source-note">
+                Live bus location data is sourced from
+                <strong>MARGDARSHI (UPSRTC)</strong>.
+            </p>
+
+            <button
+                id="warningAcceptBtn"
+                class="primary-button"
+            >
+                I Understand
+            </button>
+
+        </div>
+    </div>
+
+    <header class="site-header">
+
+        <div class="header-inner">
+
+            <div class="brand">
+
+                <div class="brand-icon">
+                    🚌
+                </div>
+
+                <div>
+                    <h1>
+                        Noida Bus Tracker
+                    </h1>
+
+                    <span>
+                        Electric buses around you
+                    </span>
+                </div>
+
+            </div>
+
+            <div class="source-badge">
+                <span class="source-dot"></span>
+                MARGDARSHI · UPSRTC
+            </div>
+
+        </div>
+
+    </header>
+
+    <main>
+
+        <section class="hero">
+
+            <div class="hero-content">
+
+                <div class="hero-badge">
+                    <span></span>
+                    Live GPS Bus Tracking
+                </div>
+
+                <h2>
+                    Find an electric bus
+                    <span>near you.</span>
+                </h2>
+
+                <p class="hero-description">
+                    Select your location and discover
+                    nearby Noida Electric buses using
+                    live GPS data from MARGDARSHI.
+                </p>
+
+                <div class="hero-actions">
+
+                    <button
+                        id="locationBtn"
+                        class="hero-button"
+                    >
+                        <span>📍</span>
+                        Find Buses Near Me
+                    </button>
+
+                    <button
+                        id="confirmBtn"
+                        class="confirm-button"
+                        disabled
+                    >
+                        ✓ Confirm Location
+                    </button>
+
+                </div>
+
+                <div class="hero-features">
+
+                    <div class="feature">
+                        <div class="feature-icon">
+                            ⚡
+                        </div>
+
+                        <div>
+                            <strong>
+                                Live GPS
+                            </strong>
+
+                            <span>
+                                Current bus positions
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="feature">
+                        <div class="feature-icon">
+                            🚌
+                        </div>
+
+                        <div>
+                            <strong>
+                                Nearby Buses
+                            </strong>
+
+                            <span>
+                                Choose your radius
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="feature">
+                        <div class="feature-icon">
+                            ➜
+                        </div>
+
+                        <div>
+                            <strong>
+                                Movement Estimate
+                            </strong>
+
+                            <span>
+                                Based on recent GPS movement
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="hero-visual">
+
+                <div class="visual-card">
+
+                    <div class="visual-top">
+                        <span>
+                            LIVE BUS
+                        </span>
+
+                        <span class="live-pill">
+                            <span></span>
+                            LIVE
+                        </span>
+                    </div>
+
+                    <div class="visual-bus">
+                        🚌
+                    </div>
+
+                    <div class="visual-route">
+
+                        <div class="route-point active">
+                            <span></span>
+                            Parthala
+                        </div>
+
+                        <div class="route-line"></div>
+
+                        <div class="route-point">
+                            <span></span>
+                            Ek Murti
+                        </div>
+
+                        <div class="route-line"></div>
+
+                        <div class="route-point">
+                            <span></span>
+                            Surajpur
+                        </div>
+
+                    </div>
+
+                    <div class="visual-direction">
+
+                        <div class="big-arrow">
+                            ➜
+                        </div>
+
+                        <div>
+                            <small>
+                                MOVING TOWARDS
+                            </small>
+
+                            <strong>
+                                Ek Murti
+                            </strong>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <section class="notice-bar">
+
+            <div class="notice-icon">
+                ⚠
+            </div>
+
+            <div>
+                <strong>
+                    Movement is an estimate
+                </strong>
+
+                <span>
+                    Direction and "Moving towards"
+                    information can be inaccurate.
+                </span>
+            </div>
+
+        </section>
+
+        <section class="tracker-section">
+
+            <div class="section-title">
+
+                <div>
+                    <span class="section-label">
+                        TRACKING
+                    </span>
+
+                    <h2>
+                        Choose your location
+                    </h2>
+
+                    <p>
+                        Use your location or tap anywhere
+                        on the map. You can drag the pin
+                        to fine-tune it.
+                    </p>
+                </div>
+
+                <div class="radius-control">
+
+                    <label for="radiusSelect">
+                        Search radius
+                    </label>
+
+                    <select id="radiusSelect">
+                        <option value="1">
+                            1 km
+                        </option>
+
+                        <option value="3">
+                            3 km
+                        </option>
+
+                        <option
+                            value="5"
+                            selected
+                        >
+                            5 km
+                        </option>
+
+                        <option value="10">
+                            10 km
+                        </option>
+                    </select>
+
+                </div>
+
+            </div>
+
+            <div class="location-info">
+
+                <span class="location-status-dot"></span>
+
+                <span id="locationMessage">
+                    Use your location or click anywhere
+                    on the map to select a location.
+                </span>
+
+            </div>
+
+            <div class="map-wrapper">
+                <div id="map"></div>
+            </div>
+
+        </section>
+
+        <section class="bus-section">
+
+            <div class="section-header">
+
+                <div>
+
+                    <span class="section-label">
+                        LIVE RESULTS
+                    </span>
+
+                    <h2>
+                        Nearby buses
+                    </h2>
+
+                    <span id="lastRefreshed">
+                        Not refreshed yet
+                    </span>
+
+                </div>
+
+                <div class="section-actions">
+
+                    <span
+                        id="busCount"
+                        class="bus-count"
+                    >
+                        0 buses
+                    </span>
+
+                    <button
+                        id="refreshBtn"
+                        class="refresh-button"
+                        disabled
+                    >
+                        ↻ Refresh
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div
+                id="loadingState"
+                class="state hidden"
+            >
+
+                <div class="loader"></div>
+
+                <h3>
+                    Finding nearby buses
+                </h3>
+
+                <p>
+                    Fetching the latest available
+                    GPS positions...
+                </p>
+
+            </div>
+
+            <div
+                id="errorState"
+                class="state error-state hidden"
+            >
+
+                <div class="state-icon error-icon">
+                    !
+                </div>
+
+                <h3>
+                    Unable to load buses
+                </h3>
+
+                <p id="errorMessage">
+                    The bus service is temporarily
+                    unavailable.
+                </p>
+
+                <button
+                    id="retryBtn"
+                    class="retry-button"
+                >
+                    Try Again
+                </button>
+
+            </div>
+
+            <div
+                id="emptyState"
+                class="state hidden"
+            >
+
+                <div class="state-icon">
+                    🚌
+                </div>
+
+                <h3>
+                    No buses nearby
+                </h3>
+
+                <p>
+                    No electric buses were found
+                    within the selected radius.
+                </p>
+
+            </div>
+
+            <div id="busList"></div>
+
+        </section>
+
+        <section class="source-section">
+
+            <div class="source-logo">
+                🚌
+            </div>
+
+            <div>
+
+                <strong>
+                    Live data source
+                </strong>
+
+                <p>
+                    Bus location data is sourced from
+                    MARGDARSHI, the UPSRTC bus tracking
+                    platform.
+                </p>
+
+                <a
+                    href="https://margdarshi.upsrtcvlt.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Visit MARGDARSHI →
+                </a>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <footer>
+
+        <p>
+            Noida Electric Bus Tracker
+        </p>
+
+        <span>
+            Live location data from MARGDARSHI · UPSRTC
+        </span>
+
+    </footer>
+
+    <script
+        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    ></script>
+
+    <script src="app.js"></script>
+
+</body>
+</html>
