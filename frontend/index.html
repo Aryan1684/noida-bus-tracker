@@ -92,9 +92,15 @@
 
             </div>
 
-            <div class="source-badge">
-                <span class="source-dot"></span>
-                MARGDARSHI · UPSRTC
+            <div class="header-controls">
+                <div class="source-badge">
+                    <span class="source-dot"></span>
+                    MARGDARSHI · UPSRTC
+                </div>
+                <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+                    <span id="themeIcon">☾</span>
+                    <span id="themeText">Dark</span>
+                </button>
             </div>
 
         </div>
@@ -139,6 +145,13 @@
                         disabled
                     >
                         ✓ Confirm Location
+                    </button>
+
+                    <button
+                        id="scrollTrackerBtn"
+                        class="secondary-hero-button"
+                    >
+                        Explore Map ↓
                     </button>
 
                 </div>
@@ -509,6 +522,7 @@
     ></script>
 
     <script src="app.js"></script>\n    <script src="features.js"></script>
+    <script src="theme.js"></script>
 
 </body>
 </html>
