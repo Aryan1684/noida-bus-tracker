@@ -2,527 +2,145 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <meta
-        name="description"
-        content="Track nearby Noida Electric Buses using live GPS data from MARGDARSHI UPSRTC."
-    >
-
-    <title>Noida Electric Bus Tracker</title>
-
-    <link
-        rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    >
-
-    <link
-        rel="stylesheet"
-        href="style.css"
-    >
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f7f7f2">
+    <meta name="description" content="Independent Noida Electric Bus Tracker using live GPS data from MARGDARSHI UPSRTC.">
+    <title>Noida Bus Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-
-    <div
-        id="warningModal"
-        class="modal-overlay"
-    >
+    <div id="warningModal" class="modal-overlay">
         <div class="warning-modal">
-
-            <div class="warning-icon">
-                !
-            </div>
-
-            <h2>
-                Important Notice
-            </h2>
-
-            <p>
-                Bus movement and
-                <strong>"Moving towards"</strong>
-                information shown on this website
-                is an estimate based on recent GPS
-                movement.
-            </p>
-
-            <p>
-                It may be incorrect, especially near
-                turns, junctions, route changes or when
-                GPS movement is limited.
-            </p>
-
-            <p class="source-note">
-                Live bus location data is sourced from
-                <strong>MARGDARSHI (UPSRTC)</strong>.
-            </p>
-
-            <button
-                id="warningAcceptBtn"
-                class="primary-button"
-            >
-                I Understand
-            </button>
-
+            <div class="modal-mark">!</div>
+            <p class="eyebrow">Before you start</p>
+            <h2>One important note</h2>
+            <p>Bus locations come from live GPS data. The “moving towards” information is an estimate from recent movement and can be wrong near junctions, turns or route changes.</p>
+            <p class="project-disclaimer"><strong>Not a government website.</strong><br>This is an independent project made by a curious BTech student.</p>
+            <p class="source-note">Data source: <strong>MARGDARSHI · UPSRTC</strong></p>
+            <button id="warningAcceptBtn" class="button button-dark button-wide">Got it</button>
         </div>
     </div>
 
-    <header class="site-header">
-
-        <div class="header-inner">
-
-            <div class="brand">
-
-                <div class="brand-icon">
-                    🚌
-                </div>
-
-                <div>
-                    <h1>
-                        Noida Bus Tracker
-                    </h1>
-
-                    <span>
-                        Electric buses around you
-                    </span>
-                </div>
-
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a class="brand" href="#">
+                <span class="brand-symbol">NB</span>
+                <span>
+                    <strong>Noida Bus Tracker</strong>
+                    <small>Independent project</small>
+                </span>
+            </a>
+            <div class="top-actions">
+                <span class="live-status"><i></i> Live GPS</span>
+                <button id="themeToggle" class="icon-button" aria-label="Toggle dark mode" title="Toggle dark mode"><span id="themeIcon">☾</span></button>
             </div>
-
-            <div class="header-controls">
-                <div class="source-badge">
-                    <span class="source-dot"></span>
-                    MARGDARSHI · UPSRTC
-                </div>
-                <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
-                    <span id="themeIcon">☾</span>
-                    <span id="themeText">Dark</span>
-                </button>
-            </div>
-
         </div>
-
     </header>
 
     <main>
-
-        <section class="hero">
-
-            <div class="hero-content">
-
-                <div class="hero-badge">
-                    <span></span>
-                    Live GPS Bus Tracking
-                </div>
-
-                <h2>
-                    Find an electric bus
-                    <span>near you.</span>
-                </h2>
-
-                <p class="hero-description">
-                    Select your location and discover
-                    nearby Noida Electric buses using
-                    live GPS data from MARGDARSHI.
-                </p>
-
-                <div class="hero-actions">
-
-                    <button
-                        id="locationBtn"
-                        class="hero-button"
-                    >
-                        <span>📍</span>
-                        Find Buses Near Me
-                    </button>
-
-                    <button
-                        id="confirmBtn"
-                        class="confirm-button"
-                        disabled
-                    >
-                        ✓ Confirm Location
-                    </button>
-
-                    <button
-                        id="scrollTrackerBtn"
-                        class="secondary-hero-button"
-                    >
-                        Explore Map ↓
-                    </button>
-
-                </div>
-
-                <div class="hero-features">
-
-                    <div class="feature">
-                        <div class="feature-icon">
-                            ⚡
-                        </div>
-
-                        <div>
-                            <strong>
-                                Live GPS
-                            </strong>
-
-                            <span>
-                                Current bus positions
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="feature">
-                        <div class="feature-icon">
-                            🚌
-                        </div>
-
-                        <div>
-                            <strong>
-                                Nearby Buses
-                            </strong>
-
-                            <span>
-                                Choose your radius
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="feature">
-                        <div class="feature-icon">
-                            ➜
-                        </div>
-
-                        <div>
-                            <strong>
-                                Movement Estimate
-                            </strong>
-
-                            <span>
-                                Based on recent GPS movement
-                            </span>
-                        </div>
-                    </div>
-
-                </div>
-
+        <section class="location-panel">
+            <div class="location-copy">
+                <p class="eyebrow">START HERE</p>
+                <h1>Where are you going?</h1>
+                <p>Choose a place and we’ll show electric buses around it.</p>
             </div>
 
-            <div class="hero-visual">
-
-                <div class="visual-card">
-
-                    <div class="visual-top">
-                        <span>
-                            LIVE BUS
-                        </span>
-
-                        <span class="live-pill">
-                            <span></span>
-                            LIVE
-                        </span>
-                    </div>
-
-                    <div class="visual-bus">
-                        🚌
-                    </div>
-
-                    <div class="visual-route">
-
-                        <div class="route-point active">
-                            <span></span>
-                            Parthala
-                        </div>
-
-                        <div class="route-line"></div>
-
-                        <div class="route-point">
-                            <span></span>
-                            Ek Murti
-                        </div>
-
-                        <div class="route-line"></div>
-
-                        <div class="route-point">
-                            <span></span>
-                            Surajpur
-                        </div>
-
-                    </div>
-
-                    <div class="visual-direction">
-
-                        <div class="big-arrow">
-                            ➜
-                        </div>
-
-                        <div>
-                            <small>
-                                MOVING TOWARDS
-                            </small>
-
-                            <strong>
-                                Ek Murti
-                            </strong>
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </section>
-
-        <section class="notice-bar">
-
-            <div class="notice-icon">
-                ⚠
-            </div>
-
-            <div>
-                <strong>
-                    Movement is an estimate
-                </strong>
-
-                <span>
-                    Direction and "Moving towards"
-                    information can be inaccurate.
-                </span>
-            </div>
-
-        </section>
-
-        <section class="tracker-section">
-
-            <div class="section-title">
-
-                <div>
-                    <span class="section-label">
-                        TRACKING
-                    </span>
-
-                    <h2>
-                        Choose your location
-                    </h2>
-
-                    <p>
-                        Use your location or tap anywhere
-                        on the map. You can drag the pin
-                        to fine-tune it.
-                    </p>
-                </div>
-
-                <div class="radius-control">
-
-                    <label for="radiusSelect">
-                        Search radius
-                    </label>
-
-                    <select id="radiusSelect">
-                        <option value="1">
-                            1 km
-                        </option>
-
-                        <option value="3">
-                            3 km
-                        </option>
-
-                        <option
-                            value="5"
-                            selected
-                        >
-                            5 km
-                        </option>
-
-                        <option value="10">
-                            10 km
-                        </option>
-                    </select>
-
-                </div>
-
-            </div>
-
-            <div class="location-info">
-
-                <span class="location-status-dot"></span>
-
-                <span id="locationMessage">
-                    Use your location or click anywhere
-                    on the map to select a location.
-                </span>
-
-            </div>
-
-            <div class="map-wrapper">
-                <div id="map"></div>
-            </div>
-
-        </section>
-
-        <section class="bus-section">
-
-            <div class="section-header">
-
-                <div>
-
-                    <span class="section-label">
-                        LIVE RESULTS
-                    </span>
-
-                    <h2>
-                        Nearby buses
-                    </h2>
-
-                    <span id="lastRefreshed">
-                        Not refreshed yet
-                    </span>
-
-                </div>
-
-                <div class="section-actions">
-
-                    <span
-                        id="busCount"
-                        class="bus-count"
-                    >
-                        0 buses
-                    </span>
-
-                    <button
-                        id="refreshBtn"
-                        class="refresh-button"
-                        disabled
-                    >
-                        ↻ Refresh
-                    </button>
-
-                </div>
-
-            </div>
-
-            <div
-                id="loadingState"
-                class="state hidden"
-            >
-
-                <div class="loader"></div>
-
-                <h3>
-                    Finding nearby buses
-                </h3>
-
-                <p>
-                    Fetching the latest available
-                    GPS positions...
-                </p>
-
-            </div>
-
-            <div
-                id="errorState"
-                class="state error-state hidden"
-            >
-
-                <div class="state-icon error-icon">
-                    !
-                </div>
-
-                <h3>
-                    Unable to load buses
-                </h3>
-
-                <p id="errorMessage">
-                    The bus service is temporarily
-                    unavailable.
-                </p>
-
-                <button
-                    id="retryBtn"
-                    class="retry-button"
-                >
-                    Try Again
+            <div class="location-actions">
+                <button id="locationBtn" class="button button-dark">
+                    <span>⌖</span> Use current location
                 </button>
-
+                <button id="confirmBtn" class="button button-accent" disabled>
+                    Confirm location
+                </button>
             </div>
 
-            <div
-                id="emptyState"
-                class="state hidden"
-            >
+            <div class="search-wrap">
+                <span class="search-icon">⌕</span>
+                <input id="placeSearch" type="search" placeholder="Search Sector 62, Pari Chowk, Botanical Garden..." autocomplete="off" spellcheck="false">
+                <button id="clearSearch" class="clear-search hidden" aria-label="Clear search">×</button>
+                <div id="searchSuggestions" class="search-suggestions hidden"></div>
+            </div>
 
-                <div class="state-icon">
-                    🚌
+            <div class="location-status">
+                <span id="locationStatusDot"></span>
+                <span id="locationMessage">Search for a place or use your current location.</span>
+            </div>
+        </section>
+
+        <section class="map-card">
+            <div class="map-head">
+                <div>
+                    <p class="eyebrow">LIVE MAP</p>
+                    <h2>Bus map</h2>
                 </div>
-
-                <h3>
-                    No buses nearby
-                </h3>
-
-                <p>
-                    No electric buses were found
-                    within the selected radius.
-                </p>
-
+                <div class="map-controls">
+                    <select id="radiusSelect" aria-label="Search radius">
+                        <option value="1">1 km</option>
+                        <option value="3">3 km</option>
+                        <option value="5" selected>5 km</option>
+                        <option value="10">10 km</option>
+                    </select>
+                    <button id="adjustPinBtn" class="small-button">Move pin</button>
+                    <button id="mapLocateBtn" class="small-button">My location</button>
+                </div>
             </div>
-
-            <div id="busList"></div>
-
+            <div class="map-help"><span>Drag the map to explore</span><span>•</span><span>Pin is locked by default</span></div>
+            <div class="map-shell"><div id="map"></div></div>
         </section>
 
-        <section class="source-section">
-
-            <div class="source-logo">
-                🚌
+        <section class="results-section">
+            <div class="results-head">
+                <div>
+                    <p class="eyebrow">NEARBY</p>
+                    <h2>Electric buses</h2>
+                    <p id="lastRefreshed" class="subtle">Waiting for a location</p>
+                </div>
+                <div class="results-actions">
+                    <span id="busCount" class="count-pill">0 buses</span>
+                    <button id="refreshBtn" class="small-button" disabled>Refresh</button>
+                </div>
             </div>
 
+            <div id="loadingState" class="state hidden">
+                <div class="spinner"></div>
+                <h3>Finding buses</h3>
+                <p>Getting the latest GPS positions.</p>
+            </div>
+
+            <div id="errorState" class="state state-error hidden">
+                <div class="state-mark">!</div>
+                <h3>Couldn’t load buses</h3>
+                <p id="errorMessage">The bus service is temporarily unavailable.</p>
+                <button id="retryBtn" class="button button-dark">Try again</button>
+            </div>
+
+            <div id="emptyState" class="state hidden">
+                <div class="state-mark">⌁</div>
+                <h3>No buses in this radius</h3>
+                <p>Try a larger radius or choose another location.</p>
+            </div>
+
+            <div id="busList" class="bus-grid"></div>
+        </section>
+
+        <section class="about-strip">
             <div>
-
-                <strong>
-                    Live data source
-                </strong>
-
-                <p>
-                    Bus location data is sourced from
-                    MARGDARSHI, the UPSRTC bus tracking
-                    platform.
-                </p>
-
-                <a
-                    href="https://margdarshi.upsrtcvlt.com/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    Visit MARGDARSHI →
-                </a>
-
+                <p class="eyebrow">ABOUT THIS PROJECT</p>
+                <h2>Built to make Noida’s electric buses easier to find.</h2>
             </div>
-
+            <p>Live location data is sourced from MARGDARSHI · UPSRTC. This website is not affiliated with or operated by any government department.</p>
         </section>
-
     </main>
 
     <footer>
-
-        <p>
-            Noida Electric Bus Tracker
-        </p>
-
-        <span>
-            Live location data from MARGDARSHI · UPSRTC
-        </span>
-
+        <strong>Noida Bus Tracker</strong>
+        <span>Independent project by a curious BTech student</span>
+        <span>Not a government website · Live data from MARGDARSHI · UPSRTC</span>
     </footer>
 
-    <script
-        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    ></script>
-
-    <script src="app.js"></script>\n    <script src="features.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
     <script src="theme.js"></script>
-
 </body>
 </html>
