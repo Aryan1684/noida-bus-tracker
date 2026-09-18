@@ -15,7 +15,7 @@ LANDMARKS = {
     "Noida City Center": (28.5745, 77.3560),
     "Sector 52": (28.5850, 77.3640),
     "Parthala": (28.6075, 77.3755),
-    "Chaar Murti": (28.6070, 77.4350),
+    "Chaar Murti": (28.6020, 77.4180),
     "Ek Murti": (28.6063, 77.4337),
     "Surajpur": (28.5185, 77.4990),
     "Pari Chowk": (28.4652, 77.5080),
@@ -26,105 +26,52 @@ LANDMARKS = {
 
 ROUTES = [
     {
-        "id": "N1",
-        "name": "Botanical Garden - Ek Murti - Pari Chowk",
-        "points": [
-            "Botanical Garden",
-            "Noida City Center",
-            "Parthala",
-            "Ek Murti",
-            "Surajpur",
-            "Pari Chowk"
-        ]
+        "id": "R1_OUT",
+        "name": "Botanical Garden → Ek Murti → Surajpur → Pari Chowk",
+        "points": ["Botanical Garden", "Noida City Center", "Parthala", "Ek Murti", "Surajpur", "Pari Chowk"],
+        "vehicle_prefixes": ["UP70", "UP80"]
     },
     {
-        "id": "N2",
-        "name": "Botanical Garden - Pari Chowk - Airport",
-        "points": [
-            "Botanical Garden",
-            "Pari Chowk",
-            "Galgotias University",
-            "Noida International Airport"
-        ]
+        "id": "R1_RETURN",
+        "name": "Pari Chowk → Surajpur → Ek Murti → Botanical Garden",
+        "points": ["Pari Chowk", "Surajpur", "Ek Murti", "Parthala", "Noida City Center", "Botanical Garden"],
+        "vehicle_prefixes": ["UP70", "UP80"]
     },
     {
-        "id": "N3",
-        "name": "Botanical Garden - Sector 37 - Surajpur",
-        "points": [
-            "Botanical Garden",
-            "Sector 37",
-            "Surajpur"
-        ]
+        "id": "R2_OUT",
+        "name": "Chaar Murti → Surajpur → Pari Chowk → Airport",
+        "points": ["Chaar Murti", "Surajpur", "Pari Chowk", "Galgotias University", "Noida International Airport"],
+        "vehicle_prefixes": ["UP14"]
     },
     {
-        "id": "N4",
-        "name": "Botanical Garden - Sector 52 - Ghaziabad",
-        "points": [
-            "Botanical Garden",
-            "Noida City Center",
-            "Sector 52"
-        ]
+        "id": "R2_RETURN",
+        "name": "Airport → Pari Chowk → Surajpur → Chaar Murti",
+        "points": ["Noida International Airport", "Galgotias University", "Pari Chowk", "Surajpur", "Chaar Murti"],
+        "vehicle_prefixes": ["UP14"]
     },
     {
-        "id": "G1",
-        "name": "Chaar Murti - Surajpur - Pari Chowk - Airport",
-        "points": [
-            "Chaar Murti",
-            "Surajpur",
-            "Pari Chowk",
-            "Galgotias University",
-            "Noida International Airport"
-        ]
+        "id": "R3_OUT",
+        "name": "Chaar Murti → GIMS → Airport",
+        "points": ["Chaar Murti", "GIMS", "Galgotias University", "Noida International Airport"],
+        "vehicle_prefixes": ["UP14"]
     },
     {
-        "id": "G2",
-        "name": "Chaar Murti - Surajpur - GIMS - Airport",
-        "points": [
-            "Chaar Murti",
-            "Surajpur",
-            "GIMS",
-            "Galgotias University",
-            "Noida International Airport"
-        ]
+        "id": "R3_RETURN",
+        "name": "Airport → GIMS → Chaar Murti",
+        "points": ["Noida International Airport", "Galgotias University", "GIMS", "Chaar Murti"],
+        "vehicle_prefixes": ["UP14"]
     },
     {
-        "id": "G3",
-        "name": "Ek Murti - Surajpur - GIMS - Airport",
-        "points": [
-            "Ek Murti",
-            "Surajpur",
-            "GIMS",
-            "Galgotias University",
-            "Noida International Airport"
-        ]
+        "id": "R4_OUT",
+        "name": "Botanical Garden → Sector 37 → Surajpur",
+        "points": ["Botanical Garden", "Sector 37", "Surajpur"],
+        "vehicle_prefixes": ["UP70", "UP80"]
     },
     {
-        "id": "G4",
-        "name": "Makora - GIMS - Airport",
-        "points": [
-            "Surajpur",
-            "GIMS",
-            "Galgotias University",
-            "Noida International Airport"
-        ]
-    },
-    {
-        "id": "Y1",
-        "name": "Pari Chowk - GBU - Dankaur - Airport",
-        "points": [
-            "Pari Chowk",
-            "GIMS",
-            "Galgotias University",
-            "Noida International Airport"
-        ]
-    },
-    {
-        "id": "Y2",
-        "name": "Pari Chowk - Surajpur",
-        "points": [
-            "Pari Chowk",
-            "Surajpur"
-        ]
+        "id": "R4_RETURN",
+        "name": "Surajpur → Sector 37 → Botanical Garden",
+        "points": ["Surajpur", "Sector 37", "Botanical Garden"],
+        "vehicle_prefixes": ["UP70", "UP80"]
     }
 ]
 
@@ -138,7 +85,6 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
         math.cos(lat1) * math.sin(lat2)
         - math.sin(lat1) * math.cos(lat2) * math.cos(delta_lon)
     )
-
     return (math.degrees(math.atan2(y, x)) + 360) % 360
 
 def calculate_bearing_difference(a, b):
@@ -147,109 +93,95 @@ def calculate_bearing_difference(a, b):
 
 def get_direction_name(bearing):
     directions = [
-        "North",
-        "North-East",
-        "East",
-        "South-East",
-        "South",
-        "South-West",
-        "West",
-        "North-West"
+        "North", "North-East", "East", "South-East",
+        "South", "South-West", "West", "North-West"
     ]
     return directions[int((bearing + 22.5) // 45) % 8]
 
-def get_nearest_landmark(latitude, longitude):
-    nearest = None
-    nearest_distance = float("inf")
+def prefix_matches(bus_id, route):
+    if not bus_id:
+        return False
+    return any(bus_id.upper().startswith(prefix) for prefix in route["vehicle_prefixes"])
 
-    for name, coordinates in LANDMARKS.items():
-        distance = calculate_distance(
-            latitude,
-            longitude,
-            coordinates[0],
-            coordinates[1]
-        )
+def nearest_route_segment(latitude, longitude, route):
+    best = None
 
-        if distance < nearest_distance:
-            nearest_distance = distance
-            nearest = name
+    for index in range(len(route["points"]) - 1):
+        a_name = route["points"][index]
+        b_name = route["points"][index + 1]
 
-    return nearest, nearest_distance
+        if a_name not in LANDMARKS or b_name not in LANDMARKS:
+            continue
 
-def get_route_candidates(latitude, longitude, bearing):
+        a = LANDMARKS[a_name]
+        b = LANDMARKS[b_name]
+
+        da = calculate_distance(latitude, longitude, a[0], a[1])
+        db = calculate_distance(latitude, longitude, b[0], b[1])
+
+        if best is None or min(da, db) < best["distance"]:
+            best = {
+                "index": index,
+                "from": a_name,
+                "to": b_name,
+                "distance": min(da, db)
+            }
+
+    return best
+
+def route_candidate_score(bus_id, latitude, longitude, bearing, route):
+    segment = nearest_route_segment(latitude, longitude, route)
+
+    if not segment:
+        return None
+
+    target = LANDMARKS[segment["to"]]
+    target_bearing = calculate_bearing(latitude, longitude, target[0], target[1])
+    bearing_difference = calculate_bearing_difference(bearing, target_bearing)
+
+    score = segment["distance"] * 10 + bearing_difference / 10
+
+    if prefix_matches(bus_id, route):
+        score -= 8
+
+    return score, segment, bearing_difference
+
+def get_route_prediction(bus_id, latitude, longitude, bearing):
     candidates = []
 
     for route in ROUTES:
-        points = route["points"]
-
-        for index, name in enumerate(points[:-1]):
-            if name not in LANDMARKS or points[index + 1] not in LANDMARKS:
-                continue
-
-            next_name = points[index + 1]
-            next_coordinates = LANDMARKS[next_name]
-
-            distance = calculate_distance(
-                latitude,
-                longitude,
-                next_coordinates[0],
-                next_coordinates[1]
-            )
-
-            target_bearing = calculate_bearing(
-                latitude,
-                longitude,
-                next_coordinates[0],
-                next_coordinates[1]
-            )
-
-            difference = calculate_bearing_difference(
-                bearing,
-                target_bearing
-            )
-
-            if difference <= 75:
-                candidates.append({
-                    "route": route,
-                    "next": next_name,
-                    "distance": distance,
-                    "bearing_difference": difference
-                })
-
-    candidates.sort(
-        key=lambda item: (
-            item["bearing_difference"],
-            item["distance"]
+        result = route_candidate_score(
+            bus_id,
+            latitude,
+            longitude,
+            bearing,
+            route
         )
-    )
 
-    return candidates
-
-def get_route_prediction(latitude, longitude, bearing):
-    candidates = get_route_candidates(latitude, longitude, bearing)
+        if result:
+            candidates.append((result[0], route, result[1], result[2]))
 
     if not candidates:
         return None
 
-    best = candidates[0]
-    agreeing_routes = [
-        item for item in candidates
-        if item["next"] == best["next"]
-        and item["bearing_difference"] <= 45
-    ]
+    candidates.sort(key=lambda item: item[0])
+    best_score, best_route, segment, bearing_difference = candidates[0]
 
-    if len(agreeing_routes) >= 2:
-        confidence = "High"
-    elif len(candidates) >= 2:
+    confidence = "Low"
+
+    if prefix_matches(bus_id, best_route):
+        confidence = "High" if bearing_difference <= 50 else "Medium"
+    elif bearing_difference <= 35:
         confidence = "Medium"
-    else:
-        confidence = "Medium"
+
+    if confidence == "Low":
+        return None
 
     return {
-        "likely_towards": best["next"],
-        "route": best["route"]["name"],
+        "likely_towards": segment["to"],
+        "route": best_route["name"],
         "route_confidence": confidence,
-        "route_distance_km": round(best["distance"], 2)
+        "route_distance_km": round(segment["distance"], 2)
     }
 
 def update_bus_history(bus):
@@ -314,6 +246,7 @@ def update_bus_history(bus):
     )
 
     prediction = get_route_prediction(
+        bus_id,
         last["latitude"],
         last["longitude"],
         bearing
