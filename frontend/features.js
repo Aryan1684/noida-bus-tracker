@@ -16,12 +16,13 @@
     var landmarks = [
         ["Botanical Garden", 28.5672, 77.3346],
         ["Sector 37", 28.5650, 77.3440],
+        ["Noida City Center", 28.5740, 77.3560],
+        ["Sector 52", 28.5850, 77.3700],
         ["Parthala", 28.6075, 77.3755],
-        ["Gaur Chowk", 28.6155, 77.4065],
+        ["Chaar Murti", 28.6020, 77.4180],
         ["Ek Murti", 28.6063, 77.4337],
         ["Surajpur", 28.5185, 77.4990],
-        ["Pari Chowk", 28.4652, 77.5080],
-        ["Jewar Airport", 28.2253, 77.5697]
+        ["Pari Chowk", 28.4652, 77.5080]
     ];
 
     function addStyles() {
@@ -239,7 +240,7 @@
             if(!card || card.dataset.advanced==="true") return;
 
             var route=routeFor(bus);
-            var routeText=route ? "Likely corridor: "+route.route+" · Confidence: "+route.confidence : "Route prediction: not enough movement data";
+            var routeText=route ? "Likely route: "+route.route+" · Confidence: "+route.confidence : "Route prediction: not enough movement data";
             var quality=dataQuality(bus);
             var history=busHistory(bus.bus_id);
 
