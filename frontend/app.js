@@ -6,6 +6,9 @@ let busMarkers = [];
 let selectedBusId = null;
 let refreshInterval = null;
 let isLoading = false;
+let pinAdjustMode = false;
+let searchTimer = null;
+let searchController = null;
 
 const API_BASE_URL = "https://noida-bus-tracker.onrender.com";
 
@@ -59,12 +62,16 @@ document.addEventListener(
         map.on(
             "click",
             event => {
+                if (!pinAdjustMode) return;
                 setLocationMarker(
                     event.latlng.lat,
                     event.latlng.lng
                 );
             }
         );
+
+        initializePlaceSearch();
+        initializePinControl();
     }
 );
 
@@ -238,6 +245,15 @@ function setLocationMarker(
             ).addTo(map);
 
         locationMarker.on(
+            "dragstart",
+            event => {
+                if (!pinAdjustMode) {
+                    locationMarker.dragging.disable();
+                }
+            }
+        );
+
+        locationMarker.on(
             "dragend",
             event => {
                 const position =
@@ -281,7 +297,7 @@ function setLocationMarker(
 
     locationMarker
         .bindPopup(
-            "Drag me to adjust the location"
+            pinAdjustMode ? "Drag to adjust location" : "Location selected"
         )
         .openPopup();
 
@@ -989,4 +1005,129 @@ function formatStatus(status) {
             char =>
                 char.toUpperCase()
         );
+}
+
+
+function initializePinControl() {
+    const button = document.getElementById("adjustPinBtn");
+    if (!button) return;
+
+    button.addEventListener("click", () => {
+        pinAdjustMode = !pinAdjustMode;
+
+        if (locationMarker) {
+            if (pinAdjustMode) {
+                locationMarker.dragging.enable();
+                button.textContent = "✓ Done adjusting";
+                button.classList.add("active");
+                updateLocationMessage("Pin adjustment is on. Drag the pin or tap the map.");
+            } else {
+                locationMarker.dragging.disable();
+                button.textContent = "📍 Adjust pin";
+                button.classList.remove("active");
+                updateLocationMessage("Pin locked. Confirm this location to find nearby buses.");
+            }
+        } else {
+            button.textContent = "📍 Adjust pin";
+        }
+    });
+}
+
+function initializePlaceSearch() {
+    const input = document.getElementById("placeSearch");
+    const suggestions = document.getElementById("searchSuggestions");
+    if (!input || !suggestions) return;
+
+    input.addEventListener("input", () => {
+        const query = input.value.trim();
+        clearTimeout(searchTimer);
+
+        if (searchController) searchController.abort();
+
+        if (query.length < 2) {
+            suggestions.classList.add("hidden");
+            suggestions.innerHTML = "";
+            return;
+        }
+
+        searchTimer = setTimeout(() => searchPlaces(query), 350);
+    });
+
+    document.addEventListener("click", event => {
+        if (!event.target.closest(".map-search")) {
+            suggestions.classList.add("hidden");
+        }
+    });
+}
+
+async function searchPlaces(query) {
+    const suggestions = document.getElementById("searchSuggestions");
+    if (!suggestions) return;
+
+    searchController = new AbortController();
+
+    try {
+        const response = await fetch(
+            "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=in&viewbox=77.25,28.70,77.65,28.30&bounded=1&q=" +
+            encodeURIComponent(query + ", Noida"),
+            {
+                headers: {"Accept": "application/json"},
+                signal: searchController.signal
+            }
+        );
+
+        if (!response.ok) throw new Error("Search failed");
+
+        const results = await response.json();
+
+        suggestions.innerHTML = "";
+
+        if (!results.length) {
+            suggestions.innerHTML = "<div class='search-empty'>No matching place found</div>";
+            suggestions.classList.remove("hidden");
+            return;
+        }
+
+        results.forEach(result => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "search-result";
+            item.innerHTML = "<strong>" + escapeHtml(result.display_name.split(",")[0]) + "</strong><span>" + escapeHtml(result.display_name) + "</span>";
+
+            item.addEventListener("click", () => {
+                const lat = Number(result.lat);
+                const lon = Number(result.lon);
+                setLocationMarker(lat, lon);
+                map.setView([lat, lon], 15, {animate: true, duration: 0.7});
+                input.value = result.display_name.split(",")[0];
+                suggestions.classList.add("hidden");
+                pinAdjustMode = false;
+                if (locationMarker) locationMarker.dragging.disable();
+                const button = document.getElementById("adjustPinBtn");
+                if (button) {
+                    button.textContent = "📍 Adjust pin";
+                    button.classList.remove("active");
+                }
+            });
+
+            suggestions.appendChild(item);
+        });
+
+        suggestions.classList.remove("hidden");
+    } catch (error) {
+        if (error.name !== "AbortError") {
+            suggestions.innerHTML = "<div class='search-empty'>Search is temporarily unavailable</div>";
+            suggestions.classList.remove("hidden");
+        }
+    }
+}
+
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, char => ({
+        "&":"&amp;",
+        "<":"&lt;",
+        ">":"&gt;",
+        '"':"&quot;",
+        "'":"&#039;"
+    }[char]));
 }
