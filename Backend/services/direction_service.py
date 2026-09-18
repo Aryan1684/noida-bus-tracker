@@ -25,6 +25,51 @@ LANDMARKS = {
     "Noida International Airport": (28.17556, 77.60500)
 }
 
+
+
+CITY_ROUTES = {
+    "R1": {
+        "name": "Botanical Garden → Pari Chowk via Surajpur",
+        "stops": [
+            "Botanical Garden", "Golf Course", "Noida City Center",
+            "Hoshiyarpur", "Sector 51", "Parthala", "Gaur Chowk",
+            "Ek Murti", "Surajpur Collectorate", "Pari Chowk"
+        ]
+    },
+    "R2": {
+        "name": "Botanical Garden → Jewar Airport",
+        "stops": [
+            "Botanical Garden", "Sector 44", "Chhalera", "Amity School",
+            "Expressway", "Pari Chowk", "Galgotias University",
+            "Dankaur", "Rabupura", "Jewar Airport"
+        ]
+    },
+    "R3": {
+        "name": "Botanical Garden → Surajpur via Sector 37",
+        "stops": [
+            "Botanical Garden", "Sector 37", "Chhalera", "Agahpur",
+            "Barola", "Sector 50", "Sector 75", "Sector 75 North",
+            "Sector 116", "Sector 78", "Samshang Phase 2",
+            "Phulmundi", "Kulesara", "Surajpur"
+        ]
+    },
+    "R4": {
+        "name": "Botanical Garden → New Bus Adda Ghaziabad",
+        "stops": [
+            "Botanical Garden", "Golf Course", "Noida City Center",
+            "Sector 52", "Sain Mandir", "Sector 61", "Sector 62",
+            "Pratap Vihar Ghaziabad", "RRTS Ghaziabad", "New Bus Adda Ghaziabad"
+        ]
+    },
+    "R5": {
+        "name": "Botanical Garden → Anand Vihar Bus Station",
+        "stops": [
+            "Botanical Garden", "Sector 16", "Noida Entry Gate",
+            "Sector 14A", "Akshardham", "Kaushambi", "Anand Vihar Bus Station"
+        ]
+    }
+}
+
 R01_BUSES = {
     "UP80KT3702", "UP80KT4582", "UP70PT6077", "UP70PT6268",
     "UP80LT4113", "UP80LT4117", "UP80LT4126",
