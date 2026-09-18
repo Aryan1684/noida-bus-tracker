@@ -1603,3 +1603,109 @@ body.dark .warning-modal .source-note{
     .hero-actions{gap:8px}
     .secondary-hero-button{width:100%;min-height:48px}
 }
+
+
+.location-tools{
+    position:relative;
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+    margin:16px 0 10px;
+}
+
+.map-search{
+    position:relative;
+    flex:1;
+    z-index:1002;
+}
+
+.search-box{
+    height:48px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:0 14px;
+    border:1px solid var(--border);
+    border-radius:13px;
+    background:var(--surface);
+    box-shadow:0 6px 18px rgba(16,24,40,.06);
+}
+
+.search-box span{
+    font-size:22px;
+    color:var(--muted);
+}
+
+.search-box input{
+    width:100%;
+    border:0;
+    outline:0;
+    background:transparent;
+    color:var(--text);
+    font-size:13px;
+}
+
+.search-suggestions{
+    position:absolute;
+    left:0;
+    right:0;
+    top:54px;
+    overflow:hidden;
+    border:1px solid var(--border);
+    border-radius:13px;
+    background:var(--surface);
+    box-shadow:0 15px 35px rgba(16,24,40,.14);
+}
+
+.search-result{
+    display:block;
+    width:100%;
+    padding:12px 14px;
+    border:0;
+    border-bottom:1px solid var(--border);
+    background:transparent;
+    color:var(--text);
+    text-align:left;
+}
+
+.search-result:last-child{border-bottom:0}
+.search-result:hover{background:var(--surface-soft)}
+.search-result strong{display:block;font-size:12px}
+.search-result span{display:block;margin-top:3px;color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-empty{padding:14px;color:var(--muted);font-size:11px}
+
+.adjust-pin-button{
+    height:48px;
+    flex:0 0 auto;
+    padding:0 15px;
+    border:1px solid var(--border);
+    border-radius:13px;
+    background:var(--surface);
+    color:var(--text);
+    font-size:12px;
+    font-weight:800;
+}
+
+.adjust-pin-button.active{
+    background:var(--text);
+    color:var(--background);
+}
+
+.project-disclaimer{
+    padding:10px 12px!important;
+    border:1px solid var(--border);
+    border-radius:10px;
+    background:var(--surface-soft);
+    color:var(--muted)!important;
+    font-size:11px!important;
+}
+
+.project-footer-note{
+    margin-top:7px!important;
+    color:var(--muted)!important;
+}
+
+@media(max-width:700px){
+    .location-tools{display:grid;grid-template-columns:1fr}
+    .adjust-pin-button{width:100%}
+}
