@@ -161,6 +161,11 @@ function getUserLocation() {
                 position.coords.longitude
             );
 
+            showAddress(
+                position.coords.latitude,
+                position.coords.longitude
+            );
+
             map.setView(
                 [
                     position.coords.latitude,
@@ -243,6 +248,8 @@ function setLocationMarker(
                     icon: icon
                 }
             ).addTo(map);
+
+        locationMarker.dragging.disable();
 
         locationMarker.on(
             "dragstart",
@@ -1130,4 +1137,34 @@ function escapeHtml(value) {
         '"':"&quot;",
         "'":"&#039;"
     }[char]));
+}
+
+
+async function showAddress(latitude, longitude) {
+    const message = document.getElementById("locationMessage");
+    if (!message) return;
+
+    message.textContent = "Finding your current address...";
+
+    try {
+        const response = await fetch(
+            "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" +
+            encodeURIComponent(latitude) +
+            "&lon=" +
+            encodeURIComponent(longitude) +
+            "&zoom=18&addressdetails=1"
+        );
+
+        if (!response.ok) throw new Error("Reverse geocoding failed");
+
+        const data = await response.json();
+        const address = data.display_name || "Current location selected";
+        message.textContent = "Current location: " + address;
+        const input = document.getElementById("placeSearch");
+        if (input && !input.value) {
+            input.value = address.split(",").slice(0, 2).join(", ");
+        }
+    } catch (error) {
+        message.textContent = "Current location selected. Adjust the pin if needed.";
+    }
 }
