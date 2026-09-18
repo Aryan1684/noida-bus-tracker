@@ -106,29 +106,20 @@
     }
 
     function routeFor(bus) {
+        if (bus.route && bus.likely_towards) {
+            return {
+                route: bus.route,
+                confidence: bus.route_confidence || "Medium"
+            };
+        }
+
         var h=busHistory(bus.bus_id);
         if(h.length<2) return null;
 
         var first=h[0], last=h[h.length-1];
         if(distance(first.latitude,first.longitude,last.latitude,last.longitude)<0.08) return null;
 
-        var head=heading(first.latitude,first.longitude,last.latitude,last.longitude);
-        var best=null;
-
-        for(var i=0;i<landmarks.length-1;i++){
-            var a=landmarks[i], b=landmarks[i+1];
-            var segment=heading(a[1],a[2],b[1],b[2]);
-            var da=distance(last.latitude,last.longitude,a[1],a[2]);
-            var db=distance(last.latitude,last.longitude,b[1],b[2]);
-            var score=Math.min(da,db)+headingDiff(head,segment)*0.01;
-            if(!best || score<best.score) best={score,from:a[0],to:b[0]};
-        }
-
-        if(!best || best.score>2.2) return null;
-        return {
-            route:best.from+" → "+best.to,
-            confidence:best.score<0.55?"High":best.score<1.2?"Medium":"Low"
-        };
+        return null;
     }
 
     function currentSpeed(bus) {
@@ -351,6 +342,29 @@
         }
     }
 
+    function focusSharedBus(){
+        var params=new URLSearchParams(location.search);
+        var busId=params.get("bus");
+        if(!busId)return;
+
+        var tries=0;
+        var timer=setInterval(function(){
+            tries++;
+            var bus=buses.find(function(item){return item.bus_id===busId;});
+            if(bus){
+                clearInterval(timer);
+                if(typeof focusBusOnMap==="function")focusBusOnMap(busId);
+                if(typeof map!=="undefined")map.setView([bus.latitude,bus.longitude],16);
+                var card=document.getElementById("bus-card-"+busId);
+                if(card){
+                    card.scrollIntoView({behavior:"smooth",block:"center"});
+                    card.classList.add("shared-bus-highlight");
+                }
+            }
+            if(tries>30)clearInterval(timer);
+        },500);
+    }
+
     function report(bus){
         var choice=prompt("Report:\\n1 Not moving\\n2 Wrong location\\n3 Already passed\\n4 Occupancy");
         var types={"1":"not_moving","2":"wrong_location","3":"already_passed","4":"occupancy"};
@@ -460,6 +474,7 @@
                 enhance();
                 summary();
                 checkAlert();
+                focusSharedBus();
                 if(followId){
                     var bus=buses.find(function(item){return item.bus_id===followId;});
                     if(bus)map.setView([bus.latitude,bus.longitude],16);
