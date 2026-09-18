@@ -1367,3 +1367,239 @@ footer span {
         padding: 20px;
     }
 }
+
+.header-controls{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.theme-toggle{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    height:38px;
+    padding:0 12px;
+    border:1px solid var(--border);
+    border-radius:999px;
+    background:var(--surface);
+    color:var(--text);
+    font-size:11px;
+    font-weight:800;
+    transition:transform .2s ease,background .25s ease,border-color .25s ease;
+}
+
+.theme-toggle:hover{
+    transform:translateY(-2px);
+}
+
+.theme-toggle span:first-child{
+    font-size:17px;
+}
+
+.secondary-hero-button{
+    min-height:50px;
+    padding:0 18px;
+    border:1px solid var(--border);
+    border-radius:12px;
+    background:var(--surface);
+    color:var(--text);
+    font-weight:700;
+    transition:transform .2s ease,box-shadow .2s ease;
+}
+
+.secondary-hero-button:hover{
+    transform:translateY(-2px);
+    box-shadow:0 8px 20px rgba(16,24,40,.08);
+}
+
+body,
+.site-header,
+.hero,
+.tracker-section,
+.bus-section,
+.source-section,
+footer,
+.bus-card,
+.feature,
+.location-info,
+.radius-control select,
+.theme-toggle,
+.secondary-hero-button{
+    transition:background-color .3s ease,color .3s ease,border-color .3s ease,box-shadow .3s ease;
+}
+
+body.page-ready main > section,
+body.page-ready .notice-bar{
+    animation:sectionRise .65s cubic-bezier(.2,.8,.2,1) both;
+}
+
+body.page-ready main > section:nth-child(2){animation-delay:.06s}
+body.page-ready main > section:nth-child(3){animation-delay:.12s}
+body.page-ready main > section:nth-child(4){animation-delay:.18s}
+body.page-ready main > section:nth-child(5){animation-delay:.24s}
+
+@keyframes sectionRise{
+    from{opacity:0;transform:translateY(18px)}
+    to{opacity:1;transform:translateY(0)}
+}
+
+.hero-badge span,
+.source-dot,
+.live-pill span{
+    animation:pulseLive 1.8s ease-in-out infinite;
+}
+
+@keyframes pulseLive{
+    0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,.25)}
+    50%{box-shadow:0 0 0 7px rgba(22,163,74,0)}
+}
+
+.visual-card{
+    animation:floatCard 5s ease-in-out infinite;
+}
+
+@keyframes floatCard{
+    0%,100%{transform:rotate(2deg) translateY(0)}
+    50%{transform:rotate(1deg) translateY(-8px)}
+}
+
+.bus-card{
+    animation:cardIn .45s cubic-bezier(.2,.8,.2,1) both;
+}
+
+.bus-card:nth-child(2){animation-delay:.04s}
+.bus-card:nth-child(3){animation-delay:.08s}
+.bus-card:nth-child(4){animation-delay:.12s}
+.bus-card:nth-child(5){animation-delay:.16s}
+.bus-card:nth-child(6){animation-delay:.20s}
+
+@keyframes cardIn{
+    from{opacity:0;transform:translateY(12px) scale(.985)}
+    to{opacity:1;transform:translateY(0) scale(1)}
+}
+
+.shared-bus-highlight{
+    animation:sharedPulse 1.4s ease-in-out 2;
+}
+
+@keyframes sharedPulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,0)}
+    50%{box-shadow:0 0 0 6px rgba(22,163,74,.22)}
+}
+
+body.dark{
+    --background:#0b0f14;
+    --surface:#111820;
+    --surface-soft:#171f29;
+    --text:#f3f4f6;
+    --muted:#a7b0bd;
+    --border:#26313d;
+    --dark:#f3f4f6;
+    --green-soft:#10261a;
+    --yellow-soft:#241e10;
+    --yellow:#fbbf24;
+    --red:#f87171;
+}
+
+body.dark .site-header{
+    background:rgba(11,15,20,.92);
+}
+
+body.dark .brand h1,
+body.dark .brand strong,
+body.dark .section-title h2,
+body.dark .section-header h2,
+body.dark .bus-card h3,
+body.dark .notice-bar strong,
+body.dark .source-section strong,
+body.dark footer p{
+    color:var(--text);
+}
+
+body.dark .brand-icon,
+body.dark .source-logo,
+body.dark .direction-arrow,
+body.dark .refresh-button,
+body.dark .retry-button,
+body.dark .hero-button{
+    background:#f3f4f6;
+    color:#0b0f14;
+}
+
+body.dark .hero{
+    background:linear-gradient(135deg,#111820 0%,#0e1714 100%);
+}
+
+body.dark .hero h2 span{
+    color:#b6c0cc;
+}
+
+body.dark .feature-icon,
+body.dark .state-icon,
+body.dark .bus-count,
+body.dark .bus-card,
+body.dark .feature-route,
+body.dark .feature-meta,
+body.dark .location-info{
+    background:var(--surface-soft);
+}
+
+body.dark .bus-card.selected{
+    background:#151e27;
+    border-color:#f3f4f6;
+}
+
+body.dark .source-section,
+body.dark footer,
+body.dark .tracker-section,
+body.dark .bus-section{
+    background:var(--surface);
+}
+
+body.dark .radius-control select{
+    background:var(--surface);
+    color:var(--text);
+}
+
+body.dark .source-badge{
+    background:var(--surface-soft);
+    color:#c4ccd6;
+}
+
+body.dark .leaflet-control-zoom a{
+    background:#111820!important;
+    color:#f3f4f6!important;
+    border-color:#26313d!important;
+}
+
+body.dark .leaflet-control-attribution{
+    background:rgba(17,24,32,.85)!important;
+    color:#a7b0bd!important;
+}
+
+body.dark .leaflet-control-attribution a{
+    color:#d1d5db!important;
+}
+
+body.dark .warning-modal{
+    background:#111820;
+    color:var(--text);
+}
+
+body.dark .warning-modal p{
+    color:#a7b0bd;
+}
+
+body.dark .warning-modal .source-note{
+    background:#171f29;
+    color:#c4ccd6;
+}
+
+@media(max-width:700px){
+    .header-controls{gap:6px}
+    .theme-toggle{width:40px;padding:0;justify-content:center}
+    .theme-toggle span:last-child{display:none}
+    .hero-actions{gap:8px}
+    .secondary-hero-button{width:100%;min-height:48px}
+}
