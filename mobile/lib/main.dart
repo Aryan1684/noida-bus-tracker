@@ -26,111 +26,309 @@ class StartupSplash extends StatefulWidget {
 }
 
 class _StartupSplashState extends State<StartupSplash>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController controller;
-  late final Animation<double> fade;
-  late final Animation<double> scale;
+    with TickerProviderStateMixin {
+  late final AnimationController intro;
+  late final AnimationController travel;
 
   @override
   void initState() {
     super.initState();
-    controller = AnimationController(
+
+    intro = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    fade = CurvedAnimation(
-      parent: controller,
-      curve: Curves.easeOut,
-    );
-    scale = Tween<double>(
-      begin: .78,
-      end: 1,
-    ).animate(
-      CurvedAnimation(
-        parent: controller,
-        curve: Curves.easeOutBack,
-      ),
-    );
-    controller.forward();
-    Future.delayed(const Duration(milliseconds: 1250), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => widget.child,
-            transitionDuration: const Duration(milliseconds: 350),
-            transitionsBuilder: (_, animation, __, child) {
-              return FadeTransition(
-                opacity: animation,
+      duration: const Duration(milliseconds: 2200),
+    )..forward();
+
+    travel = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1350),
+    )..repeat(reverse: true);
+
+    Future.delayed(const Duration(milliseconds: 2850), () {
+      if (!mounted) return;
+
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => widget.child,
+          transitionDuration: const Duration(milliseconds: 550),
+          transitionsBuilder: (_, animation, __, child) {
+            final curve = CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            );
+
+            return FadeTransition(
+              opacity: curve,
+              child: ScaleTransition(
+                scale: Tween<double>(
+                  begin: .97,
+                  end: 1,
+                ).animate(curve),
                 child: child,
-              );
-            },
-          ),
-        );
-      }
+              ),
+            );
+          },
+        ),
+      );
     });
   }
 
   @override
   void dispose() {
-    controller.dispose();
+    intro.dispose();
+    travel.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F8),
-      body: Center(
-        child: FadeTransition(
-          opacity: fade,
-          child: ScaleTransition(
-            scale: scale,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+      backgroundColor: const Color(0xFF080B12),
+      body: SafeArea(
+        child: AnimatedBuilder(
+          animation: Listenable.merge([intro, travel]),
+          builder: (context, _) {
+            return Stack(
               children: [
-                Container(
-                  width: 92,
-                  height: 92,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF111827),
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x22000000),
-                        blurRadius: 24,
-                        offset: Offset(0, 10),
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: SplashRoutePainter(
+                      introProgress: intro.value,
+                      travelProgress: travel.value,
+                    ),
+                  ),
+                ),
+                Center(
+                  child: AnimatedBuilder(
+                    animation: intro,
+                    builder: (context, _) {
+                      final scale = Curves.easeOutBack.transform(
+                        (intro.value * 1.3).clamp(0.0, 1.0),
+                      );
+                      final opacity = Curves.easeOut.transform(
+                        (intro.value * 1.6).clamp(0.0, 1.0),
+                      );
+
+                      return Opacity(
+                        opacity: opacity,
+                        child: Transform.scale(
+                          scale: .62 + (.38 * scale),
+                          child: Container(
+                            width: 118,
+                            height: 118,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF111827),
+                              borderRadius: BorderRadius.circular(36),
+                              border: Border.all(
+                                color: const Color(0xFFB8F26B),
+                                width: 1.5,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x3399FF66),
+                                  blurRadius: 36,
+                                  spreadRadius: 5,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.directions_bus_rounded,
+                              color: Color(0xFFB8F26B),
+                              size: 62,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                Positioned(
+                  left: 20,
+                  right: 20,
+                  bottom: 76,
+                  child: AnimatedBuilder(
+                    animation: intro,
+                    builder: (context, _) {
+                      final value = Curves.easeOut.transform(
+                        ((intro.value - .38) / .35).clamp(0.0, 1.0),
+                      );
+
+                      return Opacity(
+                        opacity: value,
+                        child: Transform.translate(
+                          offset: Offset(0, 18 * (1 - value)),
+                          child: const Column(
+                            children: [
+                              Text(
+                                'NOIDA BUS TRACKER',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 25,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.4,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'LIVE ELECTRIC BUS TRACKING',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Color(0xFFB8F26B),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 24,
+                  child: Center(
+                    child: Text(
+                      'MARGDARSHI · UPSRTC',
+                      style: TextStyle(
+                        color: Color(0xFF667085),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.2,
                       ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.directions_bus_rounded,
-                    color: Color(0xFFB8F26B),
-                    size: 48,
-                  ),
-                ),
-                const SizedBox(height: 22),
-                const Text(
-                  'Noida Bus Tracker',
-                  style: TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -.5,
-                  ),
-                ),
-                const SizedBox(height: 7),
-                const Text(
-                  'Live electric bus tracking',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF6B7280),
+                    ),
                   ),
                 ),
               ],
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
+  }
+}
+
+class SplashRoutePainter extends CustomPainter {
+  final double introProgress;
+  final double travelProgress;
+
+  const SplashRoutePainter({
+    required this.introProgress,
+    required this.travelProgress,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final start = Offset(size.width * .08, size.height * .66);
+    final control = Offset(size.width * .52, size.height * .53);
+    final end = Offset(size.width * .92, size.height * .66);
+
+    final routePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xFF344054)
+          .withOpacity(.55 * Curves.easeOut.transform(introProgress));
+
+    final path = Path()
+      ..moveTo(start.dx, start.dy)
+      ..quadraticBezierTo(
+        control.dx,
+        control.dy,
+        end.dx,
+        end.dy,
+      );
+
+    canvas.drawPath(path, routePaint);
+
+    final pointPaint = Paint()
+      ..color = const Color(0xFFB8F26B)
+          .withOpacity(.55 * Curves.easeOut.transform(introProgress));
+
+    for (final t in const <double>[.08, .23, .38, .54, .69, .84]) {
+      final point = _point(start, control, end, t);
+      canvas.drawCircle(point, 3, pointPaint);
+    }
+
+    final busT = .16 + (.68 * travelProgress);
+    final busPoint = _point(start, control, end, busT);
+
+    final glow = Paint()
+      ..color = const Color(0xFFB8F26B).withOpacity(.12)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
+
+    canvas.drawCircle(busPoint, 21, glow);
+
+    final busPaint = Paint()
+      ..color = const Color(0xFFB8F26B);
+
+    final body = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: busPoint,
+        width: 38,
+        height: 24,
+      ),
+      const Radius.circular(7),
+    );
+
+    canvas.drawRRect(body, busPaint);
+
+    final windowPaint = Paint()
+      ..color = const Color(0xFF111827);
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(
+            busPoint.dx,
+            busPoint.dy - 3,
+          ),
+          width: 27,
+          height: 9,
+        ),
+        const Radius.circular(2),
+      ),
+      windowPaint,
+    );
+
+    canvas.drawCircle(
+      Offset(busPoint.dx - 11, busPoint.dy + 13),
+      3.4,
+      windowPaint,
+    );
+    canvas.drawCircle(
+      Offset(busPoint.dx + 11, busPoint.dy + 13),
+      3.4,
+      windowPaint,
+    );
+  }
+
+  Offset _point(
+    Offset start,
+    Offset control,
+    Offset end,
+    double t,
+  ) {
+    final u = 1 - t;
+
+    return Offset(
+      u * u * start.dx +
+          2 * u * t * control.dx +
+          t * t * end.dx,
+      u * u * start.dy +
+          2 * u * t * control.dy +
+          t * t * end.dy,
+    );
+  }
+
+  @override
+  bool shouldRepaint(SplashRoutePainter oldDelegate) {
+    return oldDelegate.introProgress != introProgress ||
+        oldDelegate.travelProgress != travelProgress;
   }
 }
 
@@ -143,10 +341,10 @@ class _HomeState extends State<Home> {
  double radius=5; bool loading=false,locating=false,movePin=false,stops=false,following=false,permissionBlocked=false; String? error,selected,followed; String locationLabel='Use your current location'; DateTime? refreshed;
  final stopData=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060]];
 
- @override void initState(){super.initState();_prefs();WidgetsBinding.instance.addPostFrameCallback((_)=>_notice());}
+ @override void initState(){super.initState();_prefs();Future.delayed(const Duration(milliseconds:500),(){if(mounted)_notice();});}
  @override void dispose(){refreshTimer?.cancel();searchTimer?.cancel();search.dispose();super.dispose();}
  Future<void> _prefs() async { final p=await SharedPreferences.getInstance();if(mounted)setState(()=>favs=(p.getStringList('favs')??[]).toSet()); }
- Future<void> _notice() async { if(!mounted)return;await showDialog(context:context,barrierDismissible:false,builder:(c)=>AlertDialog(shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(24)),title:const Text('One important note'),content:const Text('Bus locations come from live GPS data. The “moving towards” information is an estimate from recent movement and can be wrong near junctions, turns or route changes.\n\nNot a government website.\nThis is an independent project made by a curious BTech student.\n\nData source: MARGDARSHI · UPSRTC',style:TextStyle(height:1.45)),actions:[FilledButton(onPressed:()=>Navigator.pop(c),child:const Text('Got it'))]));if(mounted)_location();}
+ Future<void> _notice() async { if(!mounted)return;await showDialog(context:context,barrierDismissible:false,builder:(c)=>AlertDialog(shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(24)),title:const Text('One important note'),content:const Text('Bus locations come from live GPS data. The “moving towards” information is an estimate from recent movement and can be wrong near junctions, turns or route changes.\n\nNot a government website.\nThis is an independent project made by a curious BTech student.\n\nData source: MARGDARSHI · UPSRTC',style:TextStyle(height:1.45)),actions:[FilledButton(onPressed:()=>Navigator.pop(c),child:const Text('Got it'))]));}
  Future<void> _location() async {
   if (locating) return;
   setState(() { locating = true; error = null; permissionBlocked = false; });
