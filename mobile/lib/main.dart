@@ -338,22 +338,98 @@ class Home extends StatefulWidget { final bool dark; final VoidCallback toggle; 
 class _HomeState extends State<Home> {
  static const api='https://noida-bus-tracker.onrender.com';
  final map=MapController(); final search=TextEditingController(); Timer? refreshTimer,searchTimer;
- LatLng location=const LatLng(28.4598,77.5184); List<dynamic> buses=[]; List<dynamic> suggestions=[]; Set<String> favs={}; Map<String,List<LatLng>> history={}; List<LatLng> trail=[];
- double radius=5; bool loading=false,locating=false,movePin=false,stops=false,following=false,permissionBlocked=false; String? error,selected,followed; String locationLabel='Use your current location'; DateTime? refreshed;
+ LatLng location=const LatLng(28.4598,77.5184); List<dynamic> buses=[]; List<dynamic> suggestions=[]; Set<String> favs={}; Map<String,List<LatLng>> history={}; List<LatLng> trail=[]; Map<String,DateTime> alertHistory={};
+ double radius=5; bool loading=false,locating=false,movePin=false,stops=false,following=false,permissionBlocked=false,dontShowNotice=false,nearbyAlerts=false; String? error,selected,followed; String locationLabel='Use your current location'; DateTime? refreshed;
  final stopData=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060]];
 
- @override void initState(){super.initState();_prefs();Future.delayed(const Duration(milliseconds:500),(){if(mounted)_notice();});}
- @override void dispose(){refreshTimer?.cancel();searchTimer?.cancel();search.dispose();super.dispose();}
- Future<void> _prefs() async { final p=await SharedPreferences.getInstance();if(mounted)setState(()=>favs=(p.getStringList('favs')??[]).toSet()); }
- Future<void> _notice() async { if(!mounted)return;await showDialog(context:context,barrierDismissible:false,builder:(c)=>AlertDialog(shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(24)),title:const Text('One important note'),content:const Text('Bus locations come from live GPS data. The “moving towards” information is an estimate from recent movement and can be wrong near junctions, turns or route changes.\n\nNot a government website.\nThis is an independent project made by a curious BTech student.\n\nData source: MARGDARSHI · UPSRTC',style:TextStyle(height:1.45)),actions:[FilledButton(onPressed:()=>Navigator.pop(c),child:const Text('Got it'))]));}
- Future<void> _location() async {
-  if (locating) return;
-  setState(() { locating = true; error = null; permissionBlocked = false; });
-  try {
-    if (!await Geolocator.isLocationServiceEnabled()) {
-      if (mounted) {
-        setState(() { locationLabel = 'Location services are off'; error = 'Turn on Location/GPS and tap again.'; });
-        await Geolocator.openLocationSettings();
+ @override
+ void initState() {
+  super.initState();
+  _initApp();
+} @override void dispose(){refreshTimer?.cancel();searchTimer?.cancel();search.dispose();super.dispose();}
+ Future<void> _initApp() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  if (!mounted) return;
+
+  setState(() {
+    favs = (prefs. Future<void> _notice() async {
+  if (!mounted) return;
+
+  var dontAgain = dontShowNotice;
+
+  await showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            title: const Text('One important note'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Bus locations come from live GPS data. The “moving towards” information is an estimate from recent movement and can be wrong near junctions, turns or route changes.',
+                  style: TextStyle(height: 1.45),
+                ),
+                const SizedBox(height: 14),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Not a government website.\n'
+                    'This is an independent project made by a curious BTech student.\n\n'
+                    'Data source: MARGDARSHI · UPSRTC',
+                    style: TextStyle(
+                      height: 1.45,
+                      fontSize: 12,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  value: dontAgain,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: const Text(
+                    'Don’t show this again',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      dontAgain = value ?? false;
+                    });
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Got it'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('dont_show_notice', dontAgain);
+
+  if (mounted) {
+    setState(() {
+      dontShowNotice = dontAgain;
+    });
+  }
+}
+
+it Geolocator.openLocationSettings();
       }
       return;
     }
@@ -399,7 +475,159 @@ class _HomeState extends State<Home> {
 
  Future<void> _set(LatLng p,String label,bool load) async {setState(() { location=p; locationLabel=label; selected=null; error=null; });map.move(p,14.5);if(load){await _load();_auto();}}
  void _auto(){refreshTimer?.cancel();refreshTimer=Timer.periodic(const Duration(seconds:45),(_){if(!loading)_load(auto:true);});}
- Future<void> _load({bool auto=false}) async {if(loading)return;setState(()=>loading=true);final u=Uri.parse(api+'/api/buses/nearby?lat='+location.latitude.toString()+'&lon='+location.longitude.toString()+'&radius='+radius.toString());try{final r=await http.get(u).timeout(const Duration(seconds:20));if(r.statusCode!=200)throw Exception();final d=jsonDecode(r.body);final next=List<dynamic>.from(d['buses']??[]);for(final b in next){final id=''+b['bus_id'].toString();final a=double.tryParse(b['latitude'].toString());final o=double.tryParse(b['longitude'].toString());if(a==null||o==null)continue;history.putIfAbsent(id,()=>[]).add(LatLng(a,o));if(history[id]!.length>30)history[id]!.removeAt(0);}if(mounted)setState(() { buses=next; refreshed=DateTime.now(); error=null; });if(following&&followed!=null){final b=_find(followed!);if(b!=null)_center(b,false);}}catch(_){if(mounted)setState(()=>error='Unable to refresh bus data. Showing previous results.');}finally{if(mounted)setState(()=>loading=false);}}
+ Future<void> _load({bool auto=false}) async {
+  if (loading) return;
+
+  setState(() => loading = true);
+
+  final u = Uri.parse(
+    api +
+        '/api/buses/nearby?lat=' +
+        location.latitude.toString() +
+        '&lon=' +
+        location.longitude.toString() +
+        '&radius=' +
+        radius.toString(),
+  );
+
+  try {
+    final r = await http.get(u).timeout(const Duration(seconds: 20));
+
+    if (r.statusCode != 200) {
+      throw Exception();
+    }
+
+    final d = jsonDecode(r.body);
+    final next = List<dynamic>.from(d['buses'] ?? []);
+
+    next.sort((a, b) {
+      final da = double.tryParse(a['distance_km']?.toString() ?? '');
+      final db = double.tryParse(b['distance_km']?.toString() ?? '');
+      return (da ?? double.infinity).compareTo(db ?? double.infinity);
+    });
+
+    for (final bus in next) {
+      final id = bus['bus_id']?.toString();
+      final lat = double.tryParse(bus['latitude']?.toString() ?? '');
+      final lon = double.tryParse(bus['longitude']?.toString() ?? '');
+
+      if (id == null || lat == null || lon == null) continue;
+
+      history.putIfAbsent(id, () => []).add(LatLng(lat, lon));
+
+      if (history[id]!.length > 30) {
+        history[id]!.removeAt(0);
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        buses = next;
+        refreshed = DateTime.now();
+        error = null;
+      });
+
+      _checkNearbyAlert(next);
+
+      if (following && followed != null) {
+        final b = _find(followed!);
+        if (b != null) {
+          _center(b, false);
+        }
+      }
+    }
+  } catch (_) {
+    if (mounted) {
+      setState(() {
+        error = 'Unable to refresh bus data. Showing previous results.';
+      });
+    }
+  } finally {
+    if (mounted) {
+      setState(() => loading = false);
+    }
+  }
+}
+
+ void _checkNearbyAlert(List<dynamic> next) {
+  if (!nearbyAlerts || next.isEmpty || !mounted) return;
+
+  final now = DateTime.now();
+  dynamic nearest;
+  double? nearestDistance;
+
+  for (final bus in next) {
+    final distance = double.tryParse(
+      bus['distance_km']?.toString() ?? '',
+    );
+
+    if (distance == null || distance > 1) continue;
+
+    if (nearestDistance == null || distance < nearestDistance!) {
+      nearest = bus;
+      nearestDistance = distance;
+    }
+  }
+
+  final activeIds = <String>{};
+
+  for (final bus in next) {
+    final distance = double.tryParse(
+      bus['distance_km']?.toString() ?? '',
+    );
+
+    if (distance != null && distance <= 1.5) {
+      activeIds.add(bus['bus_id'].toString());
+    }
+  }
+
+  alertHistory.removeWhere((id, _) => !activeIds.contains(id));
+
+  if (nearest == null || nearestDistance == null) return;
+
+  final id = nearest['bus_id'].toString();
+  final lastAlert = alertHistory[id];
+
+  if (lastAlert != null &&
+      now.difference(lastAlert) < const Duration(minutes: 10)) {
+    return;
+  }
+
+  alertHistory[id] = now;
+  HapticFeedback.heavyImpact();
+
+  final distanceText = nearestDistance < .1
+      ? (nearestDistance * 1000).round().toString() + ' m'
+      : nearestDistance.toStringAsFixed(2) + ' km';
+
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+        content: Row(
+          children: [
+            const Icon(
+              Icons.notifications_active_rounded,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Nearby bus: ' +
+                    nearest['bus_id'].toString() +
+                    ' · ' +
+                    distanceText +
+                    ' away',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+}
+
  dynamic _find(String id){for(final b in buses){if(b['bus_id'].toString()==id)return b;}return null;}
  void _center(dynamic b,bool select){final a=double.tryParse(b['latitude'].toString()),o=double.tryParse(b['longitude'].toString());if(a==null||o==null)return;if(select)setState(()=>selected=b['bus_id'].toString());map.move(LatLng(a,o),16);}
  void _search(String v){searchTimer?.cancel();if(v.trim().length<2){setState(()=>suggestions=[]);return;}searchTimer=Timer(const Duration(milliseconds:350),()async{try{final r=await http.get(Uri.parse(api+'/api/search-location?q='+Uri.encodeQueryComponent(v))).timeout(const Duration(seconds:8));if(r.statusCode!=200)throw Exception();final d=jsonDecode(r.body);if(mounted)setState(()=>suggestions=List<dynamic>.from(d['results']??[]));}catch(_){if(mounted)setState(()=>suggestions=[]);}});}
@@ -454,8 +682,9 @@ class _HomeState extends State<Home> {
 
  void _settings() {
   var currentDark = widget.dark;
+  var alertsEnabled = nearbyAlerts;
 
-  showModalBottomSheet(
+  showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
     builder: (sheetContext) {
@@ -485,9 +714,7 @@ class _HomeState extends State<Home> {
                         : Icons.light_mode_outlined,
                   ),
                   title: const Text('Dark mode'),
-                  subtitle: Text(
-                    currentDark ? 'On' : 'Off',
-                  ),
+                  subtitle: Text(currentDark ? 'On' : 'Off'),
                   trailing: Switch(
                     value: currentDark,
                     onChanged: (value) {
@@ -496,12 +723,31 @@ class _HomeState extends State<Home> {
                     },
                   ),
                 ),
-                const ListTile(
-                  leading: Icon(Icons.notifications_none),
-                  title: Text('Nearby bus alerts'),
-                  subtitle: Text(
-                    'Proximity alerts can be added with background location support',
+                SwitchListTile(
+                  value: alertsEnabled,
+                  secondary: const Icon(
+                    Icons.notifications_active_outlined,
                   ),
+                  title: const Text('Nearby bus alerts'),
+                  subtitle: Text(
+                    alertsEnabled
+                        ? 'Alert when a bus comes within 1 km'
+                        : 'Turn on to get nearby bus alerts',
+                  ),
+                  onChanged: (value) async {
+                    setSheetState(() => alertsEnabled = value);
+
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool('nearby_alerts', value);
+
+                    if (mounted) {
+                      setState(() => nearbyAlerts = value);
+
+                      if (value && buses.isNotEmpty) {
+                        _checkNearbyAlert(buses);
+                      }
+                    }
+                  },
                 ),
                 ListTile(
                   leading: const Icon(Icons.info_outline),
@@ -523,7 +769,6 @@ class _HomeState extends State<Home> {
     },
   );
 }
-
  @override
  Widget build(BuildContext context) {
   return Scaffold(
