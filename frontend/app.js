@@ -510,41 +510,31 @@ async function loadNearbyBuses(
 function displayBuses(buses) {
     clearBusMarkers();
 
-    const busList =
-        document.getElementById(
-            "busList"
-        );
+    const busList = document.getElementById("busList");
+    const busCount = document.getElementById("busCount");
 
-    const busCount =
-        document.getElementById(
-            "busCount"
-        );
+    buses = (buses || []).slice().sort((a, b) => {
+        const da = Number(a.distance_km);
+        const db = Number(b.distance_km);
+        return (Number.isFinite(da) ? da : 9999) - (Number.isFinite(db) ? db : 9999);
+    });
 
-    busCount.textContent =
-        `${buses.length} buses`;
-
+    busCount.textContent = buses.length + " buses";
     hideAllStates();
-
     busList.innerHTML = "";
 
     if (!buses.length) {
         showEmptyState();
-
         return;
     }
 
-    buses.forEach(
-        bus => {
-            createBusMarker(bus);
-            createBusCard(bus);
-        }
-    );
+    buses.forEach((bus, index) => {
+        bus._rank = index + 1;
+        createBusMarker(bus);
+        createBusCard(bus, index);
+    });
 
-    if (selectedBusId) {
-        highlightBus(
-            selectedBusId
-        );
-    }
+    if (selectedBusId) highlightBus(selectedBusId);
 }
 
 function createBusMarker(bus) {
@@ -611,14 +601,14 @@ function createBusMarker(bus) {
     );
 }
 
-function createBusCard(bus) {
+function createBusCard(bus, rankIndex = 0) {
     const card =
         document.createElement(
             "div"
         );
 
-    card.className =
-        "bus-card";
+    card.className = "bus-card rank-" + Math.min(rankIndex + 1, 3);
+    card.style.animationDelay = Math.min(rankIndex * 45, 500) + "ms";
 
     card.id =
         `bus-card-${bus.bus_id}`;
@@ -707,18 +697,14 @@ function createBusCard(bus) {
             : 0;
 
     card.innerHTML = `
+        <span class="bus-rank">#${rankIndex + 1}</span>
         <h3>
             ${bus.bus_id || "Unknown Bus"}
         </h3>
 
         ${directionHtml}
 
-        <p>
-            Distance:
-            ${bus.distance_km ?? "Unknown"} km
-        </p>
-
-        <p>
+        <div class="bus-distance">⌖ ${bus.distance_km ?? "—"} km away</div>    <p>
             Speed:
             ${bus.speed ?? 0} km/h
         </p>
