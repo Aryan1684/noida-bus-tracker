@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -234,7 +235,7 @@ class SplashRoutePainter extends CustomPainter {
       ..color = const Color(0xFF344054)
           .withOpacity(.55 * Curves.easeOut.transform(introProgress));
 
-    final path = Path()
+    final path = ui.Path()
       ..moveTo(start.dx, start.dy)
       ..quadraticBezierTo(
         control.dx,
