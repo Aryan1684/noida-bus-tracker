@@ -1,8 +1,7 @@
 (function(){
     var key="noidaBusTheme";
     var saved=localStorage.getItem(key);
-    var system=window.matchMedia("(prefers-color-scheme: dark)").matches;
-    var dark=saved?saved==="dark":system;
+    var dark=saved==="dark";
 
     function apply(){
         document.body.classList.toggle("dark",dark);
