@@ -341,6 +341,22 @@ class _HomeState extends State<Home> {
  LatLng location=const LatLng(28.4598,77.5184); List<dynamic> buses=[]; List<dynamic> suggestions=[]; Set<String> favs={}; Map<String,List<LatLng>> history={}; List<LatLng> trail=[]; Map<String,DateTime> alertHistory={};
  double radius=5; bool loading=false,locating=false,movePin=false,stops=false,following=false,permissionBlocked=false,dontShowNotice=false,nearbyAlerts=false; String? error,selected,followed; String locationLabel='Use your current location'; DateTime? refreshed;
  final stopData=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060]];
+ final searchPlaces = const [
+  ['Botanical Garden', 28.5640, 77.3340],
+  ['Sector 37', 28.5700, 77.3450],
+  ['Noida City Center', 28.5740, 77.3560],
+  ['Sector 52', 28.5890, 77.3730],
+  ['Sector 62', 28.6280, 77.3770],
+  ['Pari Chowk', 28.4595, 77.5082],
+  ['Chaar Murti', 28.5650, 77.4370],
+  ['Ek Murti', 28.6040, 77.4370],
+  ['Gaur Chowk', 28.6150, 77.4350],
+  ['Gaur City', 28.6155, 77.4240],
+  ['Surajpur', 28.5140, 77.4830],
+  ['Kasna Village', 28.4050, 77.5060],
+  ['Sector 90', 28.5340, 77.4380],
+  ['Noida International Airport', 28.5562, 77.5849],
+ ];
 
  @override
  void initState() {
@@ -630,7 +646,80 @@ it Geolocator.openLocationSettings();
 
  dynamic _find(String id){for(final b in buses){if(b['bus_id'].toString()==id)return b;}return null;}
  void _center(dynamic b,bool select){final a=double.tryParse(b['latitude'].toString()),o=double.tryParse(b['longitude'].toString());if(a==null||o==null)return;if(select)setState(()=>selected=b['bus_id'].toString());map.move(LatLng(a,o),16);}
- void _search(String v){searchTimer?.cancel();if(v.trim().length<2){setState(()=>suggestions=[]);return;}searchTimer=Timer(const Duration(milliseconds:350),()async{try{final r=await http.get(Uri.parse(api+'/api/search-location?q='+Uri.encodeQueryComponent(v))).timeout(const Duration(seconds:8));if(r.statusCode!=200)throw Exception();final d=jsonDecode(r.body);if(mounted)setState(()=>suggestions=List<dynamic>.from(d['results']??[]));}catch(_){if(mounted)setState(()=>suggestions=[]);}});}
+ void _search(String v) {
+  searchTimer?.cancel();
+
+  final query = v.trim().toLowerCase();
+
+  if (query.length < 2) {
+    setState(() => suggestions = []);
+    return;
+  }
+
+  final local = searchPlaces
+      .where(
+        (place) => place[0].toString().toLowerCase().contains(query),
+      )
+      .map(
+        (place) => {
+          'name': place[0].toString(),
+          'latitude': place[1],
+          'longitude': place[2],
+        },
+      )
+      .toList();
+
+  setState(() => suggestions = local);
+
+  searchTimer = Timer(
+    const Duration(milliseconds: 450),
+    () async {
+      try {
+        final uri = Uri.parse(
+          api +
+              '/api/search-location?q=' +
+              Uri.encodeQueryComponent(v.trim()),
+        );
+
+        final response = await http.get(uri).timeout(
+          const Duration(seconds: 6),
+        );
+
+        if (response.statusCode != 200) {
+          return;
+        }
+
+        final data = jsonDecode(response.body);
+        final remote = List<dynamic>.from(data['results'] ?? []);
+
+        if (!mounted || searchController.text.trim().toLowerCase() != query) {
+          return;
+        }
+
+        final names = local
+            .map((item) => item['name'].toString().toLowerCase())
+            .toSet();
+
+        final merged = <dynamic>[...local];
+
+        for (final item in remote) {
+          final name = item['name']?.toString().trim() ?? '';
+          if (name.isEmpty || names.contains(name.toLowerCase())) {
+            continue;
+          }
+          merged.add(item);
+        }
+
+        setState(() => suggestions = merged.take(6).toList());
+      } catch (_) {
+        if (mounted) {
+          setState(() => suggestions = local);
+        }
+      }
+    },
+  );
+}
+
  Future<void> _pick(dynamic x)async{final a=double.tryParse(x['latitude'].toString()),o=double.tryParse(x['longitude'].toString());if(a==null||o==null)return;search.text=x['name'].toString();FocusScope.of(context).unfocus();setState(()=>suggestions=[]);await _set(LatLng(a,o),x['name'].toString(),true);}
  void _tap(TapPosition _,LatLng p){if(!movePin)return;_set(p,'Selected map location',true);setState(()=>movePin=false);}
  Future<void> _fav(String id)async{final n=Set<String>.from(favs);n.contains(id)?n.remove(id):n.add(id);final p=await SharedPreferences.getInstance();await p.setStringList('favs',n.toList());if(mounted)setState(()=>favs=n);}
