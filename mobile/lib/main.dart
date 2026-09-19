@@ -11,7 +11,128 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() { WidgetsFlutterBinding.ensureInitialized(); runApp(const App()); }
 
 class App extends StatefulWidget { const App({super.key}); @override State<App> createState()=>_AppState(); }
-class _AppState extends State<App> { bool dark=false; @override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Noida Bus Tracker',themeMode:dark?ThemeMode.dark:ThemeMode.light,theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:const Color(0xFFF4F6F8),colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFFB8F26B))),darkTheme:ThemeData(useMaterial3:true,brightness:Brightness.dark,colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFFB8F26B),brightness:Brightness.dark)),home:Home(dark:dark,toggle:()=>setState(()=>dark=!dark))); }
+class _AppState extends State<App> { bool dark=false; @override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Noida Bus Tracker',themeMode:dark?ThemeMode.dark:ThemeMode.light,theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:const Color(0xFFF4F6F8),colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFFB8F26B))),darkTheme:ThemeData(useMaterial3:true,brightness:Brightness.dark,colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFFB8F26B),brightness:Brightness.dark)),home:StartupSplash(child:Home(dark:dark,toggle:()=>setState(()=>dark=!dark)))); }
+
+class StartupSplash extends StatefulWidget {
+  final Widget child;
+
+  const StartupSplash({
+    super.key,
+    required this.child,
+  });
+
+  @override
+  State<StartupSplash> createState() => _StartupSplashState();
+}
+
+class _StartupSplashState extends State<StartupSplash>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController controller;
+  late final Animation<double> fade;
+  late final Animation<double> scale;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    fade = CurvedAnimation(
+      parent: controller,
+      curve: Curves.easeOut,
+    );
+    scale = Tween<double>(
+      begin: .78,
+      end: 1,
+    ).animate(
+      CurvedAnimation(
+        parent: controller,
+        curve: Curves.easeOutBack,
+      ),
+    );
+    controller.forward();
+    Future.delayed(const Duration(milliseconds: 1250), () {
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => widget.child,
+            transitionDuration: const Duration(milliseconds: 350),
+            transitionsBuilder: (_, animation, __, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+          ),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F8),
+      body: Center(
+        child: FadeTransition(
+          opacity: fade,
+          child: ScaleTransition(
+            scale: scale,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 92,
+                  height: 92,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF111827),
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x22000000),
+                        blurRadius: 24,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.directions_bus_rounded,
+                    color: Color(0xFFB8F26B),
+                    size: 48,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                const Text(
+                  'Noida Bus Tracker',
+                  style: TextStyle(
+                    fontSize: 25,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -.5,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                const Text(
+                  'Live electric bus tracking',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class Home extends StatefulWidget { final bool dark; final VoidCallback toggle; const Home({super.key,required this.dark,required this.toggle}); @override State<Home> createState()=>_HomeState(); }
 
