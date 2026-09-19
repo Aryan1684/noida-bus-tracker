@@ -214,6 +214,45 @@ class _HomeState extends State<Home> {
  void _share(dynamic b){Clipboard.setData(ClipboardData(text:'Noida Bus Tracker · Bus '+b['bus_id'].toString()));_info('Bus ID copied to clipboard.');}
  void _report(dynamic b){showModalBottomSheet(context:context,showDragHandle:true,builder:(c)=>SafeArea(child:Column(mainAxisSize:MainAxisSize.min,children:[Padding(padding:const EdgeInsets.all(16),child:Text('Report '+b['bus_id'].toString(),style:const TextStyle(fontSize:20,fontWeight:FontWeight.w800))),...['Not moving','Wrong location','Already passed','Crowded'].map((x)=>ListTile(title:Text(x),leading:const Icon(Icons.flag_outlined),onTap:(){Navigator.pop(c);_info('Thanks. Your report has been noted locally.');}))])));}
  void _info(String s){if(!mounted)return;showDialog(context:context,builder:(c)=>AlertDialog(title:const Text('Noida Bus Tracker'),content:Text(s),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('OK'))]));}
+ void _openFavourites() {
+  final favouriteBuses = buses.where(
+    (b) => favs.contains(b['bus_id'].toString()),
+  ).toList();
+
+  showModalBottomSheet(
+    context: context,
+    showDragHandle: true,
+    builder: (c) => SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Text(
+            'Favourite buses',
+            style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          if (favouriteBuses.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Text('No favourite buses nearby.'),
+            ),
+          ...favouriteBuses.map(
+            (b) => ListTile(
+              leading: const Icon(Icons.directions_bus_outlined),
+              title: Text(b['bus_id'].toString()),
+              subtitle: Text((b['distance_km'] ?? '?').toString() + ' km away'),
+              onTap: () {
+                Navigator.pop(c);
+                _center(b, true);
+              },
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
  void _settings(){showModalBottomSheet(context:context,showDragHandle:true,builder:(c)=>SafeArea(child:Column(mainAxisSize:MainAxisSize.min,children:[const Padding(padding:EdgeInsets.all(16),child:Text('App settings',style:TextStyle(fontSize:21,fontWeight:FontWeight.w800))),ListTile(leading:const Icon(Icons.dark_mode_outlined),title:const Text('Dark mode'),trailing:Switch(value:widget.dark,onChanged:(_){Navigator.pop(c);widget.toggle();})),ListTile(leading:const Icon(Icons.notifications_none),title:const Text('Nearby bus alerts'),subtitle:const Text('Proximity alerts can be added with background location support')),ListTile(leading:const Icon(Icons.info_outline),title:const Text('About'),onTap:()=>_info('Independent project by a curious BTech student.\nLive GPS data: MARGDARSHI · UPSRTC.'))])));}
  @override
  Widget build(BuildContext context) {
