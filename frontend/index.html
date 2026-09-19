@@ -59,6 +59,45 @@
     </header>
 
     <main>
+        <section class="hero">
+            <div class="hero-grid">
+                <div class="hero-copy">
+                    <div class="hero-kicker"><span class="pulse-dot"></span> LIVE FLEET · NOIDA / GREATER NOIDA</div>
+                    <h1>Find the bus.<br><em>Catch it.</em></h1>
+                    <p>See nearby electric buses on a live map, sorted by distance from you.</p>
+                    <div class="hero-actions">
+                        <button id="locationBtn" class="button button-hero">
+                            <span>⌖</span> Use current location
+                        </button>
+                        <a class="get-app-hero" href="/noida-bus-tracker.apk" download>
+                            <span>↓</span> Android App
+                        </a>
+                    </div>
+                    <div class="hero-micro"><span>LIVE GPS</span><i></i><span>45 sec refresh</span><i></i><span>Free · No login</span></div>
+                </div>
+                <div class="hero-visual" aria-hidden="true">
+                    <div class="radar"></div>
+                    <div class="route-line route-line-a"></div>
+                    <div class="route-line route-line-b"></div>
+                    <div class="mini-stop stop-a"></div>
+                    <div class="mini-stop stop-b"></div>
+                    <div class="mini-stop stop-c"></div>
+                    <div class="hero-bus">
+                        <div class="bus-window"></div>
+                        <span></span><span></span>
+                    </div>
+                    <div class="hero-map-label label-a">BOTANICAL</div>
+                    <div class="hero-map-label label-b">PARI CHOWK</div>
+                    <div class="hero-distance">0.8 km</div>
+                </div>
+            </div>
+            <div class="hero-stats">
+                <div><strong>LIVE</strong><span>GPS positions</span></div>
+                <div><strong>NEAREST FIRST</strong><span>Distance-ranked results</span></div>
+                <div><strong>NO LOGIN</strong><span>Open & simple</span></div>
+            </div>
+        </section>
+
         <section class="location-panel">
             <div class="location-copy">
                 <p class="eyebrow">START HERE</p>
@@ -67,9 +106,6 @@
             </div>
 
             <div class="location-actions">
-                <button id="locationBtn" class="button button-dark">
-                    <span>⌖</span> Use current location
-                </button>
                 <button id="confirmBtn" class="button button-accent" disabled>
                     Confirm location
                 </button>
@@ -117,8 +153,9 @@
                     <p id="lastRefreshed" class="subtle">Waiting for a location</p>
                 </div>
                 <div class="results-actions">
+                    <span id="nearestBadge" class="nearest-badge">Nearest first</span>
                     <span id="busCount" class="count-pill">0 buses</span>
-                    <button id="refreshBtn" class="small-button" disabled>Refresh</button>
+                    <button id="refreshBtn" class="small-button refresh-button" disabled><span>↻</span> Refresh</button>
                 </div>
             </div>
 
@@ -144,7 +181,8 @@
             <div id="busList" class="bus-grid"></div>
         </section>
 
-        <section class="about-strip">
+        <section class="about-strip reveal">
+            <div class="about-metric"><strong>Independent</strong><span>Community project</span></div>
             <div>
                 <p class="eyebrow">ABOUT THIS PROJECT</p>
                 <h2>Built to make Noida’s electric buses easier to find.</h2>
