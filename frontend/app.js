@@ -538,67 +538,35 @@ function displayBuses(buses) {
 }
 
 function createBusMarker(bus) {
-    const heading =
-        Number.isFinite(
-            Number(bus.heading)
-        )
-            ? Number(bus.heading)
-            : 0;
+    const icon = L.divIcon({
+        className: "",
+        html: `
+            <div class="bus-marker" id="marker-${bus.bus_id}" aria-label="Bus ${bus.bus_id}">
+                <span class="bus-body">
+                    <i class="bus-window"></i>
+                    <b class="bus-wheel wheel-left"></b>
+                    <b class="bus-wheel wheel-right"></b>
+                </span>
+            </div>
+        `,
+        iconSize: [54, 54],
+        iconAnchor: [27, 27]
+    });
 
-    const icon =
-        L.divIcon({
-            className: "",
-            html: `
-                <div
-                    class="bus-marker"
-                    id="marker-${bus.bus_id}"
-                    style="transform: rotate(${heading}deg)"
-                >
-                    <span>➤</span>
-                </div>
-            `,
-            iconSize: [
-                50,
-                50
-            ],
-            iconAnchor: [
-                25,
-                25
-            ]
-        });
+    const marker = L.marker(
+        [bus.latitude, bus.longitude],
+        { icon: icon }
+    ).addTo(map);
 
-    const marker =
-        L.marker(
-            [
-                bus.latitude,
-                bus.longitude
-            ],
-            {
-                icon: icon
-            }
-        ).addTo(map);
+    marker.bindPopup(createPopupContent(bus));
 
-    marker.bindPopup(
-        createPopupContent(bus)
-    );
+    marker.on("click", () => {
+        selectBus(bus.bus_id);
+        marker.openPopup();
+    });
 
-    marker.on(
-        "click",
-        () => {
-            selectBus(
-                bus.bus_id
-            );
-
-            marker.openPopup();
-        }
-    );
-
-    marker.busId =
-        bus.bus_id;
-
-    busMarkers.push(
-        marker
-    );
+    marker.busId = bus.bus_id;
+    busMarkers.push(marker);
 }
 
 function createBusCard(bus, rankIndex = 0) {
