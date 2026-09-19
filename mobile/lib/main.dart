@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
+import 'dart:ui' as ui;import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -26,111 +26,324 @@ class StartupSplash extends StatefulWidget {
 }
 
 class _StartupSplashState extends State<StartupSplash>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController controller;
-  late final Animation<double> fade;
-  late final Animation<double> scale;
+    with TickerProviderStateMixin {
+  late final AnimationController intro;
+  late final AnimationController travel;
 
   @override
   void initState() {
     super.initState();
-    controller = AnimationController(
+
+    intro = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    fade = CurvedAnimation(
-      parent: controller,
-      curve: Curves.easeOut,
-    );
-    scale = Tween<double>(
-      begin: .78,
-      end: 1,
-    ).animate(
-      CurvedAnimation(
-        parent: controller,
-        curve: Curves.easeOutBack,
-      ),
-    );
-    controller.forward();
-    Future.delayed(const Duration(milliseconds: 1250), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => widget.child,
-            transitionDuration: const Duration(milliseconds: 350),
-            transitionsBuilder: (_, animation, __, child) {
-              return FadeTransition(
-                opacity: animation,
+      duration: const Duration(milliseconds: 2400),
+    )..forward();
+
+    travel = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    Future.delayed(const Duration(milliseconds: 2950), () {
+      if (!mounted) return;
+
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => widget.child,
+          transitionDuration: const Duration(milliseconds: 650),
+          transitionsBuilder: (_, animation, __, child) {
+            final curved = CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            );
+
+            return FadeTransition(
+              opacity: curved,
+              child: ScaleTransition(
+                scale: Tween<double>(
+                  begin: .965,
+                  end: 1,
+                ).animate(curved),
                 child: child,
-              );
-            },
-          ),
-        );
-      }
+              ),
+            );
+          },
+        ),
+      );
     });
   }
 
   @override
   void dispose() {
-    controller.dispose();
+    intro.dispose();
+    travel.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F8),
-      body: Center(
-        child: FadeTransition(
-          opacity: fade,
-          child: ScaleTransition(
-            scale: scale,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+      backgroundColor: const Color(0xFF070A10),
+      body: SafeArea(
+        child: AnimatedBuilder(
+          animation: Listenable.merge([intro, travel]),
+          builder: (context, _) {
+            final logoT = Curves.easeOutBack.transform(
+              (intro.value * 1.55).clamp(0.0, 1.0),
+            );
+            final logoFade = Curves.easeOut.transform(
+              (intro.value * 1.25).clamp(0.0, 1.0),
+            );
+            final titleT = Curves.easeOutCubic.transform(
+              ((intro.value - .32) / .42).clamp(0.0, 1.0),
+            );
+            final subT = Curves.easeOutCubic.transform(
+              ((intro.value - .50) / .28).clamp(0.0, 1.0),
+            );
+            final progressT = Curves.easeInOutCubic.transform(
+              ((intro.value - .02) / .88).clamp(0.0, 1.0),
+            );
+
+            return Stack(
               children: [
-                Container(
-                  width: 92,
-                  height: 92,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF111827),
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x22000000),
-                        blurRadius: 24,
-                        offset: Offset(0, 10),
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: SplashRoutePainter(
+                      progress: progressT,
+                      travel: travel.value,
+                    ),
+                  ),
+                ),
+                Center(
+                  child: Opacity(
+                    opacity: logoFade,
+                    child: Transform.scale(
+                      scale: .72 + (.28 * logoT),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 118,
+                            height: 118,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF101722),
+                              borderRadius: BorderRadius.circular(34),
+                              border: Border.all(
+                                color: const Color(0xFFB8F26B)
+                                    .withOpacity(.72),
+                                width: 1.4,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFB8F26B)
+                                      .withOpacity(.10 + (.10 * logoFade)),
+                                  blurRadius: 34,
+                                  spreadRadius: 5 + (9 * logoFade),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.directions_bus_rounded,
+                              color: Color(0xFFB8F26B),
+                              size: 61,
+                            ),
+                          ),
+                          const SizedBox(height: 26),
+                          Opacity(
+                            opacity: titleT,
+                            child: Transform.translate(
+                              offset: Offset(0, 20 * (1 - titleT)),
+                              child: const Text(
+                                'NOIDA BUS TRACKER',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 25,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Opacity(
+                            opacity: subT,
+                            child: const Text(
+                              'LIVE ELECTRIC BUS TRACKING',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Color(0xFFB8F26B),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 2.15,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.directions_bus_rounded,
-                    color: Color(0xFFB8F26B),
-                    size: 48,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 22),
-                const Text(
-                  'Noida Bus Tracker',
-                  style: TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -.5,
-                  ),
-                ),
-                const SizedBox(height: 7),
-                const Text(
-                  'Live electric bus tracking',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF6B7280),
+                Positioned(
+                  left: 24,
+                  right: 24,
+                  bottom: 28,
+                  child: Opacity(
+                    opacity: Curves.easeOut.transform(
+                      ((intro.value - .62) / .26).clamp(0.0, 1.0),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.satellite_alt_rounded,
+                          size: 12,
+                          color: Color(0xFF667085),
+                        ),
+                        SizedBox(width: 7),
+                        Text(
+                          'MARGDARSHI · UPSRTC',
+                          style: TextStyle(
+                            color: Color(0xFF667085),
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
+  }
+}
+
+class SplashRoutePainter extends CustomPainter {
+  final double progress;
+  final double travel;
+
+  const SplashRoutePainter({
+    required this.progress,
+    required this.travel,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final baseY = size.height * .69;
+    final start = Offset(size.width * .07, baseY);
+    final control = Offset(size.width * .50, size.height * .54);
+    final end = Offset(size.width * .93, baseY);
+
+    final routePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xFF344054)
+          .withOpacity(.58 * progress);
+
+    final path = ui.Path()
+      ..moveTo(start.dx, start.dy)
+      ..quadraticBezierTo(
+        control.dx,
+        control.dy,
+        end.dx,
+        end.dy,
+      );
+
+    canvas.drawPath(path, routePaint);
+
+    final dotPaint = Paint()
+      ..color = const Color(0xFFB8F26B).withOpacity(.7 * progress);
+
+    for (final t in const <double>[.08, .22, .36, .50, .64, .78, .92]) {
+      final point = _point(start, control, end, t);
+      canvas.drawCircle(point, 2.8, dotPaint);
+    }
+
+    final busT = .12 + (.76 * travel);
+    final busPoint = _point(start, control, end, busT);
+
+    final glow = Paint()
+      ..color = const Color(0xFFB8F26B).withOpacity(.12 * progress)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15);
+
+    canvas.drawCircle(busPoint, 22, glow);
+
+    final busPaint = Paint()..color = const Color(0xFFB8F26B);
+    final bus = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: busPoint,
+        width: 39,
+        height: 23,
+      ),
+      const Radius.circular(7),
+    );
+
+    canvas.drawRRect(bus, busPaint);
+
+    final windowPaint = Paint()..color = const Color(0xFF111827);
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(busPoint.dx, busPoint.dy - 3),
+          width: 27,
+          height: 9,
+        ),
+        const Radius.circular(2),
+      ),
+      windowPaint,
+    );
+
+    canvas.drawCircle(
+      Offset(busPoint.dx - 11, busPoint.dy + 12),
+      3.2,
+      windowPaint,
+    );
+    canvas.drawCircle(
+      Offset(busPoint.dx + 11, busPoint.dy + 12),
+      3.2,
+      windowPaint,
+    );
+
+    final sweepProgress = (.08 + (progress * .92)) % 1;
+    final sweepPoint = _point(start, control, end, sweepProgress);
+
+    final sweep = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..color = const Color(0xFFB8F26B).withOpacity(.22 * progress);
+
+    canvas.drawCircle(sweepPoint, 12, sweep);
+  }
+
+  Offset _point(
+    Offset start,
+    Offset control,
+    Offset end,
+    double t,
+  ) {
+    final u = 1 - t;
+
+    return Offset(
+      u * u * start.dx +
+          2 * u * t * control.dx +
+          t * t * end.dx,
+      u * u * start.dy +
+          2 * u * t * control.dy +
+          t * t * end.dy,
+    );
+  }
+
+  @override
+  bool shouldRepaint(SplashRoutePainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.travel != travel;
   }
 }
 
