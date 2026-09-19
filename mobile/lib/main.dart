@@ -258,36 +258,57 @@ class _HomeState extends State<Home> {
  Widget build(BuildContext context) {
   return Scaffold(
     appBar: AppBar(
-      titleSpacing: 12,
-      title: const Row(
-        children: [
-          Icon(Icons.directions_bus_rounded),
-          SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              'Noida Bus Tracker',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
-            ),
-          ),
-        ],
+      titleSpacing: 16,
+      title: const Text(
+        'Noida Bus Tracker',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontWeight: FontWeight.w800,
+          fontSize: 19,
+        ),
       ),
       actions: [
-        IconButton(onPressed: _openFavourites, icon: const Icon(Icons.star_border)),
-        IconButton(onPressed: _settings, icon: const Icon(Icons.settings_outlined)),
         Container(
-          margin: const EdgeInsets.only(right: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 9),
-          alignment: Alignment.center,
+          margin: const EdgeInsets.only(right: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           decoration: BoxDecoration(
-            color: const Color(0xFFEAF8EF),
-            borderRadius: BorderRadius.circular(20),
+            color: Color(0xFFEAF8EF),
+            borderRadius: BorderRadius.all(Radius.circular(18)),
           ),
           child: const Text(
             'LIVE',
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF15803D)),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF15803D),
+            ),
           ),
+        ),
+        PopupMenuButton<String>(
+          tooltip: 'More',
+          onSelected: (value) {
+            if (value == 'favourites') _openFavourites();
+            if (value == 'settings') _settings();
+          },
+          itemBuilder: (context) => const [
+            PopupMenuItem(
+              value: 'favourites',
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.star_border),
+                title: Text('Favourite buses'),
+              ),
+            ),
+            PopupMenuItem(
+              value: 'settings',
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.settings_outlined),
+                title: Text('Settings'),
+              ),
+            ),
+          ],
         ),
       ],
     ),
@@ -306,14 +327,21 @@ class _HomeState extends State<Home> {
           _header(),
           if (error != null) _error(),
           if (loading && buses.isEmpty)
-            const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
+            const Padding(
+              padding: EdgeInsets.all(30),
+              child: Center(child: CircularProgressIndicator()),
+            ),
           if (!loading && buses.isEmpty && error == null) _empty(),
           ...buses.map(_card),
           const SizedBox(height: 18),
           const Text(
             'Independent project. Not a government website.\nLive GPS data sourced from MARGDARSHI · UPSRTC.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Color(0xFF6B7280), fontSize: 11, height: 1.5),
+            style: TextStyle(
+              color: Color(0xFF6B7280),
+              fontSize: 11,
+              height: 1.5,
+            ),
           ),
         ],
       ),
