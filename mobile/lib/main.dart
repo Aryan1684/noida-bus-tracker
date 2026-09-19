@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -27,309 +26,111 @@ class StartupSplash extends StatefulWidget {
 }
 
 class _StartupSplashState extends State<StartupSplash>
-    with TickerProviderStateMixin {
-  late final AnimationController intro;
-  late final AnimationController travel;
+    with SingleTickerProviderStateMixin {
+  late final AnimationController controller;
+  late final Animation<double> fade;
+  late final Animation<double> scale;
 
   @override
   void initState() {
     super.initState();
-
-    intro = AnimationController(
+    controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2200),
-    )..forward();
-
-    travel = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1350),
-    )..repeat(reverse: true);
-
-    Future.delayed(const Duration(milliseconds: 2850), () {
-      if (!mounted) return;
-
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) => widget.child,
-          transitionDuration: const Duration(milliseconds: 550),
-          transitionsBuilder: (_, animation, __, child) {
-            final curve = CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            );
-
-            return FadeTransition(
-              opacity: curve,
-              child: ScaleTransition(
-                scale: Tween<double>(
-                  begin: .97,
-                  end: 1,
-                ).animate(curve),
+      duration: const Duration(milliseconds: 900),
+    );
+    fade = CurvedAnimation(
+      parent: controller,
+      curve: Curves.easeOut,
+    );
+    scale = Tween<double>(
+      begin: .78,
+      end: 1,
+    ).animate(
+      CurvedAnimation(
+        parent: controller,
+        curve: Curves.easeOutBack,
+      ),
+    );
+    controller.forward();
+    Future.delayed(const Duration(milliseconds: 1250), () {
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => widget.child,
+            transitionDuration: const Duration(milliseconds: 350),
+            transitionsBuilder: (_, animation, __, child) {
+              return FadeTransition(
+                opacity: animation,
                 child: child,
-              ),
-            );
-          },
-        ),
-      );
+              );
+            },
+          ),
+        );
+      }
     });
   }
 
   @override
   void dispose() {
-    intro.dispose();
-    travel.dispose();
+    controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF080B12),
-      body: SafeArea(
-        child: AnimatedBuilder(
-          animation: Listenable.merge([intro, travel]),
-          builder: (context, _) {
-            return Stack(
+      backgroundColor: const Color(0xFFF4F6F8),
+      body: Center(
+        child: FadeTransition(
+          opacity: fade,
+          child: ScaleTransition(
+            scale: scale,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: SplashRoutePainter(
-                      introProgress: intro.value,
-                      travelProgress: travel.value,
-                    ),
-                  ),
-                ),
-                Center(
-                  child: AnimatedBuilder(
-                    animation: intro,
-                    builder: (context, _) {
-                      final scale = Curves.easeOutBack.transform(
-                        (intro.value * 1.3).clamp(0.0, 1.0),
-                      );
-                      final opacity = Curves.easeOut.transform(
-                        (intro.value * 1.6).clamp(0.0, 1.0),
-                      );
-
-                      return Opacity(
-                        opacity: opacity,
-                        child: Transform.scale(
-                          scale: .62 + (.38 * scale),
-                          child: Container(
-                            width: 118,
-                            height: 118,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF111827),
-                              borderRadius: BorderRadius.circular(36),
-                              border: Border.all(
-                                color: const Color(0xFFB8F26B),
-                                width: 1.5,
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x3399FF66),
-                                  blurRadius: 36,
-                                  spreadRadius: 5,
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.directions_bus_rounded,
-                              color: Color(0xFFB8F26B),
-                              size: 62,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                Positioned(
-                  left: 20,
-                  right: 20,
-                  bottom: 76,
-                  child: AnimatedBuilder(
-                    animation: intro,
-                    builder: (context, _) {
-                      final value = Curves.easeOut.transform(
-                        ((intro.value - .38) / .35).clamp(0.0, 1.0),
-                      );
-
-                      return Opacity(
-                        opacity: value,
-                        child: Transform.translate(
-                          offset: Offset(0, 18 * (1 - value)),
-                          child: const Column(
-                            children: [
-                              Text(
-                                'NOIDA BUS TRACKER',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 25,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.4,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'LIVE ELECTRIC BUS TRACKING',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Color(0xFFB8F26B),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 2,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 24,
-                  child: Center(
-                    child: Text(
-                      'MARGDARSHI · UPSRTC',
-                      style: TextStyle(
-                        color: Color(0xFF667085),
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1.2,
+                Container(
+                  width: 92,
+                  height: 92,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF111827),
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x22000000),
+                        blurRadius: 24,
+                        offset: Offset(0, 10),
                       ),
-                    ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.directions_bus_rounded,
+                    color: Color(0xFFB8F26B),
+                    size: 48,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                const Text(
+                  'Noida Bus Tracker',
+                  style: TextStyle(
+                    fontSize: 25,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -.5,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                const Text(
+                  'Live electric bus tracking',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF6B7280),
                   ),
                 ),
               ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class SplashRoutePainter extends CustomPainter {
-  final double introProgress;
-  final double travelProgress;
-
-  const SplashRoutePainter({
-    required this.introProgress,
-    required this.travelProgress,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final start = Offset(size.width * .08, size.height * .66);
-    final control = Offset(size.width * .52, size.height * .53);
-    final end = Offset(size.width * .92, size.height * .66);
-
-    final routePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round
-      ..color = const Color(0xFF344054)
-          .withOpacity(.55 * Curves.easeOut.transform(introProgress));
-
-    final path = ui.Path()
-      ..moveTo(start.dx, start.dy)
-      ..quadraticBezierTo(
-        control.dx,
-        control.dy,
-        end.dx,
-        end.dy,
-      );
-
-    canvas.drawPath(path, routePaint);
-
-    final pointPaint = Paint()
-      ..color = const Color(0xFFB8F26B)
-          .withOpacity(.55 * Curves.easeOut.transform(introProgress));
-
-    for (final t in const <double>[.08, .23, .38, .54, .69, .84]) {
-      final point = _point(start, control, end, t);
-      canvas.drawCircle(point, 3, pointPaint);
-    }
-
-    final busT = .16 + (.68 * travelProgress);
-    final busPoint = _point(start, control, end, busT);
-
-    final glow = Paint()
-      ..color = const Color(0xFFB8F26B).withOpacity(.12)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
-
-    canvas.drawCircle(busPoint, 21, glow);
-
-    final busPaint = Paint()
-      ..color = const Color(0xFFB8F26B);
-
-    final body = RRect.fromRectAndRadius(
-      Rect.fromCenter(
-        center: busPoint,
-        width: 38,
-        height: 24,
-      ),
-      const Radius.circular(7),
-    );
-
-    canvas.drawRRect(body, busPaint);
-
-    final windowPaint = Paint()
-      ..color = const Color(0xFF111827);
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: Offset(
-            busPoint.dx,
-            busPoint.dy - 3,
+            ),
           ),
-          width: 27,
-          height: 9,
         ),
-        const Radius.circular(2),
       ),
-      windowPaint,
     );
-
-    canvas.drawCircle(
-      Offset(busPoint.dx - 11, busPoint.dy + 13),
-      3.4,
-      windowPaint,
-    );
-    canvas.drawCircle(
-      Offset(busPoint.dx + 11, busPoint.dy + 13),
-      3.4,
-      windowPaint,
-    );
-  }
-
-  Offset _point(
-    Offset start,
-    Offset control,
-    Offset end,
-    double t,
-  ) {
-    final u = 1 - t;
-
-    return Offset(
-      u * u * start.dx +
-          2 * u * t * control.dx +
-          t * t * end.dx,
-      u * u * start.dy +
-          2 * u * t * control.dy +
-          t * t * end.dy,
-    );
-  }
-
-  @override
-  bool shouldRepaint(SplashRoutePainter oldDelegate) {
-    return oldDelegate.introProgress != introProgress ||
-        oldDelegate.travelProgress != travelProgress;
   }
 }
 
@@ -341,35 +142,29 @@ class _HomeState extends State<Home> {
  LatLng location=const LatLng(28.4598,77.5184); List<dynamic> buses=[]; List<dynamic> suggestions=[]; Set<String> favs={}; Map<String,List<LatLng>> history={}; List<LatLng> trail=[]; Map<String,DateTime> alertHistory={};
  double radius=5; bool loading=false,locating=false,movePin=false,stops=false,following=false,permissionBlocked=false,dontShowNotice=false,nearbyAlerts=false; String? error,selected,followed; String locationLabel='Use your current location'; DateTime? refreshed;
  final stopData=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060]];
- final searchPlaces = const [
-  ['Botanical Garden', 28.5640, 77.3340],
-  ['Sector 37', 28.5700, 77.3450],
-  ['Noida City Center', 28.5740, 77.3560],
-  ['Sector 52', 28.5890, 77.3730],
-  ['Sector 62', 28.6280, 77.3770],
-  ['Pari Chowk', 28.4595, 77.5082],
-  ['Chaar Murti', 28.5650, 77.4370],
-  ['Ek Murti', 28.6040, 77.4370],
-  ['Gaur Chowk', 28.6150, 77.4350],
-  ['Gaur City', 28.6155, 77.4240],
-  ['Surajpur', 28.5140, 77.4830],
-  ['Kasna Village', 28.4050, 77.5060],
-  ['Sector 90', 28.5340, 77.4380],
-  ['Noida International Airport', 28.5562, 77.5849],
- ];
+ final searchPlaces=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Sector 62',28.6280,77.3770],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Gaur Chowk',28.6150,77.4350],['Gaur City',28.6155,77.4240],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060],['Sector 90',28.5340,77.4380],['Noida International Airport',28.5562,77.5849]];
 
- @override
- void initState() {
-  super.initState();
-  _initApp();
-} @override void dispose(){refreshTimer?.cancel();searchTimer?.cancel();search.dispose();super.dispose();}
+ @override void initState(){super.initState();_initApp();}
+ @override void dispose(){refreshTimer?.cancel();searchTimer?.cancel();search.dispose();super.dispose();}
  Future<void> _initApp() async {
   final prefs = await SharedPreferences.getInstance();
-
   if (!mounted) return;
 
   setState(() {
-    favs = (prefs. Future<void> _notice() async {
+    favs = (prefs.getStringList('favs') ?? []).toSet();
+    dontShowNotice = prefs.getBool('dont_show_notice') ?? false;
+    nearbyAlerts = prefs.getBool('nearby_alerts') ?? false;
+  });
+
+  if (!dontShowNotice) {
+    await Future.delayed(const Duration(milliseconds: 700));
+    if (mounted && !dontShowNotice) {
+      _notice();
+    }
+  }
+}
+
+ Future<void> _notice() async {
   if (!mounted) return;
 
   var dontAgain = dontShowNotice;
@@ -445,7 +240,14 @@ class _HomeState extends State<Home> {
   }
 }
 
-it Geolocator.openLocationSettings();
+ Future<void> _location() async {
+  if (locating) return;
+  setState(() { locating = true; error = null; permissionBlocked = false; });
+  try {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      if (mounted) {
+        setState(() { locationLabel = 'Location services are off'; error = 'Turn on Location/GPS and tap again.'; });
+        await Geolocator.openLocationSettings();
       }
       return;
     }
@@ -493,7 +295,6 @@ it Geolocator.openLocationSettings();
  void _auto(){refreshTimer?.cancel();refreshTimer=Timer.periodic(const Duration(seconds:45),(_){if(!loading)_load(auto:true);});}
  Future<void> _load({bool auto=false}) async {
   if (loading) return;
-
   setState(() => loading = true);
 
   final u = Uri.parse(
@@ -508,10 +309,7 @@ it Geolocator.openLocationSettings();
 
   try {
     final r = await http.get(u).timeout(const Duration(seconds: 20));
-
-    if (r.statusCode != 200) {
-      throw Exception();
-    }
+    if (r.statusCode != 200) throw Exception();
 
     final d = jsonDecode(r.body);
     final next = List<dynamic>.from(d['buses'] ?? []);
@@ -526,31 +324,25 @@ it Geolocator.openLocationSettings();
       final id = bus['bus_id']?.toString();
       final lat = double.tryParse(bus['latitude']?.toString() ?? '');
       final lon = double.tryParse(bus['longitude']?.toString() ?? '');
-
       if (id == null || lat == null || lon == null) continue;
 
       history.putIfAbsent(id, () => []).add(LatLng(lat, lon));
-
-      if (history[id]!.length > 30) {
-        history[id]!.removeAt(0);
-      }
+      if (history[id]!.length > 30) history[id]!.removeAt(0);
     }
 
-    if (mounted) {
-      setState(() {
-        buses = next;
-        refreshed = DateTime.now();
-        error = null;
-      });
+    if (!mounted) return;
 
-      _checkNearbyAlert(next);
+    setState(() {
+      buses = next;
+      refreshed = DateTime.now();
+      error = null;
+    });
 
-      if (following && followed != null) {
-        final b = _find(followed!);
-        if (b != null) {
-          _center(b, false);
-        }
-      }
+    _checkNearbyAlert(next);
+
+    if (following && followed != null) {
+      final bus = _find(followed!);
+      if (bus != null) _center(bus, false);
     }
   } catch (_) {
     if (mounted) {
@@ -559,9 +351,7 @@ it Geolocator.openLocationSettings();
       });
     }
   } finally {
-    if (mounted) {
-      setState(() => loading = false);
-    }
+    if (mounted) setState(() => loading = false);
   }
 }
 
@@ -573,10 +363,7 @@ it Geolocator.openLocationSettings();
   double? nearestDistance;
 
   for (final bus in next) {
-    final distance = double.tryParse(
-      bus['distance_km']?.toString() ?? '',
-    );
-
+    final distance = double.tryParse(bus['distance_km']?.toString() ?? '');
     if (distance == null || distance > 1) continue;
 
     if (nearestDistance == null || distance < nearestDistance!) {
@@ -584,20 +371,6 @@ it Geolocator.openLocationSettings();
       nearestDistance = distance;
     }
   }
-
-  final activeIds = <String>{};
-
-  for (final bus in next) {
-    final distance = double.tryParse(
-      bus['distance_km']?.toString() ?? '',
-    );
-
-    if (distance != null && distance <= 1.5) {
-      activeIds.add(bus['bus_id'].toString());
-    }
-  }
-
-  alertHistory.removeWhere((id, _) => !activeIds.contains(id));
 
   if (nearest == null || nearestDistance == null) return;
 
@@ -657,67 +430,55 @@ it Geolocator.openLocationSettings();
   }
 
   final local = searchPlaces
-      .where(
-        (place) => place[0].toString().toLowerCase().contains(query),
-      )
-      .map(
-        (place) => {
-          'name': place[0].toString(),
-          'latitude': place[1],
-          'longitude': place[2],
-        },
-      )
+      .where((place) => place[0].toString().toLowerCase().contains(query))
+      .map((place) => {
+            'name': place[0].toString(),
+            'latitude': place[1],
+            'longitude': place[2],
+          })
       .toList();
 
   setState(() => suggestions = local);
 
-  searchTimer = Timer(
-    const Duration(milliseconds: 450),
-    () async {
-      try {
-        final uri = Uri.parse(
-          api +
-              '/api/search-location?q=' +
-              Uri.encodeQueryComponent(v.trim()),
-        );
+  searchTimer = Timer(const Duration(milliseconds: 400), () async {
+    try {
+      final uri = Uri.parse(
+        api +
+            '/api/search-location?q=' +
+            Uri.encodeQueryComponent(v.trim()),
+      );
 
-        final response = await http.get(uri).timeout(
-          const Duration(seconds: 6),
-        );
+      final response = await http.get(uri).timeout(
+        const Duration(seconds: 7),
+      );
 
-        if (response.statusCode != 200) {
-          return;
-        }
+      if (response.statusCode != 200) return;
 
-        final data = jsonDecode(response.body);
-        final remote = List<dynamic>.from(data['results'] ?? []);
+      final data = jsonDecode(response.body);
+      final remote = List<dynamic>.from(data['results'] ?? []);
 
-        if (!mounted || searchController.text.trim().toLowerCase() != query) {
-          return;
-        }
-
-        final names = local
-            .map((item) => item['name'].toString().toLowerCase())
-            .toSet();
-
-        final merged = <dynamic>[...local];
-
-        for (final item in remote) {
-          final name = item['name']?.toString().trim() ?? '';
-          if (name.isEmpty || names.contains(name.toLowerCase())) {
-            continue;
-          }
-          merged.add(item);
-        }
-
-        setState(() => suggestions = merged.take(6).toList());
-      } catch (_) {
-        if (mounted) {
-          setState(() => suggestions = local);
-        }
+      if (!mounted ||
+          search.text.trim().toLowerCase() != query) {
+        return;
       }
-    },
-  );
+
+      final names = local
+          .map((item) => item['name'].toString().toLowerCase())
+          .toSet();
+
+      final merged = <dynamic>[...local];
+
+      for (final item in remote) {
+        final name = item['name']?.toString().trim() ?? '';
+        if (name.isEmpty || names.contains(name.toLowerCase())) continue;
+        merged.add(item);
+      }
+
+      setState(() => suggestions = merged.take(6).toList());
+    } catch (_) {
+      if (mounted) setState(() => suggestions = local);
+    }
+  });
 }
 
  Future<void> _pick(dynamic x)async{final a=double.tryParse(x['latitude'].toString()),o=double.tryParse(x['longitude'].toString());if(a==null||o==null)return;search.text=x['name'].toString();FocusScope.of(context).unfocus();setState(()=>suggestions=[]);await _set(LatLng(a,o),x['name'].toString(),true);}
@@ -814,9 +575,7 @@ it Geolocator.openLocationSettings();
                 ),
                 SwitchListTile(
                   value: alertsEnabled,
-                  secondary: const Icon(
-                    Icons.notifications_active_outlined,
-                  ),
+                  secondary: const Icon(Icons.notifications_active_outlined),
                   title: const Text('Nearby bus alerts'),
                   subtitle: Text(
                     alertsEnabled
@@ -825,16 +584,11 @@ it Geolocator.openLocationSettings();
                   ),
                   onChanged: (value) async {
                     setSheetState(() => alertsEnabled = value);
-
                     final prefs = await SharedPreferences.getInstance();
                     await prefs.setBool('nearby_alerts', value);
-
                     if (mounted) {
                       setState(() => nearbyAlerts = value);
-
-                      if (value && buses.isNotEmpty) {
-                        _checkNearbyAlert(buses);
-                      }
+                      if (value && buses.isNotEmpty) _checkNearbyAlert(buses);
                     }
                   },
                 ),
@@ -858,6 +612,7 @@ it Geolocator.openLocationSettings();
     },
   );
 }
+
  @override
  Widget build(BuildContext context) {
   return Scaffold(
