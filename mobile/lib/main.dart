@@ -253,7 +253,78 @@ class _HomeState extends State<Home> {
   );
 }
 
- void _settings(){showModalBottomSheet(context:context,showDragHandle:true,builder:(c)=>SafeArea(child:Column(mainAxisSize:MainAxisSize.min,children:[const Padding(padding:EdgeInsets.all(16),child:Text('App settings',style:TextStyle(fontSize:21,fontWeight:FontWeight.w800))),ListTile(leading:const Icon(Icons.dark_mode_outlined),title:const Text('Dark mode'),trailing:Switch(value:widget.dark,onChanged:(_){Navigator.pop(c);widget.toggle();})),ListTile(leading:const Icon(Icons.notifications_none),title:const Text('Nearby bus alerts'),subtitle:const Text('Proximity alerts can be added with background location support')),ListTile(leading:const Icon(Icons.info_outline),title:const Text('About'),onTap:()=>_info('Independent project by a curious BTech student.\nLive GPS data: MARGDARSHI · UPSRTC.'))])));}
+ void _settings() {
+  var currentDark = widget.dark;
+
+  showModalBottomSheet(
+    context: context,
+    showDragHandle: true,
+    builder: (sheetContext) {
+      return StatefulBuilder(
+        builder: (context, setSheetState) {
+          return SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 12, 20, 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'App settings',
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+                ListTile(
+                  leading: Icon(
+                    currentDark
+                        ? Icons.dark_mode
+                        : Icons.light_mode_outlined,
+                  ),
+                  title: const Text('Dark mode'),
+                  subtitle: Text(
+                    currentDark ? 'On' : 'Off',
+                  ),
+                  trailing: Switch(
+                    value: currentDark,
+                    onChanged: (value) {
+                      setSheetState(() => currentDark = value);
+                      widget.toggle();
+                    },
+                  ),
+                ),
+                const ListTile(
+                  leading: Icon(Icons.notifications_none),
+                  title: Text('Nearby bus alerts'),
+                  subtitle: Text(
+                    'Proximity alerts can be added with background location support',
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.info_outline),
+                  title: const Text('About'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _info(
+                      'Independent project by a curious BTech student.\n'
+                      'Live GPS data: MARGDARSHI · UPSRTC.',
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
  @override
  Widget build(BuildContext context) {
   return Scaffold(
@@ -262,31 +333,16 @@ class _HomeState extends State<Home> {
       title: const Text(
         'Noida Bus Tracker',
         maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+        softWrap: false,
+        overflow: TextOverflow.visible,
         style: TextStyle(
           fontWeight: FontWeight.w800,
-          fontSize: 19,
+          fontSize: 18,
         ),
       ),
       actions: [
-        Container(
-          margin: const EdgeInsets.only(right: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color: Color(0xFFEAF8EF),
-            borderRadius: BorderRadius.all(Radius.circular(18)),
-          ),
-          child: const Text(
-            'LIVE',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF15803D),
-            ),
-          ),
-        ),
         PopupMenuButton<String>(
-          tooltip: 'More',
+          tooltip: 'Menu',
           onSelected: (value) {
             if (value == 'favourites') _openFavourites();
             if (value == 'settings') _settings();
@@ -294,19 +350,11 @@ class _HomeState extends State<Home> {
           itemBuilder: (context) => const [
             PopupMenuItem(
               value: 'favourites',
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.star_border),
-                title: Text('Favourite buses'),
-              ),
+              child: Text('Favourite buses'),
             ),
             PopupMenuItem(
               value: 'settings',
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.settings_outlined),
-                title: Text('Settings'),
-              ),
+              child: Text('Settings'),
             ),
           ],
         ),
@@ -335,7 +383,8 @@ class _HomeState extends State<Home> {
           ...buses.map(_card),
           const SizedBox(height: 18),
           const Text(
-            'Independent project. Not a government website.\nLive GPS data sourced from MARGDARSHI · UPSRTC.',
+            'Independent project. Not a government website.\n'
+            'Live GPS data sourced from MARGDARSHI · UPSRTC.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Color(0xFF6B7280),
