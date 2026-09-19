@@ -47,10 +47,257 @@ class _HomeState extends State<Home> {
  @override Widget build(BuildContext context){return Scaffold(appBar:AppBar(title:const Row(children:[Icon(Icons.directions_bus_rounded),SizedBox(width:8),Text('Noida Bus Tracker',style:TextStyle(fontWeight:FontWeight.w800))]),actions:[IconButton(onPressed:(){showModalBottomSheet(context:context,showDragHandle:true,builder:(c)=>ListView(padding:const EdgeInsets.all(16),children:[const Text('Favourite buses',style:TextStyle(fontSize:21,fontWeight:FontWeight.w800)),...buses.where((b)=>favs.contains(b['bus_id'].toString())).map((b)=>ListTile(title:Text(b['bus_id'].toString()),subtitle:Text((b['distance_km']??'?').toString()+' km away'),onTap:(){Navigator.pop(c);_center(b,true);})),if(buses.where((b)=>favs.contains(b['bus_id'].toString())).isEmpty)const Padding(padding:EdgeInsets.all(24),child:Text('No favourite buses nearby.'))]));},icon:const Icon(Icons.star_border)),IconButton(onPressed:_settings,icon:const Icon(Icons.settings_outlined)),Container(margin:const EdgeInsets.only(right:12,top:12,bottom:12),padding:const EdgeInsets.symmetric(horizontal:9),alignment:Alignment.center,decoration:BoxDecoration(color:const Color(0xFFEAF8EF),borderRadius:BorderRadius.circular(20)),child:const Text('LIVE',style:TextStyle(fontSize:10,fontWeight:FontWeight.w800,color:Color(0xFF15803D))))]),body:RefreshIndicator(onRefresh:_load,child:ListView(physics:const AlwaysScrollableScrollPhysics(),padding:const EdgeInsets.fromLTRB(16,8,16,30),children:[_locationCard(),const SizedBox(height:12),_searchCard(),const SizedBox(height:12),_mapCard(),const SizedBox(height:14),_header(),if(error!=null)_error(),if(loading&&buses.isEmpty)const Padding(padding:EdgeInsets.all(30),child:Center(child:CircularProgressIndicator())),if(!loading&&buses.isEmpty&&error==null)_empty(),...buses.map(_card),const SizedBox(height:18),const Text('Independent project. Not a government website.\nLive GPS data sourced from MARGDARSHI · UPSRTC.',textAlign:TextAlign.center,style:TextStyle(color:Color(0xFF6B7280),fontSize:11,height:1.5))])));}
  Widget _locationCard(){return Card(elevation:0,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(24)),child:Padding(padding:const EdgeInsets.all(17),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('START HERE',style:TextStyle(fontSize:11,fontWeight:FontWeight.w800,letterSpacing:1.1,color:Color(0xFF6B7280))),const SizedBox(height:5),const Text('Find buses near you',style:TextStyle(fontSize:22,fontWeight:FontWeight.w800)),const SizedBox(height:4),Text(locationLabel,style:const TextStyle(color:Color(0xFF6B7280))),const SizedBox(height:13),SizedBox(width:double.infinity,height:50,child:FilledButton.icon(onPressed:locating?null:_location,icon:locating?const SizedBox(width:19,height:19,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.my_location_rounded),label:Text(locating?'Getting location…':'Use current location'))),if(permissionBlocked)OutlinedButton.icon(onPressed:Geolocator.openAppSettings,icon:const Icon(Icons.settings_outlined),label:const Text('Open location settings')),const SizedBox(height:8),Row(children:[const Icon(Icons.radar_rounded,size:18),const SizedBox(width:7),const Text('Search radius',style:TextStyle(fontWeight:FontWeight.w600)),const Spacer(),DropdownButtonHideUnderline(child:DropdownButton<double>(value:radius,items:const[DropdownMenuItem(value:1,child:Text('1 km')),DropdownMenuItem(value:3,child:Text('3 km')),DropdownMenuItem(value:5,child:Text('5 km')),DropdownMenuItem(value:10,child:Text('10 km')),DropdownMenuItem(value:15,child:Text('15 km'))],onChanged:(v){if(v!=null){setState(()=>radius=v);_load();}}))])])));}
  Widget _searchCard(){return Card(elevation:0,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20)),child:Column(children:[Padding(padding:const EdgeInsets.fromLTRB(15,5,8,5),child:Row(children:[const Icon(Icons.search_rounded),const SizedBox(width:8),Expanded(child:TextField(controller:search,onChanged:_search,decoration:const InputDecoration(hintText:'Search Sector 62, Pari Chowk, Botanical Garden…',border:InputBorder.none))),if(search.text.isNotEmpty)IconButton(onPressed:(){search.clear();setState(()=>suggestions=[]);},icon:const Icon(Icons.close))])),...suggestions.map((x)=>ListTile(leading:const Icon(Icons.place_outlined),title:Text(x['name'].toString()),onTap:()=>_pick(x))) ]));}
- Widget _mapCard(){final ms=<Marker>[];for(final b in buses){final a=double.tryParse(b['latitude'].toString()),o=double.tryParse(b['longitude'].toString());if(a==null||o==null)continue;final id=b['bus_id'].toString(),sel=id==selected;ms.add(Marker(point:LatLng(a,o),width:sel?54:48,height:sel?54:48,child:GestureDetector(onTap:()=>_center(b,true),child:Container(decoration:BoxDecoration(color:sel?const Color(0xFFB8F26B):const Color(0xFF111827),shape:BoxShape.circle,border:Border.all(color:Colors.white,width:3),boxShadow:const[BoxShadow(color:Color(0x33000000),blurRadius:8)]),child:Icon(Icons.directions_bus_rounded,color:sel?Colors.black:Colors.white,size:22))))));}ms.add(Marker(point:location,width:40,height:40,child: Container(decoration:BoxDecoration(color:const Color(0xFF2563EB),shape:BoxShape.circle,border:Border.all(color:Colors.white,width:4)),child:const Icon(Icons.my_location_rounded,color:Colors.white,size:18))));if(stops)for(final s in stopData)ms.add(Marker(point:LatLng(s[1] as double,s[2] as double),width:32,height:32,child:Tooltip(message:s[0] as String,child:const Icon(Icons.location_on,color:Color(0xFFB45309),size:27))));return Card(elevation:0,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(24)),clipBehavior:Clip.antiAlias,child:Column(children:[Padding(padding:const EdgeInsets.fromLTRB(12,10,6,7),child:Row(children:[const Expanded(child:Text('LIVE MAP',style:TextStyle(fontSize:20,fontWeight:FontWeight.w800))),IconButton(onPressed:()=>setState(()=>stops=!stops),icon:Icon(stops?Icons.visibility:Icons.location_on_outlined)),IconButton(onPressed:_location,icon:const Icon(Icons.my_location)),IconButton(onPressed:()=>setState(()=>movePin=!movePin),icon:Icon(movePin?Icons.pin_drop:Icons.edit_location_alt)),if(trail.isNotEmpty)IconButton(onPressed:()=>setState(()=>trail=[]),icon:const Icon(Icons.clear))])),if(movePin)const Text('Tap the map to choose a new location',style:TextStyle(fontSize:12,color:Color(0xFF6B7280))),SizedBox(height:340,child:FlutterMap(mapController:map,options:MapOptions(initialCenter:location,initialZoom:12.5,onTap:_tap),children:[TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.example.noida_bus_tracker'),if(trail.length>1)PolylineLayer(polylines:[Polyline(points:trail,strokeWidth:5)]),MarkerLayer(markers:ms)]))]));}
+ Widget _mapCard() {
+  final markers = <Marker>[];
+
+  for (final bus in buses) {
+    final lat = double.tryParse(bus['latitude'].toString());
+    final lon = double.tryParse(bus['longitude'].toString());
+
+    if (lat == null || lon == null) continue;
+
+    final id = bus['bus_id'].toString();
+    final isSelected = id == selected;
+
+    markers.add(
+      Marker(
+        point: LatLng(lat, lon),
+        width: isSelected ? 54 : 48,
+        height: isSelected ? 54 : 48,
+        child: GestureDetector(
+          onTap: () => _center(bus, true),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? const Color(0xFFB8F26B)
+                  : const Color(0xFF111827),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white,
+                width: 3,
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x33000000),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.directions_bus_rounded,
+              color: isSelected ? Colors.black : Colors.white,
+              size: 22,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  markers.add(
+    Marker(
+      point: location,
+      width: 40,
+      height: 40,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF2563EB),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.white,
+            width: 4,
+          ),
+        ),
+        child: const Icon(
+          Icons.my_location_rounded,
+          color: Colors.white,
+          size: 18,
+        ),
+      ),
+    ),
+  );
+
+  if (stops) {
+    for (final stop in stopData) {
+      markers.add(
+        Marker(
+          point: LatLng(
+            stop[1] as double,
+            stop[2] as double,
+          ),
+          width: 32,
+          height: 32,
+          child: Tooltip(
+            message: stop[0] as String,
+            child: const Icon(
+              Icons.location_on,
+              color: Color(0xFFB45309),
+              size: 27,
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  return Card(
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(24),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 6, 7),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'LIVE MAP',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () => setState(() => stops = !stops),
+                icon: Icon(
+                  stops
+                      ? Icons.visibility
+                      : Icons.location_on_outlined,
+                ),
+              ),
+              IconButton(
+                onPressed: _location,
+                icon: const Icon(Icons.my_location),
+              ),
+              IconButton(
+                onPressed: () => setState(() => movePin = !movePin),
+                icon: Icon(
+                  movePin
+                      ? Icons.pin_drop
+                      : Icons.edit_location_alt,
+                ),
+              ),
+              if (trail.isNotEmpty)
+                IconButton(
+                  onPressed: () => setState(() => trail = []),
+                  icon: const Icon(Icons.clear),
+                ),
+            ],
+          ),
+        ),
+        if (movePin)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text(
+              'Tap the map to choose a new location',
+              style: TextStyle(
+                fontSize: 12,
+                color: Color(0xFF6B7280),
+              ),
+            ),
+          ),
+        SizedBox(
+          height: 340,
+          child: FlutterMap(
+            mapController: map,
+            options: MapOptions(
+              initialCenter: location,
+              initialZoom: 12.5,
+              onTap: _tap,
+            ),
+            children: [
+              TileLayer(
+                urlTemplate:
+                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName:
+                    'com.example.noida_bus_tracker',
+              ),
+              if (trail.length > 1)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: trail,
+                      strokeWidth: 5,
+                    ),
+                  ],
+                ),
+              MarkerLayer(
+                markers: markers,
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
  Widget _header(){final t=refreshed==null?'Waiting for a location':'Updated '+refreshed!.hour.toString().padLeft(2,'0')+':'+refreshed!.minute.toString().padLeft(2,'0')+' · Auto refresh 45s';return Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Nearby electric buses',style:TextStyle(fontSize:20,fontWeight:FontWeight.w800)),Text(t,style:const TextStyle(fontSize:12,color:Color(0xFF6B7280)))])),IconButton(onPressed:loading?null:_load,icon:const Icon(Icons.refresh))]);}
  Widget _card(dynamic b){final id=b['bus_id'].toString(),speed=double.tryParse(b['speed'].toString()),dist=double.tryParse(b['distance_km'].toString()),dir=b['likely_towards'];return Card(elevation:selected==id?3:0,margin:const EdgeInsets.only(top:10),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20),side:BorderSide(color:selected==id?const Color(0xFFB8F26B):Theme.of(context).dividerColor)),child:InkWell(onTap:()=>_center(b,true),child:Padding(padding:const EdgeInsets.all(15),child:Column(children:[Row(children:[Container(width:50,height:50,decoration:BoxDecoration(color:Theme.of(context).colorScheme.surfaceContainerHighest,borderRadius:BorderRadius.circular(15)),child:const Icon(Icons.directions_bus,size:26)),const SizedBox(width:12),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(id,style:const TextStyle(fontSize:16,fontWeight:FontWeight.w800)),Wrap(spacing:10,children:[if(dist!=null)Text(dist.toStringAsFixed(2)+' km',style:const TextStyle(fontSize:12,color:Color(0xFF6B7280))),if(speed!=null)Text(speed.toStringAsFixed(0)+' km/h',style:const TextStyle(fontSize:12,color:Color(0xFF6B7280))),Text((b['vehicle_status']??'Status unknown').toString(),style:const TextStyle(fontSize:12,color:Color(0xFF6B7280)))])])),IconButton(onPressed:()=>_fav(id),icon:Icon(favs.contains(id)?Icons.star:Icons.star_border,color:favs.contains(id)?const Color(0xFFB45309):null))]),if(dir is String&&dir.isNotEmpty)Padding(padding:const EdgeInsets.only(top:9),child:Row(children:[const Icon(Icons.trending_flat,size:20),const SizedBox(width:7),Expanded(child:Text('Moving towards '+dir,style:const TextStyle(fontWeight:FontWeight.w700)))])),const SizedBox(height:9),Wrap(spacing:6,runSpacing:6,children:[_chip('ETA',Icons.timer_outlined,()=>_eta(b)),_chip(followed==id&&following?'Following':'Follow',Icons.center_focus_strong,()=>_follow(b)),_chip('Trail',Icons.route_outlined,()=>_trail(b)),_chip('Playback',Icons.play_arrow,()=>_play(b)),_chip('Share',Icons.share_outlined,()=>_share(b)),_chip('Report',Icons.flag_outlined,()=>_report(b))])]))));}
  Widget _chip(String s,IconData i,VoidCallback f)=>ActionChip(avatar:Icon(i,size:16),label:Text(s),onPressed:f);
- Widget _error()=>Card(color:const Color(0xFFFFF7ED),child:Padding(padding:const EdgeInsets.all(12),child:Row(children:[const Icon(Icons.warning_amber,color:Color(0xFFB45309)),const SizedBox(width:8),Expanded(child:Text(error!,style:const TextStyle(color:Color(0xFF92400E),fontSize:12,fontWeight:FontWeight.w600)))]);
- Widget _empty()=>const Card(child:Padding(padding:EdgeInsets.all(28),child:Column(children:[Icon(Icons.directions_bus_outlined,size:44,color:Color(0xFF9CA3AF)),SizedBox(height:10),Text('No buses found nearby',style:TextStyle(fontWeight:FontWeight.w800)),SizedBox(height:5),Text('Try increasing the radius or choosing another location.',textAlign:TextAlign.center,style:TextStyle(color:Color(0xFF6B7280),fontSize:13))]);
+ Widget _error() {
+  return Card(
+    color: const Color(0xFFFFF7ED),
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.warning_amber,
+            color: Color(0xFFB45309),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              error ?? 'Unable to refresh bus data.',
+              style: const TextStyle(
+                color: Color(0xFF92400E),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+ Widget _empty() {
+  return const Card(
+    child: Padding(
+      padding: EdgeInsets.all(28),
+      child: Column(
+        children: [
+          Icon(
+            Icons.directions_bus_outlined,
+            size: 44,
+            color: Color(0xFF9CA3AF),
+          ),
+          SizedBox(height: 10),
+          Text(
+            'No buses found nearby',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          SizedBox(height: 5),
+          Text(
+            'Try increasing the radius or choosing another location.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF6B7280),
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 }
