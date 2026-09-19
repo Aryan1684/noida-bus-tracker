@@ -11,7 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() { WidgetsFlutterBinding.ensureInitialized(); runApp(const App()); }
 
 class App extends StatefulWidget { const App({super.key}); @override State<App> createState()=>_AppState(); }
-class _AppState extends State<App> { bool dark=false; @override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Noida Bus Tracker',themeMode:dark?ThemeMode.dark:ThemeMode.light,theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:const Color(0xFFF4F6F8),colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFF111827))),darkTheme:ThemeData(useMaterial3:true,brightness:Brightness.dark,colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFFB8F26B),brightness:Brightness.dark)),home:Home(dark:dark,toggle:()=>setState(()=>dark=!dark))); }
+class _AppState extends State<App> { bool dark=false; @override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Noida Bus Tracker',themeMode:dark?ThemeMode.dark:ThemeMode.light,theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:const Color(0xFFF4F6F8),colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFFB8F26B))),darkTheme:ThemeData(useMaterial3:true,brightness:Brightness.dark,colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFFB8F26B),brightness:Brightness.dark)),home:Home(dark:dark,toggle:()=>setState(()=>dark=!dark))); }
 
 class Home extends StatefulWidget { final bool dark; final VoidCallback toggle; const Home({super.key,required this.dark,required this.toggle}); @override State<Home> createState()=>_HomeState(); }
 
@@ -127,7 +127,42 @@ class _HomeState extends State<Home> {
  void _report(dynamic b){showModalBottomSheet(context:context,showDragHandle:true,builder:(c)=>SafeArea(child:Column(mainAxisSize:MainAxisSize.min,children:[Padding(padding:const EdgeInsets.all(16),child:Text('Report '+b['bus_id'].toString(),style:const TextStyle(fontSize:20,fontWeight:FontWeight.w800))),...['Not moving','Wrong location','Already passed','Crowded'].map((x)=>ListTile(title:Text(x),leading:const Icon(Icons.flag_outlined),onTap:(){Navigator.pop(c);_info('Thanks. Your report has been noted locally.');}))])));}
  void _info(String s){if(!mounted)return;showDialog(context:context,builder:(c)=>AlertDialog(title:const Text('Noida Bus Tracker'),content:Text(s),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('OK'))]));}
  void _settings(){showModalBottomSheet(context:context,showDragHandle:true,builder:(c)=>SafeArea(child:Column(mainAxisSize:MainAxisSize.min,children:[const Padding(padding:EdgeInsets.all(16),child:Text('App settings',style:TextStyle(fontSize:21,fontWeight:FontWeight.w800))),ListTile(leading:const Icon(Icons.dark_mode_outlined),title:const Text('Dark mode'),trailing:Switch(value:widget.dark,onChanged:(_){Navigator.pop(c);widget.toggle();})),ListTile(leading:const Icon(Icons.notifications_none),title:const Text('Nearby bus alerts'),subtitle:const Text('Proximity alerts can be added with background location support')),ListTile(leading:const Icon(Icons.info_outline),title:const Text('About'),onTap:()=>_info('Independent project by a curious BTech student.\nLive GPS data: MARGDARSHI · UPSRTC.'))])));}
- @override Widget build(BuildContext context){return Scaffold(appBar:AppBar(title:const Row(children:[Icon(Icons.directions_bus_rounded),SizedBox(width:8),Text('Noida Bus Tracker',style:TextStyle(fontWeight:FontWeight.w800))]),actions:[IconButton(onPressed:(){showModalBottomSheet(context:context,showDragHandle:true,builder:(c)=>ListView(padding:const EdgeInsets.all(16),children:[const Text('Favourite buses',style:TextStyle(fontSize:21,fontWeight:FontWeight.w800)),...buses.where((b)=>favs.contains(b['bus_id'].toString())).map((b)=>ListTile(title:Text(b['bus_id'].toString()),subtitle:Text((b['distance_km']??'?').toString()+' km away'),onTap:(){Navigator.pop(c);_center(b,true);})),if(buses.where((b)=>favs.contains(b['bus_id'].toString())).isEmpty)const Padding(padding:EdgeInsets.all(24),child:Text('No favourite buses nearby.'))]));},icon:const Icon(Icons.star_border)),IconButton(onPressed:_settings,icon:const Icon(Icons.settings_outlined)),Container(margin:const EdgeInsets.only(right:12,top:12,bottom:12),padding:const EdgeInsets.symmetric(horizontal:9),alignment:Alignment.center,decoration:BoxDecoration(color:const Color(0xFFEAF8EF),borderRadius:BorderRadius.circular(20)),child:const Text('LIVE',style:TextStyle(fontSize:10,fontWeight:FontWeight.w800,color:Color(0xFF15803D))))]),body:RefreshIndicator(onRefresh:_load,child:ListView(physics:const AlwaysScrollableScrollPhysics(),padding:const EdgeInsets.fromLTRB(16,8,16,30),children:[_locationCard(),const SizedBox(height:12),_searchCard(),const SizedBox(height:12),_mapCard(),const SizedBox(height:14),_header(),if(error!=null)_error(),if(loading&&buses.isEmpty)const Padding(padding:EdgeInsets.all(30),child:Center(child:CircularProgressIndicator())),if(!loading&&buses.isEmpty&&error==null)_empty(),...buses.map(_card),const SizedBox(height:18),const Text('Independent project. Not a government website.\nLive GPS data sourced from MARGDARSHI · UPSRTC.',textAlign:TextAlign.center,style:TextStyle(color:Color(0xFF6B7280),fontSize:11,height:1.5))])));}
+ @override Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      titleSpacing: 16,
+      title: const Row(
+        children: [
+          Icon(Icons.directions_bus_rounded, size: 27),
+          SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              'Noida Bus Tracker',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        IconButton(
+          onPressed: _openFavourites,
+          icon: const Icon(Icons.star_border),
+          tooltip: 'Favourite buses',
+        ),
+        IconButton(
+          onPressed: _settings,
+          icon: const Icon(Icons.settings_outlined),
+          tooltip: 'Settings',
+        ),
+        const SizedBox(width: 4),
+      ],
+    ),
+    body: RefreshIndicator(onRefresh:_load,child:ListView(physics:const AlwaysScrollableScrollPhysics(),padding:const EdgeInsets.fromLTRB(16,8,16,30),children:[_locationCard(),const SizedBox(height:12),_searchCard(),const SizedBox(height:12),_mapCard(),const SizedBox(height:14),_header(),if(error!=null)_error(),if(loading&&buses.isEmpty)const Padding(padding:EdgeInsets.all(30),child:Center(child:CircularProgressIndicator())),if(!loading&&buses.isEmpty&&error==null)_empty(),...buses.map(_card),const SizedBox(height:18),const Text('Independent project. Not a government website.\nLive GPS data sourced from MARGDARSHI · UPSRTC.',textAlign:TextAlign.center,style:TextStyle(color:Color(0xFF6B7280),fontSize:11,height:1.5))])));}
  Widget _locationCard() {
   return Card(
     elevation: 0,
