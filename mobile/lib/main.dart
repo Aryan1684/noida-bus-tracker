@@ -26,7 +26,90 @@ class _HomeState extends State<Home> {
  @override void dispose(){refreshTimer?.cancel();searchTimer?.cancel();search.dispose();super.dispose();}
  Future<void> _prefs() async { final p=await SharedPreferences.getInstance();if(mounted)setState(()=>favs=(p.getStringList('favs')??[]).toSet()); }
  Future<void> _notice() async { if(!mounted)return;await showDialog(context:context,barrierDismissible:false,builder:(c)=>AlertDialog(shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(24)),title:const Text('One important note'),content:const Text('Bus locations come from live GPS data. The “moving towards” information is an estimate from recent movement and can be wrong near junctions, turns or route changes.\n\nNot a government website.\nThis is an independent project made by a curious BTech student.\n\nData source: MARGDARSHI · UPSRTC',style:TextStyle(height:1.45)),actions:[FilledButton(onPressed:()=>Navigator.pop(c),child:const Text('Got it'))]));if(mounted)_location();}
- Future<void> _location() async { if(locating)return;setState(() { locating=true; error=null; permissionBlocked=false; });try{var p=await Geolocator.checkPermission();if(p==LocationPermission.denied)p=await Geolocator.requestPermission();if(p==LocationPermission.denied||p==LocationPermission.deniedForever){setState(() { permissionBlocked=p==LocationPermission.deniedForever; locationLabel=permissionBlocked?'Location permission is blocked':'Location permission is needed'; error=permissionBlocked?'Allow location permission from Android Settings.':'Allow location permission to find buses near you.'; });return;}if(!await Geolocator.isLocationServiceEnabled()){setState(() { locationLabel='Turn on location services'; error='Location services are turned off.'; });return;}final x=await Geolocator.getCurrentPosition(locationSettings:const LocationSettings(accuracy:LocationAccuracy.high));await _set(LatLng(x.latitude,x.longitude),'Current location',true);}catch(_){setState(() { locationLabel='Location unavailable'; error='Could not get your location. You can choose a point on the map.'; });}finally{if(mounted)setState(()=>locating=false);}}
+ Future<void> _location() async {
+  if (locating) return;
+
+  setState(() {
+    locating = true;
+    error = null;
+    permissionBlocked = false;
+  });
+
+  try {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      if (mounted) {
+        setState(() {
+          locationLabel = 'Location services are off';
+          error = 'Turn on Location/GPS and tap the button again.';
+        });
+        await Geolocator.openLocationSettings();
+      }
+      return;
+    }
+
+    var permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied) {
+      if (mounted) {
+        setState(() {
+          locationLabel = 'Location permission denied';
+          error = 'Allow location permission to find buses near you.';
+        });
+        _info('Location permission is required to use your current location.');
+      }
+      return;
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      if (mounted) {
+        setState(() {
+          permissionBlocked = true;
+          locationLabel = 'Location permission is blocked';
+          error = 'Open app settings and allow Location permission.';
+        });
+        _info('Location permission is blocked. Open app settings and allow Location.');
+      }
+      return;
+    }
+
+    final position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 15),
+      ),
+    );
+
+    await _set(
+      LatLng(position.latitude, position.longitude),
+      'Current location',
+      true,
+    );
+  } on TimeoutException {
+    if (mounted) {
+      setState(() {
+        locationLabel = 'Location timed out';
+        error = 'Could not get a GPS fix. Try again outdoors or check GPS.';
+      });
+      _info('GPS took too long to respond. Please try again.');
+    }
+  } catch (e) {
+    if (mounted) {
+      setState(() {
+        locationLabel = 'Location unavailable';
+        error = 'Could not get your current location. Try again.';
+      });
+      _info('Could not get your current location. Check GPS and app Location permission.');
+    }
+  } finally {
+    if (mounted) {
+      setState(() => locating = false);
+    }
+  }
+}
  Future<void> _set(LatLng p,String label,bool load) async {setState(() { location=p; locationLabel=label; selected=null; error=null; });map.move(p,14.5);if(load){await _load();_auto();}}
  void _auto(){refreshTimer?.cancel();refreshTimer=Timer.periodic(const Duration(seconds:45),(_){if(!loading)_load(auto:true);});}
  Future<void> _load({bool auto=false}) async {if(loading)return;setState(()=>loading=true);final u=Uri.parse(api+'/api/buses/nearby?lat='+location.latitude.toString()+'&lon='+location.longitude.toString()+'&radius='+radius.toString());try{final r=await http.get(u).timeout(const Duration(seconds:20));if(r.statusCode!=200)throw Exception();final d=jsonDecode(r.body);final next=List<dynamic>.from(d['buses']??[]);for(final b in next){final id=''+b['bus_id'].toString();final a=double.tryParse(b['latitude'].toString());final o=double.tryParse(b['longitude'].toString());if(a==null||o==null)continue;history.putIfAbsent(id,()=>[]).add(LatLng(a,o));if(history[id]!.length>30)history[id]!.removeAt(0);}if(mounted)setState(() { buses=next; refreshed=DateTime.now(); error=null; });if(following&&followed!=null){final b=_find(followed!);if(b!=null)_center(b,false);}}catch(_){if(mounted)setState(()=>error='Unable to refresh bus data. Showing previous results.');}finally{if(mounted)setState(()=>loading=false);}}
@@ -45,7 +128,158 @@ class _HomeState extends State<Home> {
  void _info(String s){if(!mounted)return;showDialog(context:context,builder:(c)=>AlertDialog(title:const Text('Noida Bus Tracker'),content:Text(s),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('OK'))]));}
  void _settings(){showModalBottomSheet(context:context,showDragHandle:true,builder:(c)=>SafeArea(child:Column(mainAxisSize:MainAxisSize.min,children:[const Padding(padding:EdgeInsets.all(16),child:Text('App settings',style:TextStyle(fontSize:21,fontWeight:FontWeight.w800))),ListTile(leading:const Icon(Icons.dark_mode_outlined),title:const Text('Dark mode'),trailing:Switch(value:widget.dark,onChanged:(_){Navigator.pop(c);widget.toggle();})),ListTile(leading:const Icon(Icons.notifications_none),title:const Text('Nearby bus alerts'),subtitle:const Text('Proximity alerts can be added with background location support')),ListTile(leading:const Icon(Icons.info_outline),title:const Text('About'),onTap:()=>_info('Independent project by a curious BTech student.\nLive GPS data: MARGDARSHI · UPSRTC.'))])));}
  @override Widget build(BuildContext context){return Scaffold(appBar:AppBar(title:const Row(children:[Icon(Icons.directions_bus_rounded),SizedBox(width:8),Text('Noida Bus Tracker',style:TextStyle(fontWeight:FontWeight.w800))]),actions:[IconButton(onPressed:(){showModalBottomSheet(context:context,showDragHandle:true,builder:(c)=>ListView(padding:const EdgeInsets.all(16),children:[const Text('Favourite buses',style:TextStyle(fontSize:21,fontWeight:FontWeight.w800)),...buses.where((b)=>favs.contains(b['bus_id'].toString())).map((b)=>ListTile(title:Text(b['bus_id'].toString()),subtitle:Text((b['distance_km']??'?').toString()+' km away'),onTap:(){Navigator.pop(c);_center(b,true);})),if(buses.where((b)=>favs.contains(b['bus_id'].toString())).isEmpty)const Padding(padding:EdgeInsets.all(24),child:Text('No favourite buses nearby.'))]));},icon:const Icon(Icons.star_border)),IconButton(onPressed:_settings,icon:const Icon(Icons.settings_outlined)),Container(margin:const EdgeInsets.only(right:12,top:12,bottom:12),padding:const EdgeInsets.symmetric(horizontal:9),alignment:Alignment.center,decoration:BoxDecoration(color:const Color(0xFFEAF8EF),borderRadius:BorderRadius.circular(20)),child:const Text('LIVE',style:TextStyle(fontSize:10,fontWeight:FontWeight.w800,color:Color(0xFF15803D))))]),body:RefreshIndicator(onRefresh:_load,child:ListView(physics:const AlwaysScrollableScrollPhysics(),padding:const EdgeInsets.fromLTRB(16,8,16,30),children:[_locationCard(),const SizedBox(height:12),_searchCard(),const SizedBox(height:12),_mapCard(),const SizedBox(height:14),_header(),if(error!=null)_error(),if(loading&&buses.isEmpty)const Padding(padding:EdgeInsets.all(30),child:Center(child:CircularProgressIndicator())),if(!loading&&buses.isEmpty&&error==null)_empty(),...buses.map(_card),const SizedBox(height:18),const Text('Independent project. Not a government website.\nLive GPS data sourced from MARGDARSHI · UPSRTC.',textAlign:TextAlign.center,style:TextStyle(color:Color(0xFF6B7280),fontSize:11,height:1.5))])));}
- Widget _locationCard(){return Card(elevation:0,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(24)),child:Padding(padding:const EdgeInsets.all(17),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('START HERE',style:TextStyle(fontSize:11,fontWeight:FontWeight.w800,letterSpacing:1.1,color:Color(0xFF6B7280))),const SizedBox(height:5),const Text('Find buses near you',style:TextStyle(fontSize:22,fontWeight:FontWeight.w800)),const SizedBox(height:4),Text(locationLabel,style:const TextStyle(color:Color(0xFF6B7280))),const SizedBox(height:13),SizedBox(width:double.infinity,height:50,child:FilledButton.icon(onPressed:locating?null:_location,icon:locating?const SizedBox(width:19,height:19,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.my_location_rounded),label:Text(locating?'Getting location…':'Use current location'))),if(permissionBlocked)OutlinedButton.icon(onPressed:Geolocator.openAppSettings,icon:const Icon(Icons.settings_outlined),label:const Text('Open location settings')),const SizedBox(height:8),Row(children:[const Icon(Icons.radar_rounded,size:18),const SizedBox(width:7),const Text('Search radius',style:TextStyle(fontWeight:FontWeight.w600)),const Spacer(),DropdownButtonHideUnderline(child:DropdownButton<double>(value:radius,items:const[DropdownMenuItem(value:1,child:Text('1 km')),DropdownMenuItem(value:3,child:Text('3 km')),DropdownMenuItem(value:5,child:Text('5 km')),DropdownMenuItem(value:10,child:Text('10 km')),DropdownMenuItem(value:15,child:Text('15 km'))],onChanged:(v){if(v!=null){setState(()=>radius=v);_load();}}))])])));}
+ Widget _locationCard() {
+  return Card(
+    elevation: 0,
+    margin: EdgeInsets.zero,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(24),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF8EF),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.my_location_rounded,
+                  color: Color(0xFF15803D),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'YOUR LOCATION',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.1,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'Find buses near you',
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 13,
+              vertical: 11,
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context)
+                  .colorScheme
+                  .surfaceContainerHighest
+                  .withOpacity(.55),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.place_outlined, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    locationLabel,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: FilledButton.icon(
+              onPressed: locating ? null : _location,
+              icon: locating
+                  ? const SizedBox(
+                      width: 19,
+                      height: 19,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.my_location_rounded),
+              label: Text(
+                locating ? 'Finding your location…' : 'Use current location',
+              ),
+            ),
+          ),
+          if (permissionBlocked)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: Geolocator.openAppSettings,
+                  icon: const Icon(Icons.settings_outlined),
+                  label: const Text('Open location settings'),
+                ),
+              ),
+            ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(Icons.radar_rounded, size: 18),
+              const SizedBox(width: 7),
+              const Text(
+                'Search radius',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const Spacer(),
+              DropdownButtonHideUnderline(
+                child: DropdownButton<double>(
+                  value: radius,
+                  items: const [
+                    DropdownMenuItem(value: 1, child: Text('1 km')),
+                    DropdownMenuItem(value: 3, child: Text('3 km')),
+                    DropdownMenuItem(value: 5, child: Text('5 km')),
+                    DropdownMenuItem(value: 10, child: Text('10 km')),
+                    DropdownMenuItem(value: 15, child: Text('15 km')),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => radius = value);
+                    _load();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
  Widget _searchCard(){return Card(elevation:0,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20)),child:Column(children:[Padding(padding:const EdgeInsets.fromLTRB(15,5,8,5),child:Row(children:[const Icon(Icons.search_rounded),const SizedBox(width:8),Expanded(child:TextField(controller:search,onChanged:_search,decoration:const InputDecoration(hintText:'Search Sector 62, Pari Chowk, Botanical Garden…',border:InputBorder.none))),if(search.text.isNotEmpty)IconButton(onPressed:(){search.clear();setState(()=>suggestions=[]);},icon:const Icon(Icons.close))])),...suggestions.map((x)=>ListTile(leading:const Icon(Icons.place_outlined),title:Text(x['name'].toString()),onTap:()=>_pick(x))) ]));}
  Widget _mapCard() {
   final markers = <Marker>[];
