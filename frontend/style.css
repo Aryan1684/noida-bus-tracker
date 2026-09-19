@@ -7,6 +7,7 @@
 --muted:#667085;
 --line:#d9e0e8;
 --accent:#1769d2;
+--accentText:#ffffff;
 --accentSoft:rgba(23,105,210,.08);
 --accentGlow:rgba(23,105,210,.18);
 --dark:#101828;
@@ -30,7 +31,7 @@ button{cursor:pointer}
 .live-status{display:flex;align-items:center;gap:7px;padding:8px 11px;border:1px solid var(--line);border-radius:99px;background:var(--surface);font-size:10px;font-weight:850;color:var(--text)}
 .live-status i{width:7px;height:7px;background:var(--accent);border-radius:50%;box-shadow:0 0 0 4px var(--accentSoft),0 0 14px var(--accentGlow);animation:blink 1.8s infinite}
 .icon-button{width:39px;height:39px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);font-size:18px;display:grid;place-items:center}
-.get-app-button{height:39px;display:flex;align-items:center;gap:7px;padding:0 12px;border-radius:12px;background:var(--accent);color:#fff;text-decoration:none;font-size:11px;font-weight:950;box-shadow:0 8px 24px var(--accentGlow);transition:.2s}
+.get-app-button{height:39px;display:flex;align-items:center;gap:7px;padding:0 12px;border-radius:12px;background:var(--accent);color:var(--accentText);text-decoration:none;font-size:11px;font-weight:950;box-shadow:0 8px 24px var(--accentGlow);transition:.2s}
 .get-app-button:hover{transform:translateY(-2px);box-shadow:0 13px 30px var(--accentGlow)}
 .get-app-icon{font-size:17px}
 
@@ -46,7 +47,7 @@ main{max-width:1220px;margin:auto;padding:22px}
 .hero-actions{display:flex;gap:10px;margin-top:26px}
 .button{height:46px;padding:0 17px;border:0;border-radius:12px;font-size:12px;font-weight:900;transition:transform .2s,box-shadow .2s,background .2s}
 .button:hover{transform:translateY(-2px)}
-.button-hero{background:var(--accent);color:#fff;box-shadow:0 12px 30px var(--accentGlow)}
+.button-hero{background:var(--accent);color:var(--accentText);box-shadow:0 12px 30px var(--accentGlow)}
 .get-app-hero{height:46px;padding:0 17px;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;color:var(--text);text-decoration:none;font-size:12px;font-weight:850;background:var(--surface);transition:.2s}
 .get-app-hero:hover{transform:translateY(-2px);background:var(--surface2)}
 .hero-micro{display:flex;align-items:center;gap:9px;margin-top:18px;color:#8692a4;font-size:9px;font-weight:800;letter-spacing:1px}
@@ -81,7 +82,7 @@ main{max-width:1220px;margin:auto;padding:22px}
 .location-copy>p:last-child{color:var(--muted);font-size:13px;margin-top:8px}
 .location-actions{display:flex;gap:9px;margin-top:20px}
 .button-dark{background:var(--dark);color:#fff}
-.button-accent{background:var(--accent);color:#fff}
+.button-accent{background:var(--accent);color:var(--accentText)}
 .button-accent:disabled{opacity:.35;cursor:not-allowed;transform:none}
 .button-wide{width:100%;margin-top:16px}
 
@@ -128,13 +129,13 @@ main{max-width:1220px;margin:auto;padding:22px}
 .bus-card p{font-size:11px;color:#7b8797;margin-top:5px}
 .bus-card .status{font-weight:800;color:var(--text)}
 .bus-direction{display:flex;align-items:center;gap:10px;margin:13px 0;padding:11px;border-radius:13px;background:var(--accentSoft);border:1px solid var(--accentGlow)}
-.direction-arrow{width:39px;height:39px;display:grid;place-items:center;border-radius:50%;background:var(--accent);color:#fff;font-size:21px;flex:none;box-shadow:0 0 20px var(--accentGlow)}
+.direction-arrow{width:39px;height:39px;display:grid;place-items:center;border-radius:50%;background:var(--accent);color:var(--accentText);font-size:21px;flex:none;box-shadow:0 0 20px var(--accentGlow)}
 .bus-direction small{display:block;color:#7b8797;font-size:8px;font-weight:950;letter-spacing:.9px}
 .bus-direction strong{display:block;color:var(--text);font-size:13px;margin-top:2px}
 .direction-wait{width:39px;height:39px;display:grid;place-items:center;border-radius:50%;background:var(--surface2);color:#667085;font-size:18px}
 .bus-distance{display:inline-flex;align-items:center;gap:5px;margin-top:12px;padding:6px 9px;border-radius:8px;background:var(--accentSoft);color:var(--accent);font-size:10px;font-weight:950}
 .bus-rank{position:absolute;top:13px;right:13px;width:25px;height:25px;display:grid;place-items:center;border-radius:8px;background:#eef2f6;color:#667085;font-size:9px;font-weight:950}
-.bus-card.rank-1 .bus-rank{background:var(--accent);color:#fff}
+.bus-card.rank-1 .bus-rank{background:var(--accent);color:var(--accentText)}
 .bus-card.rank-2 .bus-rank{background:#dde2e9;color:#263242}
 .bus-card.rank-3 .bus-rank{background:#bd8a62;color:#fff}
 .bus-card .updated{color:#7e8a99;font-size:9px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
@@ -158,7 +159,7 @@ footer span{display:block;margin-top:3px}
 
 .modal-overlay{position:fixed;inset:0;z-index:5000;display:grid;place-items:center;padding:18px;background:rgba(16,24,40,.58);backdrop-filter:blur(12px)}
 .warning-modal{width:min(430px,100%);padding:25px;border-radius:22px;background:var(--surface);border:1px solid var(--line);box-shadow:0 30px 90px rgba(16,24,40,.24)}
-.modal-mark{margin:0 0 14px;background:var(--accent);color:#fff;font-size:20px}
+.modal-mark{margin:0 0 14px;background:var(--accent);color:var(--accentText);font-size:20px}
 .warning-modal h2{font-size:23px;color:var(--text)}
 .warning-modal p{font-size:12px;color:var(--muted);line-height:1.6;margin-top:10px}
 .warning-modal .project-disclaimer{padding:11px;border-radius:11px;background:var(--surface2);color:var(--text)}
@@ -182,6 +183,7 @@ body.dark{
 --muted:#8e98a8;
 --line:#252c37;
 --accent:#c8ff32;
+--accentText:#081006;
 --accentSoft:rgba(200,255,50,.08);
 --accentGlow:rgba(200,255,50,.22);
 --dark:#f5f7fb;
