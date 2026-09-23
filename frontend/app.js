@@ -499,7 +499,7 @@ async function loadNearbyBuses(
             );
         } else {
             showErrorState(
-                "The UPSRTC bus service is currently unavailable."
+                "UPSRTC MARGDARSHI website is currently down. Please try again in 15 minutes."
             );
         }
     } finally {
