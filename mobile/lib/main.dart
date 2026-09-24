@@ -1512,6 +1512,21 @@ class _HomeState extends State<Home> {
   );
 }
 
+ Widget _chip(String label, IconData icon, VoidCallback onTap) {
+  return ActionChip(
+    avatar: Icon(icon, size: 17),
+    label: Text(
+      label,
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+    onPressed: onTap,
+    padding: const EdgeInsets.symmetric(horizontal: 4),
+  );
+}
+
  Widget _error() {
   return Card(
     color: const Color(0xFFFFF7ED),
