@@ -782,69 +782,37 @@ function createBusCard(bus, rankIndex = 0) {
 function selectBus(busId) {
     selectedBusId = busId;
 
-    const cards = Array.from(document.querySelectorAll(".bus-card"));
-    const selectedCard = document.getElementById(`bus-card-${busId}`);
     const list = document.getElementById("busList");
+    const selectedCard = document.getElementById(`bus-card-${busId}`);
 
     if (selectedCard && list && list.firstElementChild !== selectedCard) {
         list.prepend(selectedCard);
-
-        Array.from(list.children).forEach((card, index) => {
-            card.classList.toggle("selected", card.id === `bus-card-${busId}`);
-            const rank = card.querySelector(".bus-rank");
-            if (rank) rank.textContent = `#${index + 1}`;
-        });
     }
 
-    document
-        .querySelectorAll(
-            ".bus-card"
-        )
-        .forEach(
-            card => {
-                card.classList.remove(
-                    "selected"
-                );
-            }
-        );
+    document.querySelectorAll(".bus-card").forEach(card => {
+        card.classList.toggle("selected", card.id === `bus-card-${busId}`);
+    });
 
-    const selectedCard =
-        document.getElementById(
-            `bus-card-${busId}`
-        );
+    document.querySelectorAll(".bus-card").forEach((card, index) => {
+        const rank = card.querySelector(".bus-rank");
+        if (rank) rank.textContent = `#${index + 1}`;
+    });
 
     if (selectedCard) {
-        selectedCard.classList.add(
-            "selected"
-        );
-
         selectedCard.scrollIntoView({
             behavior: "smooth",
             block: "nearest"
         });
     }
 
-    document
-        .querySelectorAll(
-            ".bus-marker"
-        )
-        .forEach(
-            marker => {
-                marker.classList.remove(
-                    "selected"
-                );
-            }
-        );
+    document.querySelectorAll(".bus-marker").forEach(marker => {
+        marker.classList.remove("selected");
+    });
 
-    const selectedMarker =
-        document.getElementById(
-            `marker-${busId}`
-        );
+    const selectedMarker = document.getElementById(`marker-${busId}`);
 
     if (selectedMarker) {
-        selectedMarker.classList.add(
-            "selected"
-        );
+        selectedMarker.classList.add("selected");
     }
 }
 
