@@ -491,11 +491,11 @@ async function loadNearbyBuses(
 
         if (data.data_stale || (data.buses || []).some(bus => bus.data_stale)) {
             updateLocationMessage(
-                `Live GPS temporarily unavailable. Showing the last available bus positions (\${data.count} buses within \${radius} km).`
+                `Live GPS temporarily unavailable. Showing the last available bus positions (${data.count} buses within ${radius} km).`
             );
         } else {
             updateLocationMessage(
-                `\${data.count} electric buses found within \${radius} km.`
+                `${data.count} electric buses found within ${radius} km.`
             );
         }
 
