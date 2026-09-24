@@ -667,7 +667,42 @@ class _HomeState extends State<Home> {
  }
 
  dynamic _find(String id){for(final b in buses){if(b['bus_id'].toString()==id)return b;}return null;}
- void _center(dynamic b,bool select){final a=double.tryParse(b['latitude'].toString()),o=double.tryParse(b['longitude'].toString());if(a==null||o==null)return;if(select)setState(()=>selected=b['bus_id'].toString());map.move(LatLng(a,o),16);}
+ void _center(dynamic b,bool select){
+  final a=double.tryParse(b['latitude'].toString());
+  final o=double.tryParse(b['longitude'].toString());
+  if(a==null||o==null)return;
+
+  if(select){
+    final id=b['bus_id'].toString();
+    final index=buses.indexWhere((item)=>item['bus_id'].toString()==id);
+
+    if(index>0){
+      setState((){
+        selected=id;
+        final picked=buses.removeAt(index);
+        buses.insert(0,picked);
+      });
+    }else{
+      setState(()=>selected=id);
+    }
+  }
+
+  map.move(LatLng(a,o),16);
+}
+
+ void _clearBusSelection(){
+  if(selected==null)return;
+  final copy=List<dynamic>.from(buses);
+  copy.sort((a,b){
+    final da=double.tryParse(a['distance_km']?.toString()??'');
+    final db=double.tryParse(b['distance_km']?.toString()??'');
+    return (da??double.infinity).compareTo(db??double.infinity);
+  });
+  setState((){
+    selected=null;
+    buses=copy;
+  });
+}
  void _search(String v) {
   searchTimer?.cancel();
 
@@ -731,7 +766,14 @@ class _HomeState extends State<Home> {
 }
 
  Future<void> _pick(dynamic x)async{final a=double.tryParse(x['latitude'].toString()),o=double.tryParse(x['longitude'].toString());if(a==null||o==null)return;search.text=x['name'].toString();FocusScope.of(context).unfocus();setState(()=>suggestions=[]);await _set(LatLng(a,o),x['name'].toString(),true);}
- void _tap(TapPosition _,LatLng p){if(!movePin)return;_set(p,'Selected map location',true);setState(()=>movePin=false);}
+ void _tap(TapPosition _,LatLng p){
+  if(movePin){
+    _set(p,'Selected map location',true);
+    setState(()=>movePin=false);
+    return;
+  }
+  _clearBusSelection();
+}
  Future<void> _fav(String id)async{final n=Set<String>.from(favs);n.contains(id)?n.remove(id):n.add(id);final p=await SharedPreferences.getInstance();await p.setStringList('favs',n.toList());if(mounted)setState(()=>favs=n);}
  void _follow(dynamic b){final id=b['bus_id'].toString();setState(() { followed=followed==id?null:id; following=followed!=null; });_center(b,true);}
  void _trail(dynamic b){final p=history[b['bus_id'].toString()]??[];if(p.length<2){_info('Trail needs a few refreshes first.');return;}setState(()=>trail=List<LatLng>.from(p));map.fitCamera(CameraFit.coordinates(coordinates:trail,padding:const EdgeInsets.all(45)));}
