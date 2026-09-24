@@ -10,13 +10,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'firebase_options.dart';
 
 FirebaseAnalytics? appAnalytics;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
     appAnalytics = FirebaseAnalytics.instance;
     await appAnalytics?.logAppOpen();
   } catch (_) {}
