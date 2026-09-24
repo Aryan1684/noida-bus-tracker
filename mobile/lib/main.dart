@@ -7,8 +7,21 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
-void main() { WidgetsFlutterBinding.ensureInitialized(); runApp(const App()); }
+FirebaseAnalytics? appAnalytics;
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp();
+    appAnalytics = FirebaseAnalytics.instance;
+    await appAnalytics?.logAppOpen();
+  } catch (_) {}
+  runApp(const App());
+}
 
 class App extends StatefulWidget { const App({super.key}); @override State<App> createState()=>_AppState(); }
 class _AppState extends State<App> { bool dark=false; @override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Noida Bus Tracker',themeMode:dark?ThemeMode.dark:ThemeMode.light,theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:const Color(0xFFF4F6F8),colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFFB8F26B))),darkTheme:ThemeData(useMaterial3:true,brightness:Brightness.dark,colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFFB8F26B),brightness:Brightness.dark)),home:StartupSplash(child:Home(dark:dark,toggle:()=>setState(()=>dark=!dark)))); }
@@ -357,7 +370,7 @@ class _HomeState extends State<Home> {
  final stopData=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060]];
  final searchPlaces=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Sector 62',28.6280,77.3770],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Gaur Chowk',28.6150,77.4350],['Gaur City',28.6155,77.4240],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060],['Sector 90',28.5340,77.4380],['Noida International Airport',28.5562,77.5849]];
 
- @override void initState(){super.initState();_initApp();}
+ @override void initState(){super.initState();_initApp();_checkForUpdate();}
  @override void dispose(){refreshTimer?.cancel();searchTimer?.cancel();search.dispose();super.dispose();}
  Future<void> _initApp() async {
   final prefs = await SharedPreferences.getInstance();
@@ -453,6 +466,58 @@ class _HomeState extends State<Home> {
   }
 }
 
+ Future<void> _analytics(String name, [Map<String,Object>? parameters]) async {
+  try {
+    await appAnalytics?.logEvent(name: name, parameters: parameters);
+  } catch (_) {}
+ }
+
+ Future<void> _checkForUpdate() async {
+  try {
+    final info = await PackageInfo.fromPlatform();
+    final response = await http.get(Uri.parse('https://raw.githubusercontent.com/Aryan1684/noida-bus-tracker/main/mobile/app_version.json')).timeout(const Duration(seconds: 6));
+    if (response.statusCode != 200) return;
+    final data = jsonDecode(response.body) as Map<String,dynamic>;
+    final latest = data['latest_version']?.toString() ?? info.version;
+    final minimum = data['minimum_version']?.toString() ?? info.version;
+    if (!_isVersionNewer(latest, info.version) && !_isVersionNewer(minimum, info.version)) return;
+    if (!mounted) return;
+    final mandatory = _isVersionNewer(minimum, info.version);
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !mandatory,
+      builder: (c) => AlertDialog(
+        title: Text(mandatory ? 'Update required' : 'New version available'),
+        content: Text(data['message']?.toString() ?? 'A newer version of Noida Bus Tracker is available.'),
+        actions: [
+          if (!mandatory) TextButton(onPressed: () => Navigator.pop(c), child: const Text('Later')),
+          FilledButton(
+            onPressed: () async {
+              final url = data['download_url']?.toString();
+              if (url == null || url.isEmpty) return;
+              await Clipboard.setData(ClipboardData(text: url));
+              if (c.mounted) Navigator.pop(c);
+              _info('Update link copied. Open it in your browser to install the latest version.');
+            },
+            child: const Text('Get update'),
+          ),
+        ],
+      ),
+    );
+  } catch (_) {}
+ }
+
+ bool _isVersionNewer(String a, String b) {
+  List<int> parts(String v) => v.split('.').map((x) => int.tryParse(x.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0).toList();
+  final x = parts(a), y = parts(b);
+  for (var i = 0; i < 3; i++) {
+    final xv = i < x.length ? x[i] : 0;
+    final yv = i < y.length ? y[i] : 0;
+    if (xv != yv) return xv > yv;
+  }
+  return false;
+ }
+
  Future<void> _location() async {
   if (locating) return;
   setState(() { locating = true; error = null; permissionBlocked = false; });
@@ -488,6 +553,7 @@ class _HomeState extends State<Home> {
         timeLimit: Duration(seconds: 15),
       ),
     );
+    await _analytics('current_location_used');
     await _set(LatLng(position.latitude, position.longitude), 'Current location', true);
   } on TimeoutException {
     if (mounted) {
@@ -673,6 +739,7 @@ class _HomeState extends State<Home> {
   if(a==null||o==null)return;
 
   if(select){
+    _analytics('bus_selected', {'bus_id': b['bus_id'].toString()});
     final id=b['bus_id'].toString();
     final index=buses.indexWhere((item)=>item['bus_id'].toString()==id);
 
@@ -765,7 +832,7 @@ class _HomeState extends State<Home> {
   });
 }
 
- Future<void> _pick(dynamic x)async{final a=double.tryParse(x['latitude'].toString()),o=double.tryParse(x['longitude'].toString());if(a==null||o==null)return;search.text=x['name'].toString();FocusScope.of(context).unfocus();setState(()=>suggestions=[]);await _set(LatLng(a,o),x['name'].toString(),true);}
+ Future<void> _pick(dynamic x)async{await _analytics('location_searched');final a=double.tryParse(x['latitude'].toString()),o=double.tryParse(x['longitude'].toString());if(a==null||o==null)return;search.text=x['name'].toString();FocusScope.of(context).unfocus();setState(()=>suggestions=[]);await _set(LatLng(a,o),x['name'].toString(),true);}
  void _tap(TapPosition _,LatLng p){
   if(movePin){
     _set(p,'Selected map location',true);
