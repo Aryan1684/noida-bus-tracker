@@ -12,6 +12,27 @@ let searchController = null;
 
 const API_BASE_URL = "https://noida-bus-tracker.onrender.com";
 
+const BUS_ROUTES = {
+    "UP80KT3702": "R1",
+    "UP80KT4582": "R1",
+    "UP70PT6077": "R1",
+    "UP70PT6268": "R1",
+    "UP80LT4113": "R1",
+    "UP80LT4117": "R1",
+    "UP80LT4126": "R1",
+    "UP80KT3630": "R1",
+    "UP80KT3703": "R1",
+    "UP70PT6330": "R1",
+    "UP80LT4114": "R1",
+    "UP80LT4120": "R1"
+};
+
+function getBusRoute(busId) {
+    return BUS_ROUTES[String(busId || "").trim().toUpperCase()] || null;
+}
+
+
+
 document.addEventListener(
     "DOMContentLoaded",
     () => {
@@ -62,11 +83,15 @@ document.addEventListener(
         map.on(
             "click",
             event => {
-                if (!pinAdjustMode) return;
-                setLocationMarker(
-                    event.latlng.lat,
-                    event.latlng.lng
-                );
+                if (pinAdjustMode) {
+                    setLocationMarker(
+                        event.latlng.lat,
+                        event.latlng.lng
+                    );
+                    return;
+                }
+
+                clearBusSelection();
             }
         );
 
@@ -521,8 +546,17 @@ function displayBuses(buses) {
     const busCount = document.getElementById("busCount");
 
     buses = (buses || []).slice().sort((a, b) => {
+        if (selectedBusId) {
+            const aSelected = String(a.bus_id) === String(selectedBusId);
+            const bSelected = String(b.bus_id) === String(selectedBusId);
+
+            if (aSelected && !bSelected) return -1;
+            if (!aSelected && bSelected) return 1;
+        }
+
         const da = Number(a.distance_km);
         const db = Number(b.distance_km);
+
         return (Number.isFinite(da) ? da : 9999) - (Number.isFinite(db) ? db : 9999);
     });
 
@@ -567,7 +601,8 @@ function createBusMarker(bus) {
 
     marker.bindPopup(createPopupContent(bus));
 
-    marker.on("click", () => {
+    marker.on("click", event => {
+        L.DomEvent.stopPropagation(event);
         selectBus(bus.bus_id);
         marker.openPopup();
     });
@@ -587,6 +622,10 @@ function createBusCard(bus, rankIndex = 0) {
 
     card.id =
         `bus-card-${bus.bus_id}`;
+
+    card.dataset.distance = Number.isFinite(Number(bus.distance_km))
+        ? String(Number(bus.distance_km))
+        : "9999";
 
     let directionHtml;
 
@@ -671,11 +710,14 @@ function createBusCard(bus, rankIndex = 0) {
             ? bus.history_minutes
             : 0;
 
+    const route = getBusRoute(bus.bus_id);
+
     card.innerHTML = `
-        <span class="bus-rank">#${rankIndex + 1}</span>
-        <h3>
-            ${bus.bus_id || "Unknown Bus"}
-        </h3>
+        <div class="bus-card-top">
+            <span class="bus-rank">#${rankIndex + 1}</span>
+            <h3>${bus.bus_id || "Unknown Bus"}</h3>
+            ${route ? `<span class="route-badge">R1</span>` : ""}
+        </div>
 
         ${directionHtml}
 
@@ -738,8 +780,21 @@ function createBusCard(bus, rankIndex = 0) {
 }
 
 function selectBus(busId) {
-    selectedBusId =
-        busId;
+    selectedBusId = busId;
+
+    const cards = Array.from(document.querySelectorAll(".bus-card"));
+    const selectedCard = document.getElementById(`bus-card-${busId}`);
+    const list = document.getElementById("busList");
+
+    if (selectedCard && list && list.firstElementChild !== selectedCard) {
+        list.prepend(selectedCard);
+
+        Array.from(list.children).forEach((card, index) => {
+            card.classList.toggle("selected", card.id === `bus-card-${busId}`);
+            const rank = card.querySelector(".bus-rank");
+            if (rank) rank.textContent = `#${index + 1}`;
+        });
+    }
 
     document
         .querySelectorAll(
@@ -790,6 +845,37 @@ function selectBus(busId) {
         selectedMarker.classList.add(
             "selected"
         );
+    }
+}
+
+function clearBusSelection() {
+    selectedBusId = null;
+
+    document.querySelectorAll(".bus-card.selected").forEach(card => {
+        card.classList.remove("selected");
+    });
+
+    document.querySelectorAll(".bus-marker.selected").forEach(marker => {
+        marker.classList.remove("selected");
+    });
+
+    const list = document.getElementById("busList");
+    if (list) {
+        const cards = Array.from(list.querySelectorAll(".bus-card"));
+
+        cards.sort((a, b) => {
+            const aDistance = Number(a.dataset.distance);
+            const bDistance = Number(b.dataset.distance);
+
+            return (Number.isFinite(aDistance) ? aDistance : 9999) -
+                (Number.isFinite(bDistance) ? bDistance : 9999);
+        });
+
+        cards.forEach((card, index) => {
+            list.appendChild(card);
+            const rank = card.querySelector(".bus-rank");
+            if (rank) rank.textContent = `#${index + 1}`;
+        });
     }
 }
 
