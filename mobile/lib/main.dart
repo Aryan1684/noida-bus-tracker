@@ -352,7 +352,7 @@ class Home extends StatefulWidget { final bool dark; final VoidCallback toggle; 
 class _HomeState extends State<Home> {
  static const api='https://noida-bus-tracker.onrender.com';
  final map=MapController(); final search=TextEditingController(); Timer? refreshTimer,searchTimer;
- LatLng location=const LatLng(28.4598,77.5184); List<dynamic> buses=[]; List<dynamic> suggestions=[]; Set<String> favs={}; Map<String,List<LatLng>> history={}; List<LatLng> trail=[]; Map<String,DateTime> alertHistory={};
+ LatLng location=const LatLng(28.4598,77.5184); List<dynamic> buses=[]; List<dynamic> suggestions=[]; Set<String> favs={}; Map<String,List<LatLng>> history={}; Map<String,List<DateTime>> historyTimes={}; List<LatLng> trail=[]; Map<String,DateTime> alertHistory={};
  double radius=5; bool loading=false,locating=false,movePin=false,stops=false,following=false,permissionBlocked=false,dontShowNotice=false,nearbyAlerts=false; String? error,selected,followed; String locationLabel='Use your current location'; DateTime? refreshed;
  final stopData=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060]];
  final searchPlaces=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Sector 62',28.6280,77.3770],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Gaur Chowk',28.6150,77.4350],['Gaur City',28.6155,77.4240],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060],['Sector 90',28.5340,77.4380],['Noida International Airport',28.5562,77.5849]];
@@ -540,7 +540,9 @@ class _HomeState extends State<Home> {
       if (id == null || lat == null || lon == null) continue;
 
       history.putIfAbsent(id, () => []).add(LatLng(lat, lon));
+      historyTimes.putIfAbsent(id, () => []).add(DateTime.now());
       if (history[id]!.length > 30) history[id]!.removeAt(0);
+      if (historyTimes[id]!.length > 30) historyTimes[id]!.removeAt(0);
     }
 
     if (!mounted) return;
@@ -629,6 +631,40 @@ class _HomeState extends State<Home> {
       ),
     );
 }
+
+ double _movedLastMinutes(String id,{int minutes=5}){
+  final points=history[id]??[];
+  final times=historyTimes[id]??[];
+  if(points.length<2||times.length!=points.length)return 0;
+  final cutoff=DateTime.now().subtract(Duration(minutes:minutes));
+  var start=0;
+  while(start<times.length-1&&times[start].isBefore(cutoff))start++;
+  if(start>=points.length-1)return 0;
+  final distance=const Distance();
+  var total=0.0;
+  for(var i=start+1;i<points.length;i++){
+    total+=distance.as(LengthUnit.Kilometer,points[i-1],points[i]);
+  }
+  return total;
+ }
+
+ String? _routeForBus(String id){
+  const routes={
+    'UP80KT3702':'R1',
+    'UP80KT4582':'R1',
+    'UP70PT6077':'R1',
+    'UP70PT6268':'R1',
+    'UP80LT4113':'R1',
+    'UP80LT4117':'R1',
+    'UP80LT4126':'R1',
+    'UP80KT3630':'R1',
+    'UP80KT3703':'R1',
+    'UP70PT6330':'R1',
+    'UP80LT4114':'R1',
+    'UP80LT4120':'R1',
+  };
+  return routes[id.toUpperCase()];
+ }
 
  dynamic _find(String id){for(final b in buses){if(b['bus_id'].toString()==id)return b;}return null;}
  void _center(dynamic b,bool select){final a=double.tryParse(b['latitude'].toString()),o=double.tryParse(b['longitude'].toString());if(a==null||o==null)return;if(select)setState(()=>selected=b['bus_id'].toString());map.move(LatLng(a,o),16);}
@@ -1203,8 +1239,167 @@ class _HomeState extends State<Home> {
 }
 
  Widget _header(){final t=refreshed==null?'Waiting for a location':'Updated '+refreshed!.hour.toString().padLeft(2,'0')+':'+refreshed!.minute.toString().padLeft(2,'0')+' · Auto refresh 45s';return Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Nearby electric buses',style:TextStyle(fontSize:20,fontWeight:FontWeight.w800)),Text(t,style:const TextStyle(fontSize:12,color:Color(0xFF6B7280)))])),IconButton(onPressed:loading?null:_load,icon:const Icon(Icons.refresh))]);}
- Widget _card(dynamic b){final id=b['bus_id'].toString(),speed=double.tryParse(b['speed'].toString()),dist=double.tryParse(b['distance_km'].toString()),dir=b['likely_towards'];return Card(elevation:selected==id?3:0,margin:const EdgeInsets.only(top:10),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20),side:BorderSide(color:selected==id?const Color(0xFFB8F26B):Theme.of(context).dividerColor)),child:InkWell(onTap:()=>_center(b,true),child:Padding(padding:const EdgeInsets.all(15),child:Column(children:[Row(children:[Container(width:50,height:50,decoration:BoxDecoration(color:Theme.of(context).colorScheme.surfaceContainerHighest,borderRadius:BorderRadius.circular(15)),child:const Icon(Icons.directions_bus,size:26)),const SizedBox(width:12),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(id,style:const TextStyle(fontSize:16,fontWeight:FontWeight.w800)),Wrap(spacing:10,children:[if(dist!=null)Text(dist.toStringAsFixed(2)+' km',style:const TextStyle(fontSize:12,color:Color(0xFF6B7280))),if(speed!=null)Text(speed.toStringAsFixed(0)+' km/h',style:const TextStyle(fontSize:12,color:Color(0xFF6B7280))),Text((b['vehicle_status']??'Status unknown').toString(),style:const TextStyle(fontSize:12,color:Color(0xFF6B7280)))])])),IconButton(onPressed:()=>_fav(id),icon:Icon(favs.contains(id)?Icons.star:Icons.star_border,color:favs.contains(id)?const Color(0xFFB45309):null))]),if(dir is String&&dir.isNotEmpty)Padding(padding:const EdgeInsets.only(top:9),child:Row(children:[const Icon(Icons.trending_flat,size:20),const SizedBox(width:7),Expanded(child:Text('Moving towards '+dir,style:const TextStyle(fontWeight:FontWeight.w700)))])),const SizedBox(height:9),Wrap(spacing:6,runSpacing:6,children:[_chip('ETA',Icons.timer_outlined,()=>_eta(b)),_chip(followed==id&&following?'Following':'Follow',Icons.center_focus_strong,()=>_follow(b)),_chip('Trail',Icons.route_outlined,()=>_trail(b)),_chip('Playback',Icons.play_arrow,()=>_play(b)),_chip('Share',Icons.share_outlined,()=>_share(b)),_chip('Report',Icons.flag_outlined,()=>_report(b))])]))));}
- Widget _chip(String s,IconData i,VoidCallback f)=>ActionChip(avatar:Icon(i,size:16),label:Text(s),onPressed:f);
+ Widget _card(dynamic b){
+  final id=b['bus_id'].toString();
+  final speed=double.tryParse(b['speed'].toString());
+  final dist=double.tryParse(b['distance_km'].toString());
+  final dir=b['likely_towards'];
+  final route=_routeForBus(id);
+  final moved=_movedLastMinutes(id);
+  final isSelected=selected==id;
+
+  return Card(
+    elevation:isSelected?4:0,
+    margin:const EdgeInsets.only(top:10),
+    shape:RoundedRectangleBorder(
+      borderRadius:BorderRadius.circular(20),
+      side:BorderSide(
+        color:isSelected?const Color(0xFFB8F26B):Theme.of(context).dividerColor,
+        width:isSelected?1.5:1,
+      ),
+    ),
+    child:InkWell(
+      borderRadius:BorderRadius.circular(20),
+      onTap:()=>_center(b,true),
+      child:Padding(
+        padding:const EdgeInsets.all(15),
+        child:Column(
+          crossAxisAlignment:CrossAxisAlignment.start,
+          children:[
+            Row(
+              children:[
+                Container(
+                  width:50,
+                  height:50,
+                  decoration:BoxDecoration(
+                    color:Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius:BorderRadius.circular(15),
+                  ),
+                  child:const Icon(Icons.directions_bus,size:26),
+                ),
+                const SizedBox(width:12),
+                Expanded(
+                  child:Column(
+                    crossAxisAlignment:CrossAxisAlignment.start,
+                    children:[
+                      Row(
+                        children:[
+                          Flexible(
+                            child:Text(
+                              id,
+                              maxLines:1,
+                              overflow:TextOverflow.ellipsis,
+                              style:const TextStyle(fontSize:16,fontWeight:FontWeight.w800),
+                            ),
+                          ),
+                          if(route!=null) ...[
+                            const SizedBox(width:8),
+                            Container(
+                              padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+                              decoration:BoxDecoration(
+                                color:const Color(0xFF111827),
+                                borderRadius:BorderRadius.circular(7),
+                              ),
+                              child:Text(
+                                route,
+                                style:const TextStyle(
+                                  color:Colors.white,
+                                  fontSize:10,
+                                  fontWeight:FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height:4),
+                      Wrap(
+                        spacing:10,
+                        runSpacing:3,
+                        children:[
+                          if(dist!=null)Text(
+                            dist.toStringAsFixed(2)+' km',
+                            style:const TextStyle(fontSize:12,color:Color(0xFF6B7280)),
+                          ),
+                          if(speed!=null)Text(
+                            speed.toStringAsFixed(0)+' km/h',
+                            style:const TextStyle(fontSize:12,color:Color(0xFF6B7280)),
+                          ),
+                          Text(
+                            (b['vehicle_status']??'Status unknown').toString(),
+                            style:const TextStyle(fontSize:12,color:Color(0xFF6B7280)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed:()=>_fav(id),
+                  icon:Icon(
+                    favs.contains(id)?Icons.star:Icons.star_border,
+                    color:favs.contains(id)?const Color(0xFFB45309):null,
+                  ),
+                ),
+              ],
+            ),
+            if(dir is String&&dir.isNotEmpty)
+              Padding(
+                padding:const EdgeInsets.only(top:10),
+                child:Row(
+                  children:[
+                    const Icon(Icons.trending_flat,size:20),
+                    const SizedBox(width:7),
+                    Expanded(
+                      child:Text(
+                        'Moving towards '+dir,
+                        style:const TextStyle(fontWeight:FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height:10),
+            Container(
+              width:double.infinity,
+              padding:const EdgeInsets.symmetric(horizontal:11,vertical:10),
+              decoration:BoxDecoration(
+                color:Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(.55),
+                borderRadius:BorderRadius.circular(13),
+              ),
+              child:Row(
+                children:[
+                  const Icon(Icons.route_rounded,size:18,color:Color(0xFF15803D)),
+                  const SizedBox(width:8),
+                  Expanded(
+                    child:Text(
+                      'Moved '+moved.toStringAsFixed(2)+' km in the last 5 min',
+                      style:const TextStyle(fontSize:12,fontWeight:FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height:9),
+            Wrap(
+              spacing:6,
+              runSpacing:6,
+              children:[
+                _chip('ETA',Icons.timer_outlined,()=>_eta(b)),
+                _chip(followed==id&&following?'Following':'Follow',Icons.center_focus_strong,()=>_follow(b)),
+                _chip('Trail',Icons.route_outlined,()=>_trail(b)),
+                _chip('Playback',Icons.play_arrow,()=>_play(b)),
+                _chip('Share',Icons.share_outlined,()=>_share(b)),
+                _chip('Report',Icons.flag_outlined,()=>_report(b)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
  Widget _error() {
   return Card(
     color: const Color(0xFFFFF7ED),
