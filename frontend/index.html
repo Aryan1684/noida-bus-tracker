@@ -90,11 +90,14 @@
                 </div>
                 <span id="locationStatusDot" class="status-dot"></span>
             </div>
-            <div class="search-wrap">
-                <span class="search-icon">⌕</span>
-                <input id="placeSearch" type="search" placeholder="Search Sector 62, Pari Chowk, Botanical Garden..." autocomplete="off" spellcheck="false">
-                <button id="clearSearch" class="clear-search hidden" aria-label="Clear search">×</button>
-                <div id="searchSuggestions" class="search-suggestions hidden"></div>
+            <div class="location-picker">
+                <div class="search-wrap">
+                    <span class="search-icon">⌕</span>
+                    <input id="placeSearch" type="search" placeholder="Search any place in Noida..." autocomplete="off" spellcheck="false">
+                    <button id="clearSearch" class="clear-search hidden" aria-label="Clear search">×</button>
+                    <div id="searchSuggestions" class="search-suggestions hidden"></div>
+                </div>
+                <button id="finderLocationBtn" class="location-use-button" type="button"><span>⌖</span> Use my current location</button>
             </div>
             <div class="location-status"><span id="locationMessage">Search for a place or use your location.</span></div>
         </section>
