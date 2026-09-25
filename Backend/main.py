@@ -89,14 +89,15 @@ def search_location(
         "language": "en",
         "autocomplete": "true",
         "limit": 5,
-        "proximity": "77.3910,28.5355"
+        "proximity": "77.3910,28.5355",
+        "bbox": "77.20,28.35,77.65,28.80"
     }
 
     try:
         response = requests.get(
             url,
             params=params,
-            timeout=999
+            timeout=8
         )
 
         response.raise_for_status()
