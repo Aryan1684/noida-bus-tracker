@@ -1124,7 +1124,7 @@ function initializePlaceSearch() {
             return;
         }
 
-        searchTimer = setTimeout(() => searchPlaces(query), 350);
+        searchTimer = setTimeout(() => searchPlaces(query), 180);
     });
 
     document.addEventListener("click", event => {
@@ -1135,6 +1135,8 @@ function initializePlaceSearch() {
 }
 
 async function searchPlaces(query) {
+    const input = document.getElementById("placeSearch");
+    if (input) input.setAttribute("aria-busy", "true");
     const suggestions = document.getElementById("searchSuggestions");
     if (!suggestions) return;
 
@@ -1142,10 +1144,13 @@ async function searchPlaces(query) {
 
     try {
         const response = await fetch(
-            "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&countrycodes=in&viewbox=77.20,28.75,77.75,28.20&bounded=1&q=" +
+            "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&countrycodes=in&viewbox=77.20,28.75,77.75,28.20&q=" +
             encodeURIComponent(query),
             {
-                headers: {"Accept": "application/json"},
+                headers: {
+                    "Accept": "application/json",
+                    "Accept-Language": "en-IN,en;q=0.9"
+                },
                 signal: searchController.signal
             }
         );
@@ -1198,6 +1203,8 @@ async function searchPlaces(query) {
             suggestions.innerHTML = "<div class='search-empty'>Search is temporarily unavailable</div>";
             suggestions.classList.remove("hidden");
         }
+    } finally {
+        if (input) input.setAttribute("aria-busy", "false");
     }
 }
 
