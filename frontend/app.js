@@ -1142,8 +1142,8 @@ async function searchPlaces(query) {
 
     try {
         const response = await fetch(
-            "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=in&viewbox=77.25,28.70,77.65,28.30&bounded=1&q=" +
-            encodeURIComponent(query + ", Noida"),
+            "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&countrycodes=in&viewbox=77.20,28.75,77.75,28.20&bounded=1&q=" +
+            encodeURIComponent(query),
             {
                 headers: {"Accept": "application/json"},
                 signal: searchController.signal
@@ -1178,7 +1178,7 @@ async function searchPlaces(query) {
                 loadNearbyBuses(confirmedLocation);
                 startAutoRefresh();
                 map.setView([lat, lon], 15, {animate: true, duration: 0.7});
-                input.value = result.display_name.split(",")[0];
+                input.value = result.display_name;
                 suggestions.classList.add("hidden");
                 pinAdjustMode = false;
                 if (locationMarker) locationMarker.dragging.disable();
