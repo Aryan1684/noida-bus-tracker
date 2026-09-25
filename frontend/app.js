@@ -38,6 +38,7 @@ document.addEventListener(
     () => {
         initializeMap();
         initializeWarningModal();
+        initializeTradeFairNotice();
 
         document
             .getElementById("locationBtn")
@@ -99,6 +100,22 @@ document.addEventListener(
         initializePinControl();
     }
 );
+
+function initializeTradeFairNotice() {
+    const notice = document.getElementById("tradeFairNotice");
+    if (!notice) return;
+
+    const today = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    }).format(new Date());
+
+    if (today >= "2026-09-25" && today <= "2026-09-29") {
+        notice.classList.remove("hidden");
+    }
+}
 
 function initializeWarningModal() {
     const modal =
