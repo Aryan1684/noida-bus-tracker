@@ -3,143 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#f7f7f2">
-    <meta name="description" content="Track Noida electric buses with live GPS locations. Find nearby buses, explore routes and see estimated movement across Noida and Greater Noida.">
-    <title>Noida Electric Bus Tracker – Live Bus Tracking</title>
+    <meta name="theme-color" content="#f5f6f8">
+    <meta name="description" content="Track Noida electric buses with live GPS locations and find the nearest buses around you.">
+    <title>Noida Electric Bus Tracker</title>
     <link rel="canonical" href="https://noidabus.netlify.app/">
-    <meta property="og:title" content="Noida Electric Bus Tracker – Live Bus Tracking">
-    <meta property="og:description" content="Find nearby Noida electric buses using live GPS data and explore bus routes across Noida and Greater Noida.">
+    <meta property="og:title" content="Noida Electric Bus Tracker">
+    <meta property="og:description" content="Find nearby Noida electric buses using live GPS locations.">
     <meta property="og:url" content="https://noidabus.netlify.app/">
     <meta property="og:type" content="website">
     <script type="application/ld+json">
     {
-      "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "Noida Electric Bus Tracker",
-      "url": "https://noidabus.netlify.app/",
-      "description": "Live GPS tracking for Noida electric buses with nearby bus discovery and route information.",
-      "applicationCategory": "TravelApplication",
-      "operatingSystem": "Web"
+      "@context":"https://schema.org",
+      "@type":"WebApplication",
+      "name":"Noida Electric Bus Tracker",
+      "url":"https://noidabus.netlify.app/",
+      "description":"Live GPS tracking for Noida electric buses.",
+      "applicationCategory":"TravelApplication",
+      "operatingSystem":"Web"
     }
     </script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="warningModal" class="modal-overlay">
-        <div class="warning-modal">
-            <div class="modal-mark">!</div>
-            <p class="eyebrow">Before you start</p>
-            <h2>One important note</h2>
-            <p>Bus locations come from live GPS data. The “moving towards” information is an estimate from recent movement and can be wrong near junctions, turns or route changes.</p>
-            <p class="project-disclaimer"><strong>Not a government website.</strong><br>This is an independent project made by a curious BTech student.</p>
-            <p class="source-note">Data source: <strong>MARGDARSHI · UPSRTC</strong></p>
-            <button id="warningAcceptBtn" class="button button-dark button-wide">Got it</button>
-        </div>
-    </div>
-
     <header class="topbar">
         <div class="topbar-inner">
             <a class="brand" href="#">
                 <span class="brand-symbol">NB</span>
                 <span>
                     <strong>Noida Bus Tracker</strong>
-                    <small>Independent project</small>
+                    <small>Live bus locations</small>
                 </span>
             </a>
-            <div class="top-actions">
+            <nav class="top-actions" aria-label="Site actions">
                 <span class="live-status"><i></i> Live GPS</span>
-                <a class="get-app-button" href="/noida-bus-tracker.apk" download aria-label="Get the Android app" title="Get Android app">
-                    <span class="get-app-icon">↓</span>
-                    <span>Get App</span>
-                </a>
+                <a class="get-app-button" href="/noida-bus-tracker.apk" download><span>↓</span> Android app</a>
                 <button id="themeToggle" class="icon-button" aria-label="Toggle dark mode" title="Toggle dark mode"><span id="themeIcon">☾</span></button>
-            </div>
+            </nav>
         </div>
     </header>
 
     <main>
-        <section class="hero">
-            <div class="hero-grid">
-                <div class="hero-copy">
-                    <div class="hero-kicker"><span class="pulse-dot"></span> LIVE FLEET · NOIDA / GREATER NOIDA</div>
-                    <h1>Find the bus.<br><em>Catch it.</em></h1>
-                    <p>See nearby electric buses on a live map, sorted by distance from you.</p>
-                    <div class="hero-actions">
-                        <button id="locationBtn" class="button button-hero">
-                            <span>⌖</span> Use current location
-                        </button>
-                        <a class="get-app-hero" href="/noida-bus-tracker.apk" download>
-                            <span>↓</span> Android App
-                        </a>
-                    </div>
-                    <div class="hero-micro"><span>LIVE GPS</span><i></i><span>45 sec refresh</span><i></i><span>Free · No login</span></div>
-                </div>
-                <div class="hero-visual" aria-hidden="true">
-                    <div class="radar"></div>
-                    <div class="route-line route-line-a"></div>
-                    <div class="route-line route-line-b"></div>
-                    <div class="mini-stop stop-a"></div>
-                    <div class="mini-stop stop-b"></div>
-                    <div class="mini-stop stop-c"></div>
-                    <div class="hero-bus">
-                        <div class="bus-window"></div>
-                        <span></span><span></span>
-                    </div>
-                    <div class="hero-map-label label-a">BOTANICAL</div>
-                    <div class="hero-map-label label-b">PARI CHOWK</div>
-                    <div class="hero-distance">0.8 km</div>
+        <section class="intro">
+            <div class="intro-copy">
+                <p class="eyebrow">NOIDA · GREATER NOIDA</p>
+                <h1>Find an electric bus near you.</h1>
+                <p class="intro-text">Use your location or search a place. Nearby buses appear on the map and are sorted by distance.</p>
+                <div class="intro-actions">
+                    <button id="locationBtn" class="button button-primary"><span>⌖</span> Use my location</button>
+                    <a class="button button-secondary" href="#busMap">View map</a>
                 </div>
             </div>
-            <div class="hero-stats">
-                <div><strong>LIVE</strong><span>GPS positions</span></div>
-                <div><strong>NEAREST FIRST</strong><span>Distance-ranked results</span></div>
-                <div><strong>NO LOGIN</strong><span>Open & simple</span></div>
+            <div class="intro-illustration" aria-hidden="true">
+                <div class="illustration-road"></div>
+                <div class="illustration-stop stop-one"></div>
+                <div class="illustration-stop stop-two"></div>
+                <div class="illustration-stop stop-three"></div>
+                <div class="illustration-bus"><span></span><span></span></div>
+                <div class="illustration-label label-one">BUS</div>
+                <div class="illustration-label label-two">0.8 km</div>
             </div>
         </section>
 
-        <section id="tradeFairNotice" class="trade-fair-notice hidden" aria-label="UP Trade Fair free bus service notice">
-            <div class="trade-fair-icon">₹0</div>
-            <div class="trade-fair-copy">
-                <p class="eyebrow">UP TRADE FAIR · 25–29 SEP 2026</p>
-                <h2>Free travel on 25 selected buses</h2>
-                <p>During the UP Trade Fair, free bus travel is being provided on 25 selected buses from <strong>25 September to 29 September</strong>.</p>
-                <p class="trade-fair-note"><strong>How to identify them:</strong> the selected buses have two <strong>“निःशुल्क सेवा” (Nisul Seva)</strong> stickers, one on the front and one on the rear of the bus.</p>
-                <p class="trade-fair-note">The live GPS feed does not identify which buses are part of the 25-bus free-service group, so the stickers on the bus are the reliable way to confirm.</p>
+        <section id="tradeFairNotice" class="trade-fair-notice hidden" aria-label="UP Trade Fair free bus service">
+            <div class="trade-fair-main">
+                <div class="trade-fair-icon">₹0</div>
+                <div>
+                    <p class="eyebrow">UP INTERNATIONAL TRADE SHOW · 25–29 SEP</p>
+                    <h2>25 buses have free travel</h2>
+                    <p>Selected e-city buses are running free service during the Trade Show.</p>
+                </div>
+            </div>
+            <div class="trade-fair-countdown"><span>Ends in</span><strong id="tradeFairCountdown">--d --h --m --s</strong></div>
+            <div class="trade-fair-detail">
+                <strong>How to identify them</strong>
+                <span>Look for two <b>“निःशुल्क सेवा” (Nisul Seva)</b> stickers, one on the front and one on the rear.</span>
+                <small>The live GPS feed does not mark the 25 free-service buses, so the stickers are the confirmation.</small>
             </div>
         </section>
 
-        <section class="location-panel">
-            <div class="location-copy">
-                <p class="eyebrow">START HERE</p>
-                <h1>Noida Electric Bus Tracker</h1>
-                <p>Track nearby electric buses with live GPS locations across Noida and Greater Noida.</p>
+        <section class="finder">
+            <div class="finder-head">
+                <div>
+                    <p class="eyebrow">YOUR LOCATION</p>
+                    <h2>Where are you?</h2>
+                </div>
+                <span id="locationStatusDot" class="status-dot"></span>
             </div>
-
-            <div class="location-actions">
-                <button id="confirmBtn" class="button button-accent" disabled>
-                    Confirm location
-                </button>
-            </div>
-
             <div class="search-wrap">
                 <span class="search-icon">⌕</span>
                 <input id="placeSearch" type="search" placeholder="Search Sector 62, Pari Chowk, Botanical Garden..." autocomplete="off" spellcheck="false">
                 <button id="clearSearch" class="clear-search hidden" aria-label="Clear search">×</button>
                 <div id="searchSuggestions" class="search-suggestions hidden"></div>
             </div>
-
-            <div class="location-status">
-                <span id="locationStatusDot"></span>
-                <span id="locationMessage">Search for a place or use your current location.</span>
-            </div>
+            <div class="location-status"><span id="locationMessage">Search for a place or use your location.</span></div>
         </section>
 
-        <section class="map-card">
-            <div class="map-head">
+        <section id="busMap" class="map-section">
+            <div class="section-head">
                 <div>
                     <p class="eyebrow">LIVE MAP</p>
-                    <h2>Bus map</h2>
+                    <h2>Nearby buses</h2>
                 </div>
                 <div class="map-controls">
                     <select id="radiusSelect" aria-label="Search radius">
@@ -152,60 +116,37 @@
                     <button id="mapLocateBtn" class="small-button">My location</button>
                 </div>
             </div>
-            <div class="map-help"><span>Drag the map to explore</span><span>•</span><span>Pin is locked by default</span></div>
+            <div class="map-toolbar"><span id="lastRefreshed">Waiting for a location</span><span>•</span><span>GPS positions refresh automatically</span></div>
             <div class="map-shell"><div id="map"></div></div>
         </section>
 
         <section class="results-section">
             <div class="results-head">
                 <div>
-                    <p class="eyebrow">NEARBY</p>
-                    <h2>Electric buses</h2>
-                    <p id="lastRefreshed" class="subtle">Waiting for a location</p>
+                    <p class="eyebrow">RESULTS</p>
+                    <h2><span id="busCount">0 buses</span> nearby</h2>
                 </div>
-                <div class="results-actions">
-                    <span id="nearestBadge" class="nearest-badge">Nearest first</span>
-                    <span id="busCount" class="count-pill">0 buses</span>
-                    <button id="refreshBtn" class="small-button refresh-button" disabled><span>↻</span> Refresh</button>
-                </div>
+                <button id="refreshBtn" class="small-button refresh-button" disabled><span>↻</span> Refresh</button>
             </div>
-
-            <div id="loadingState" class="state hidden">
-                <div class="spinner"></div>
-                <h3>Finding buses</h3>
-                <p>Getting the latest GPS positions.</p>
-            </div>
-
-            <div id="errorState" class="state state-error hidden">
-                <div class="state-mark">!</div>
-                <h3>Couldn’t load buses</h3>
-                <p id="errorMessage">The bus service is temporarily unavailable.</p>
-                <button id="retryBtn" class="button button-dark">Try again</button>
-            </div>
-
-            <div id="emptyState" class="state hidden">
-                <div class="state-mark">⌁</div>
-                <h3>No buses in this radius</h3>
-                <p>Try a larger radius or choose another location.</p>
-            </div>
-
+            <div id="loadingState" class="state hidden"><div class="spinner"></div><h3>Finding buses</h3><p>Getting the latest GPS positions.</p></div>
+            <div id="errorState" class="state state-error hidden"><div class="state-mark">!</div><h3>Couldn’t load buses</h3><p id="errorMessage">The bus service is temporarily unavailable.</p><button id="retryBtn" class="button button-primary">Try again</button></div>
+            <div id="emptyState" class="state hidden"><div class="state-mark">⌁</div><h3>No buses in this radius</h3><p>Try a larger radius or choose another location.</p></div>
             <div id="busList" class="bus-grid"></div>
         </section>
 
-        <section class="about-strip reveal">
-            <div class="about-metric"><strong>Independent</strong><span>Community project</span></div>
-            <div>
-                <p class="eyebrow">ABOUT THIS PROJECT</p>
-                <h2>Built to make Noida’s electric buses easier to find.</h2>
+        <section class="data-note">
+            <div><p class="eyebrow">DATA</p><h2>What you are seeing</h2></div>
+            <div class="data-note-copy">
+                <p>Bus positions come from MARGDARSHI · UPSRTC. “Moving towards” is an estimate based on recent GPS movement and can be wrong near turns or route changes.</p>
+                <p>This is an independent project and is not a government website.</p>
             </div>
-            <p>Live location data is sourced from MARGDARSHI · UPSRTC. This website is not affiliated with or operated by any government department.</p>
         </section>
     </main>
 
     <footer>
         <strong>Noida Bus Tracker</strong>
         <span>Independent project by a curious BTech student</span>
-        <span>Not a government website · Live data from MARGDARSHI · UPSRTC</span>
+        <span>Live data from MARGDARSHI · UPSRTC</span>
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
