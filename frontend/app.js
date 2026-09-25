@@ -40,19 +40,22 @@ document.addEventListener(
         initializeWarningModal();
         initializeTradeFairNotice();
 
-        document
-            .getElementById("locationBtn")
-            .addEventListener(
-                "click",
-                getUserLocation
-            );
+        const locationButton = document.getElementById("locationBtn");
+        if (locationButton) {
+            locationButton.addEventListener("click", () => getUserLocation("locationBtn"));
+        }
 
-        document
-            .getElementById("confirmBtn")
-            .addEventListener(
-                "click",
-                confirmLocation
-            );
+        const finderLocationButton = document.getElementById("finderLocationBtn");
+        if (finderLocationButton) {
+            finderLocationButton.addEventListener("click", () => getUserLocation("finderLocationBtn"));
+        }
+
+        const mapLocationButton = document.getElementById("mapLocateBtn");
+        if (mapLocationButton) {
+            mapLocationButton.addEventListener("click", () => getUserLocation("mapLocateBtn"));
+        }
+
+
 
         document
             .getElementById("refreshBtn")
@@ -100,22 +103,6 @@ document.addEventListener(
         initializePinControl();
     }
 );
-
-function initializeTradeFairNotice() {
-    const notice = document.getElementById("tradeFairNotice");
-    if (!notice) return;
-
-    const today = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Kolkata",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit"
-    }).format(new Date());
-
-    if (today >= "2026-09-25" && today <= "2026-09-29") {
-        notice.classList.remove("hidden");
-    }
-}
 
 function initializeTradeFairNotice() {
     const notice = document.getElementById("tradeFairNotice");
@@ -212,77 +199,82 @@ function initializeMap() {
     ).addTo(map);
 }
 
-function getUserLocation() {
+function getUserLocation(buttonId = "locationBtn") {
     if (!navigator.geolocation) {
-        alert(
-            "Geolocation is not supported by your browser."
-        );
-
+        updateLocationMessage("Your browser does not support location access.");
         return;
     }
 
-    const button =
-        document.getElementById(
-            "locationBtn"
-        );
+    const buttons = [
+        document.getElementById("locationBtn"),
+        document.getElementById("finderLocationBtn"),
+        document.getElementById("mapLocateBtn")
+    ].filter(Boolean);
 
-    button.textContent = "Locating...";
-    button.disabled = true;
+    const activeButton = document.getElementById(buttonId);
+
+    buttons.forEach(button => {
+        button.disabled = true;
+        button.dataset.originalText = button.textContent;
+    });
+
+    if (activeButton) activeButton.textContent = "Locating...";
+
+    updateLocationMessage("Requesting your current location...");
 
     navigator.geolocation.getCurrentPosition(
         position => {
-            setLocationMarker(
-                position.coords.latitude,
-                position.coords.longitude
-            );
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
 
-            showAddress(
-                position.coords.latitude,
-                position.coords.longitude
-            );
+            setLocationMarker(lat, lon);
+            confirmedLocation = { lat, lon };
+            selectedBusId = null;
 
-            confirmedLocation = {
-                lat: position.coords.latitude,
-                lon: position.coords.longitude
-            };
+            const input = document.getElementById("placeSearch");
+            if (input) input.value = "";
 
-            document.getElementById("refreshBtn").disabled = false;
+            const refreshButton = document.getElementById("refreshBtn");
+            if (refreshButton) refreshButton.disabled = false;
+
+            const dot = document.getElementById("locationStatusDot");
+            if (dot) dot.classList.add("ready");
+
             updateLocationMessage("Location found. Finding nearby electric buses...");
             loadNearbyBuses(confirmedLocation);
             startAutoRefresh();
 
-            map.setView(
-                [
-                    position.coords.latitude,
-                    position.coords.longitude
-                ],
-                15
-            );
+            map.setView([lat, lon], 15, { animate: true, duration: 0.5 });
+            showAddress(lat, lon);
 
-            button.innerHTML =
-                "<span>✓</span> Location Found";
-
-            button.disabled = false;
+            buttons.forEach(button => {
+                button.disabled = false;
+                button.textContent = button.id === "mapLocateBtn" ? "My location" : "⌖ " + (button.id === "finderLocationBtn" ? "Use my current location" : "Use my location");
+            });
         },
         error => {
-            console.error(
-                "Location error:",
-                error
-            );
+            console.error("Location error:", error);
 
-            button.innerHTML =
-                "<span>📍</span> Find Buses Near Me";
+            let message = "Unable to get your location.";
+            if (error.code === 1) {
+                message = "Location permission was denied. Allow location access for this site and try again.";
+            } else if (error.code === 2) {
+                message = "Your location could not be determined. Check device location services and try again.";
+            } else if (error.code === 3) {
+                message = "Location request timed out. Try again.";
+            }
 
-            button.disabled = false;
+            updateLocationMessage(message);
 
-            alert(
-                "Unable to get your location. Please allow location access."
-            );
+            buttons.forEach(button => {
+                button.disabled = false;
+                button.textContent = button.dataset.originalText || "Use my location";
+            });
         },
         {
             enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 30000
+            timeout: 20000,
+            maximumAge: 60000
         }
     );
 }
@@ -376,13 +368,12 @@ function setLocationMarker(
                     "refreshBtn"
                 ).disabled = true;
 
-                document.getElementById(
-                    "confirmBtn"
-                ).disabled = false;
-
-                updateLocationMessage(
-                    "Pin moved. Confirm this location to find nearby buses."
-                );
+                const refreshButton = document.getElementById("refreshBtn");
+                if (refreshButton) refreshButton.disabled = false;
+                confirmedLocation = { lat: position.lat, lon: position.lng };
+                updateLocationMessage("Pin moved. Finding nearby electric buses...");
+                loadNearbyBuses(confirmedLocation);
+                startAutoRefresh();
             }
         );
     }
@@ -393,40 +384,11 @@ function setLocationMarker(
         )
         .openPopup();
 
-    document.getElementById("refreshBtn").disabled = true;
+    const refreshButton = document.getElementById("refreshBtn");
+    if (refreshButton) refreshButton.disabled = !confirmedLocation;
     const dot = document.getElementById("locationStatusDot");
     if (dot) dot.classList.add("ready");
-    updateLocationMessage("Location selected. Use Move pin if you want to change it.");
-}
-
-function confirmLocation() {
-    if (!userLocation) {
-        return;
-    }
-
-    confirmedLocation = {
-        lat: userLocation.lat,
-        lon: userLocation.lon
-    };
-
-    selectedBusId = null;
-
-    const confirmButton = document.getElementById("confirmBtn");
-    if (confirmButton) confirmButton.disabled = true;
-
-    document.getElementById(
-        "refreshBtn"
-    ).disabled = false;
-
-    updateLocationMessage(
-        "Location confirmed. Finding nearby electric buses..."
-    );
-
-    loadNearbyBuses(
-        confirmedLocation
-    );
-
-    startAutoRefresh();
+    updateLocationMessage(confirmedLocation ? "Location selected. Finding nearby electric buses..." : "Location selected.");
 }
 
 function startAutoRefresh() {
@@ -1113,6 +1075,8 @@ function initializePlaceSearch() {
     if (!input || !suggestions) return;
 
     input.addEventListener("input", () => {
+        const clearButton = document.getElementById("clearSearch");
+        if (clearButton) clearButton.classList.toggle("hidden", input.value.trim().length === 0);
         const query = input.value.trim();
         clearTimeout(searchTimer);
 
@@ -1126,6 +1090,17 @@ function initializePlaceSearch() {
 
         searchTimer = setTimeout(() => searchPlaces(query), 180);
     });
+
+    const clearButton = document.getElementById("clearSearch");
+    if (clearButton) {
+        clearButton.addEventListener("click", () => {
+            input.value = "";
+            suggestions.innerHTML = "";
+            suggestions.classList.add("hidden");
+            clearButton.classList.add("hidden");
+            input.focus();
+        });
+    }
 
     document.addEventListener("click", event => {
         if (!event.target.closest(".search-wrap")) {
@@ -1143,23 +1118,41 @@ async function searchPlaces(query) {
     searchController = new AbortController();
 
     input.setAttribute("aria-busy", "true");
-    suggestions.innerHTML = "<div class='search-empty'>Searching…</div>";
+    suggestions.innerHTML = "<div class='search-empty'>Searching...</div>";
     suggestions.classList.remove("hidden");
 
     try {
-        const response = await fetch(
-            API_BASE_URL +
-            "/api/search-location?q=" +
-            encodeURIComponent(query),
-            {
-                signal: searchController.signal
-            }
+        let results = [];
+        let response = await fetch(
+            API_BASE_URL + "/api/search-location?q=" + encodeURIComponent(query),
+            { signal: searchController.signal }
         );
 
-        if (!response.ok) throw new Error("Search failed");
+        if (response.ok) {
+            const data = await response.json();
+            results = Array.isArray(data.results) ? data.results : [];
+        }
 
-        const data = await response.json();
-        const results = Array.isArray(data.results) ? data.results : [];
+        if (!results.length) {
+            const fallbackUrl =
+                "https://nominatim.openstreetmap.org/search?format=jsonv2" +
+                "&q=" + encodeURIComponent(query) +
+                "&countrycodes=in&limit=5&addressdetails=1";
+
+            const fallbackResponse = await fetch(fallbackUrl, {
+                signal: searchController.signal,
+                headers: { "Accept": "application/json" }
+            });
+
+            if (fallbackResponse.ok) {
+                const fallbackData = await fallbackResponse.json();
+                results = fallbackData.map(item => ({
+                    name: item.display_name,
+                    latitude: Number(item.lat),
+                    longitude: Number(item.lon)
+                }));
+            }
+        }
 
         suggestions.innerHTML = "";
 
@@ -1181,11 +1174,9 @@ async function searchPlaces(query) {
             item.addEventListener("click", () => {
                 const lat = Number(result.latitude);
                 const lon = Number(result.longitude);
-
                 if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
 
                 setLocationMarker(lat, lon);
-
                 confirmedLocation = { lat, lon };
 
                 const refreshButton = document.getElementById("refreshBtn");
@@ -1199,12 +1190,9 @@ async function searchPlaces(query) {
 
                 input.value = label;
                 suggestions.classList.add("hidden");
-
                 pinAdjustMode = false;
 
-                if (locationMarker) {
-                    locationMarker.dragging.disable();
-                }
+                if (locationMarker) locationMarker.dragging.disable();
 
                 const button = document.getElementById("adjustPinBtn");
                 if (button) {
@@ -1217,6 +1205,7 @@ async function searchPlaces(query) {
         });
     } catch (error) {
         if (error.name !== "AbortError") {
+            console.error("Place search failed:", error);
             suggestions.innerHTML = "<div class='search-empty'>Search is temporarily unavailable</div>";
         }
     } finally {
