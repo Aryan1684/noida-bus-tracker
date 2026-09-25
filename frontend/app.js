@@ -1128,7 +1128,7 @@ function initializePlaceSearch() {
     });
 
     document.addEventListener("click", event => {
-        if (!event.target.closest(".map-search")) {
+        if (!event.target.closest(".search-wrap")) {
             suggestions.classList.add("hidden");
         }
     });
@@ -1136,34 +1136,35 @@ function initializePlaceSearch() {
 
 async function searchPlaces(query) {
     const input = document.getElementById("placeSearch");
-    if (input) input.setAttribute("aria-busy", "true");
     const suggestions = document.getElementById("searchSuggestions");
-    if (!suggestions) return;
+    if (!input || !suggestions) return;
 
+    if (searchController) searchController.abort();
     searchController = new AbortController();
+
+    input.setAttribute("aria-busy", "true");
+    suggestions.innerHTML = "<div class='search-empty'>Searching…</div>";
+    suggestions.classList.remove("hidden");
 
     try {
         const response = await fetch(
-            "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&countrycodes=in&viewbox=77.20,28.75,77.75,28.20&q=" +
+            API_BASE_URL +
+            "/api/search-location?q=" +
             encodeURIComponent(query),
             {
-                headers: {
-                    "Accept": "application/json",
-                    "Accept-Language": "en-IN,en;q=0.9"
-                },
                 signal: searchController.signal
             }
         );
 
         if (!response.ok) throw new Error("Search failed");
 
-        const results = await response.json();
+        const data = await response.json();
+        const results = Array.isArray(data.results) ? data.results : [];
 
         suggestions.innerHTML = "";
 
         if (!results.length) {
             suggestions.innerHTML = "<div class='search-empty'>No matching place found</div>";
-            suggestions.classList.remove("hidden");
             return;
         }
 
@@ -1171,43 +1172,57 @@ async function searchPlaces(query) {
             const item = document.createElement("button");
             item.type = "button";
             item.className = "search-result";
-            item.innerHTML = "<strong>" + escapeHtml(result.display_name.split(",")[0]) + "</strong><span>" + escapeHtml(result.display_name) + "</span>";
+
+            const label = result.name || "Unnamed place";
+            item.innerHTML =
+                "<strong>" + escapeHtml(label.split(",")[0]) + "</strong>" +
+                "<span>" + escapeHtml(label) + "</span>";
 
             item.addEventListener("click", () => {
-                const lat = Number(result.lat);
-                const lon = Number(result.lon);
+                const lat = Number(result.latitude);
+                const lon = Number(result.longitude);
+
+                if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
                 setLocationMarker(lat, lon);
-                confirmedLocation = {lat, lon};
-                document.getElementById("refreshBtn").disabled = false;
+
+                confirmedLocation = { lat, lon };
+
+                const refreshButton = document.getElementById("refreshBtn");
+                if (refreshButton) refreshButton.disabled = false;
+
                 updateLocationMessage("Place selected. Finding nearby electric buses...");
                 loadNearbyBuses(confirmedLocation);
                 startAutoRefresh();
-                map.setView([lat, lon], 15, {animate: true, duration: 0.7});
-                input.value = result.display_name;
+
+                map.setView([lat, lon], 15, { animate: true, duration: 0.5 });
+
+                input.value = label;
                 suggestions.classList.add("hidden");
+
                 pinAdjustMode = false;
-                if (locationMarker) locationMarker.dragging.disable();
+
+                if (locationMarker) {
+                    locationMarker.dragging.disable();
+                }
+
                 const button = document.getElementById("adjustPinBtn");
                 if (button) {
-                    button.textContent = "📍 Adjust pin";
+                    button.textContent = "Move pin";
                     button.classList.remove("active");
                 }
             });
 
             suggestions.appendChild(item);
         });
-
-        suggestions.classList.remove("hidden");
     } catch (error) {
         if (error.name !== "AbortError") {
             suggestions.innerHTML = "<div class='search-empty'>Search is temporarily unavailable</div>";
-            suggestions.classList.remove("hidden");
         }
     } finally {
-        if (input) input.setAttribute("aria-busy", "false");
+        input.setAttribute("aria-busy", "false");
     }
 }
-
 function escapeHtml(value) {
     return String(value).replace(/[&<>"']/g, char => ({
         "&":"&amp;",
