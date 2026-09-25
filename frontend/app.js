@@ -117,11 +117,46 @@ function initializeTradeFairNotice() {
     }
 }
 
+function initializeTradeFairNotice() {
+    const notice = document.getElementById("tradeFairNotice");
+    const countdown = document.getElementById("tradeFairCountdown");
+    if (!notice || !countdown) return;
+
+    const start = new Date("2026-09-25T00:00:00+05:30");
+    const end = new Date("2026-09-30T00:00:00+05:30");
+
+    const update = () => {
+        const now = new Date();
+        if (now < start || now >= end) {
+            notice.classList.add("hidden");
+            return;
+        }
+
+        notice.classList.remove("hidden");
+        const totalSeconds = Math.max(0, Math.floor((end - now) / 1000));
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor((totalSeconds % 86400) / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        countdown.textContent =
+            days + "d " +
+            String(hours).padStart(2, "0") + "h " +
+            String(minutes).padStart(2, "0") + "m " +
+            String(seconds).padStart(2, "0") + "s";
+    };
+
+    update();
+    setInterval(update, 1000);
+}
+
 function initializeWarningModal() {
     const modal =
         document.getElementById(
             "warningModal"
         );
+
+    if (!modal) return;
 
     const acceptButton =
         document.getElementById(
@@ -191,9 +226,7 @@ function getUserLocation() {
             "locationBtn"
         );
 
-    button.textContent =
-        "Getting Location...";
-
+    button.textContent = "Locating...";
     button.disabled = true;
 
     navigator.geolocation.getCurrentPosition(
@@ -207,6 +240,16 @@ function getUserLocation() {
                 position.coords.latitude,
                 position.coords.longitude
             );
+
+            confirmedLocation = {
+                lat: position.coords.latitude,
+                lon: position.coords.longitude
+            };
+
+            document.getElementById("refreshBtn").disabled = false;
+            updateLocationMessage("Location found. Finding nearby electric buses...");
+            loadNearbyBuses(confirmedLocation);
+            startAutoRefresh();
 
             map.setView(
                 [
@@ -350,17 +393,10 @@ function setLocationMarker(
         )
         .openPopup();
 
-    document.getElementById(
-        "confirmBtn"
-    ).disabled = false;
-
-    document.getElementById(
-        "refreshBtn"
-    ).disabled = true;
-
-    updateLocationMessage(
-        "Drag the pin to adjust the location, then click Confirm Location."
-    );
+    document.getElementById("refreshBtn").disabled = true;
+    const dot = document.getElementById("locationStatusDot");
+    if (dot) dot.classList.add("ready");
+    updateLocationMessage("Location selected. Use Move pin if you want to change it.");
 }
 
 function confirmLocation() {
@@ -375,9 +411,8 @@ function confirmLocation() {
 
     selectedBusId = null;
 
-    document.getElementById(
-        "confirmBtn"
-    ).disabled = true;
+    const confirmButton = document.getElementById("confirmBtn");
+    if (confirmButton) confirmButton.disabled = true;
 
     document.getElementById(
         "refreshBtn"
@@ -1057,17 +1092,17 @@ function initializePinControl() {
         if (locationMarker) {
             if (pinAdjustMode) {
                 locationMarker.dragging.enable();
-                button.textContent = "✓ Done adjusting";
+                button.textContent = "Done";
                 button.classList.add("active");
-                updateLocationMessage("Pin adjustment is on. Drag the pin or tap the map.");
+                updateLocationMessage("Drag the pin to move the search area.");
             } else {
                 locationMarker.dragging.disable();
-                button.textContent = "📍 Adjust pin";
+                button.textContent = "Move pin";
                 button.classList.remove("active");
-                updateLocationMessage("Pin locked. Confirm this location to find nearby buses.");
+                updateLocationMessage("Pin locked.");
             }
         } else {
-            button.textContent = "📍 Adjust pin";
+            button.textContent = "Move pin";
         }
     });
 }
@@ -1137,6 +1172,11 @@ async function searchPlaces(query) {
                 const lat = Number(result.lat);
                 const lon = Number(result.lon);
                 setLocationMarker(lat, lon);
+                confirmedLocation = {lat, lon};
+                document.getElementById("refreshBtn").disabled = false;
+                updateLocationMessage("Place selected. Finding nearby electric buses...");
+                loadNearbyBuses(confirmedLocation);
+                startAutoRefresh();
                 map.setView([lat, lon], 15, {animate: true, duration: 0.7});
                 input.value = result.display_name.split(",")[0];
                 suggestions.classList.add("hidden");
@@ -1176,8 +1216,6 @@ async function showAddress(latitude, longitude) {
     const message = document.getElementById("locationMessage");
     if (!message) return;
 
-    message.textContent = "Finding your current address...";
-
     try {
         const response = await fetch(
             "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" +
@@ -1191,12 +1229,12 @@ async function showAddress(latitude, longitude) {
 
         const data = await response.json();
         const address = data.display_name || "Current location selected";
-        message.textContent = "Current location: " + address;
+        if (!confirmedLocation) message.textContent = "Current location selected.";
         const input = document.getElementById("placeSearch");
         if (input && !input.value) {
             input.value = address.split(",").slice(0, 2).join(", ");
         }
     } catch (error) {
-        message.textContent = "Current location selected. Adjust the pin if needed.";
+        if (!confirmedLocation) message.textContent = "Current location selected.";
     }
 }
