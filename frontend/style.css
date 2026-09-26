@@ -99,3 +99,149 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .footer-links{display:flex;flex-wrap:wrap;justify-content:center;gap:5px 11px;margin-top:8px}
 .footer-links a{color:inherit;text-decoration:none}.footer-links a:hover{text-decoration:underline}
 @media(prefers-reduced-motion:reduce){#locationBtn.location-success::before,#finderLocationBtn.location-success::before,#mapLocateBtn.location-success::before{animation:none;transform:translate(-50%,-50%) scale(18)}}
+
+
+/* Mobile product layout: map-first, touch-first */
+@media (max-width: 700px) {
+  html { scroll-behavior: smooth; }
+  body { min-width: 0; overflow-x: hidden; }
+  .topbar-inner { max-width: none; }
+  .topbar { position: sticky; }
+  .tracker-shell {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "fleetTop"
+      "location"
+      "filters"
+      "status"
+      "map"
+      "results";
+    height: auto;
+    overflow: visible;
+    gap: 0;
+    border-radius: 18px;
+  }
+  .fleet-panel { display: contents; }
+  .fleet-top { grid-area: fleetTop; padding: 14px 14px 4px; }
+  .location-picker { grid-area: location; padding: 0 14px; margin-top: 8px; }
+  .filter-row { grid-area: filters; padding: 0 14px; margin-top: 8px; }
+  .location-status { grid-area: status; padding: 0 14px; margin-top: 8px; }
+  .map-panel {
+    grid-area: map;
+    height: min(62dvh, 560px);
+    min-height: 430px;
+    padding: 10px;
+  }
+  .map-panel-head {
+    min-height: 42px;
+    padding: 0 2px 8px;
+  }
+  .map-panel-head h2 { font-size: 17px; }
+  .map-panel-head .eyebrow { font-size: 8px; }
+  .map-actions { gap: 5px; }
+  .map-actions .small-button { height: 36px; min-width: 88px; }
+  .map-shell { height: calc(100% - 50px); min-height: 0; }
+  #map { min-height: 0; height: 100%; }
+  .map-overlay {
+    left: 10px;
+    right: 10px;
+    top: 10px;
+    width: auto;
+    justify-content: center;
+    padding: 7px 9px;
+    font-size: 7px;
+  }
+  .selected-bus-panel {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    width: auto;
+    max-height: min(40dvh, 300px);
+    overflow: auto;
+  }
+  .results-section {
+    grid-area: results;
+    min-height: 0;
+    flex: none;
+    margin-top: 0;
+    padding: 0 14px 14px;
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .results-section .section-header {
+    position: sticky;
+    top: 58px;
+    z-index: 30;
+    padding: 12px 0 10px;
+    background: var(--surface);
+  }
+  .count-label { font-size: 18px; }
+  .bus-grid {
+    max-height: none;
+    overflow: visible;
+    gap: 9px;
+    padding-top: 10px;
+  }
+  .bus-card {
+    padding: 14px;
+    border-radius: 15px;
+  }
+  .bus-card:hover { transform: none; box-shadow: none; }
+  .bus-card-top h3 { font-size: 14px; }
+  .bus-direction { margin: 10px 0 9px; padding: 10px; }
+  .bus-direction strong { font-size: 11px; }
+  .bus-meta { min-height: 28px; display: inline-flex; align-items: center; font-size: 8.5px; }
+  .bus-card .status { font-size: 8px; }
+  .bus-card .updated { font-size: 8px; }
+  .info-grid { gap: 10px; margin-top: 10px; }
+  .info-card { padding: 17px; border-radius: 16px; }
+  .info-card h2 { font-size: 18px; }
+  .info-steps { gap: 7px; }
+  .info-steps div { padding: 12px; }
+  footer { padding: 24px 14px 34px; line-height: 1.7; }
+}
+
+@media (max-width: 480px) {
+  main { padding: 10px 10px 30px; }
+  .topbar-inner { padding: 0 9px; }
+  .brand-symbol, .brand-logo { width: 34px; height: 34px; }
+  .brand strong { font-size: 11px; }
+  .brand small { font-size: 7px; }
+  .get-app-button { min-width: 34px; padding: 0; justify-content: center; }
+  .workspace-heading { gap: 10px; }
+  .workspace-heading h1 { font-size: 36px; letter-spacing: -2px; }
+  .workspace-heading p:last-child { font-size: 11px; }
+  .heading-location { min-height: 46px; }
+  .trade-fair-notice { margin-bottom: 10px; padding: 12px; }
+  .trade-fair-main { gap: 9px; }
+  .trade-fair-title-row h2 { font-size: 15px; }
+  .trade-fair-copy p { font-size: 8.5px; }
+  .trade-fair-countdown strong { font-size: 14px; }
+  .trade-fair-route-heading { font-size: 9px; }
+  .trade-fair-route-main p { font-size: 7.5px; }
+  .map-panel { min-height: 400px; height: 58dvh; }
+  .map-actions .map-icon-button { display: none; }
+  .map-actions .small-button { min-width: 86px; }
+  .selected-bus-panel { padding: 12px; }
+  .selected-bus-heading h3 { font-size: 16px; }
+  .selected-direction { margin-top: 9px; }
+  .selected-metrics { gap: 4px; }
+  .selected-metrics span { flex: 1 1 calc(50% - 4px); min-width: 0; text-align: center; }
+  .selected-actions .button { min-height: 42px; }
+  .results-section .section-header { top: 56px; }
+}
+
+@media (max-width: 360px) {
+  .workspace-heading h1 { font-size: 32px; }
+  .brand small { display: none; }
+  .live-status { display: none; }
+  .location-use-button { font-size: 8px; }
+  .select-shell { grid-template-columns: 1fr; gap: 0; padding: 7px 9px; min-height: 44px; align-content: center; }
+  .select-shell span { font-size: 7px; }
+  .select-shell select { font-size: 9px; }
+  .small-button { min-height: 42px; }
+  .map-panel-head h2 { font-size: 15px; }
+  .map-actions .small-button { min-width: 80px; font-size: 8px; }
+  .bus-meta { flex: 1 1 100%; justify-content: center; }
+}
