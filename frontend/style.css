@@ -90,15 +90,29 @@ body.dark .trade-fair-footnote{border-color:#343229}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex="0"]:focus-visible{outline:3px solid rgba(23,105,210,.42);outline-offset:2px}
 .bus-card[tabindex="0"]{outline:none}.bus-card[tabindex="0"]:focus-visible{border-color:var(--accent);box-shadow:0 0 0 3px var(--accentSoft)}
 .location-use-button,#locationBtn,#mapLocateBtn{position:relative;overflow:hidden}
-#locationBtn.location-success,#finderLocationBtn.location-success,#mapLocateBtn.location-success{background:#171717!important;border-color:#171717!important;color:#fff!important;transition:background-color 1.2s ease,color 1.2s ease,border-color 1.2s ease}
-#locationBtn.location-success::before,#finderLocationBtn.location-success::before,#mapLocateBtn.location-success::before{content:"";position:absolute;left:50%;top:50%;width:32px;height:32px;border-radius:50%;background:#2e9b5d;transform:translate(-50%,-50%) scale(.15);z-index:0;animation:locationSuccessFill 1.45s cubic-bezier(.2,.75,.2,1) forwards}
-#locationBtn.location-success>* ,#finderLocationBtn.location-success>* ,#mapLocateBtn.location-success>*{position:relative;z-index:1}
-#locationBtn.location-success,#finderLocationBtn.location-success,#mapLocateBtn.location-success{isolation:isolate}
-@keyframes locationSuccessFill{0%{transform:translate(-50%,-50%) scale(.15)}100%{transform:translate(-50%,-50%) scale(18)}}
-.location-loading{opacity:.82}
-.footer-links{display:flex;flex-wrap:wrap;justify-content:center;gap:5px 11px;margin-top:8px}
-.footer-links a{color:inherit;text-decoration:none}.footer-links a:hover{text-decoration:underline}
-@media(prefers-reduced-motion:reduce){#locationBtn.location-success::before,#finderLocationBtn.location-success::before,#mapLocateBtn.location-success::before{animation:none;transform:translate(-50%,-50%) scale(18)}}
+#locationBtn.location-success,#finderLocationBtn.location-success,#mapLocateBtn.location-success{
+    background:#171717!important;
+    border-color:#171717!important;
+    color:#fff!important;
+    animation:locationSuccessColor 1.45s cubic-bezier(.22,.75,.2,1) forwards;
+}
+#locationBtn.location-loading,#finderLocationBtn.location-loading,#mapLocateBtn.location-loading{
+    opacity:.82;
+    cursor:wait;
+}
+@keyframes locationSuccessColor{
+    0%{background-color:#171717;border-color:#171717}
+    100%{background-color:#2e9d68;border-color:#2e9d68}
+}
+@media(prefers-reduced-motion:reduce){
+    .busBody{animation:none!important}
+    .loader .road::before,.loader .road::after{animation:none!important}
+    #locationBtn.location-success,#finderLocationBtn.location-success,#mapLocateBtn.location-success{
+        animation:none!important;
+        background:#2e9d68!important;
+        border-color:#2e9d68!important;
+    }
+}}
 
 
 /* Mobile product layout: map-first, touch-first */
