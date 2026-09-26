@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://noidabus.netlify.app/</loc>
-  </url>
-  <url>
-    <loc>https://noidabus.netlify.app/reports.html</loc>
-  </url>
+  <url><loc>https://noidabus.netlify.app/</loc></url>
+  <url><loc>https://noidabus.netlify.app/reports.html</loc></url>
+  <url><loc>https://noidabus.netlify.app/privacy.html</loc></url>
+  <url><loc>https://noidabus.netlify.app/terms.html</loc></url>
+  <url><loc>https://noidabus.netlify.app/cookies.html</loc></url>
+  <url><loc>https://noidabus.netlify.app/accessibility.html</loc></url>
+  <url><loc>https://noidabus.netlify.app/data-sources.html</loc></url>
 </urlset>
