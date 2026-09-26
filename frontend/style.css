@@ -18,3 +18,57 @@ body.dark{--bg:#0b0d10;--surface:#111419;--surface2:#171a20;--text:#f4f5f7;--mut
 @media(max-width:700px){.topbar-inner{height:58px;padding:0 11px}.live-status{display:none}.get-app-button{padding:0 9px}.get-app-button span:last-child{display:none}.workspace-heading{align-items:flex-start;flex-direction:column;margin-bottom:12px}.workspace-heading h1{font-size:42px;letter-spacing:-2.5px}.heading-location{width:100%}.trade-fair-notice{padding:14px;border-radius:16px}.trade-fair-summary{grid-template-columns:1fr;gap:9px}.trade-fair-countdown{text-align:left;padding:0}.trade-fair-main{padding-right:30px}.trade-fair-route-grid{grid-template-columns:1fr}.trade-fair-detail{grid-template-columns:1fr}.trade-fair-detail small{grid-column:auto}.tracker-shell{display:flex;flex-direction:column;height:auto;border-radius:18px}.fleet-panel{border-right:0;border-bottom:1px solid var(--line);padding:13px;max-height:520px}.fleet-top h2{font-size:20px}.location-picker{grid-template-columns:1fr}.location-use-button{width:100%}.filter-row{grid-template-columns:1fr 1fr}.results-section{margin-top:12px}.bus-grid{max-height:310px}.map-panel{height:520px;padding:11px}.map-panel-head{padding-bottom:9px}.map-panel-head h2{font-size:18px}.map-actions .map-data-label{display:none}.map-actions .small-button{height:34px}.map-icon-button{width:34px!important}.map-shell{min-height:0}.map-shell #map{min-height:0}.selected-bus-panel{left:12px;right:12px;bottom:12px;width:auto}.info-grid{grid-template-columns:1fr}.info-steps{grid-template-columns:1fr}footer{padding-bottom:28px}}
 @media(max-width:430px){main{padding:12px 10px 30px}.brand strong{font-size:12px}.brand small{font-size:8px}.get-app-button{height:34px}.icon-button{width:34px;height:34px}.workspace-heading h1{font-size:38px}.trade-fair-route{padding:11px}.tracker-shell{border-radius:16px}.fleet-panel{max-height:none}.bus-grid{max-height:340px}.map-panel{height:470px}.selected-bus-panel{padding:13px}.selected-actions .button{height:36px;font-size:9px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation:none!important;transition:none!important}.bus-card,.bus-marker{transition:none!important}}
+
+
+.trade-fair-notice{position:relative;margin-bottom:16px;padding:14px 14px 12px;border:1px solid var(--tradeLine);border-radius:18px;background:var(--tradeBg);box-shadow:var(--shadow)}
+.trade-fair-close{position:absolute;right:10px;top:10px;width:28px;height:28px;border:1px solid var(--tradeLine);border-radius:8px;background:rgba(255,255,255,.72);color:var(--muted);font-size:18px;line-height:1;display:grid;place-items:center;z-index:5}
+.trade-fair-close:hover{background:var(--surface);color:var(--text)}
+.trade-fair-bar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding-right:36px}
+.trade-fair-badge{display:flex;align-items:center;gap:7px;padding:6px 8px 6px 6px;border:1px solid var(--tradeLine);border-radius:10px;background:rgba(255,255,255,.55);font-size:8px;font-weight:950;letter-spacing:.5px;color:var(--muted);white-space:nowrap}
+.trade-fair-badge-icon{width:31px;height:31px;border-radius:8px;background:var(--primary);color:var(--primaryText);display:grid;place-items:center;font-size:9px}
+.trade-fair-copy{min-width:0}
+.trade-fair-kicker{font-size:8px;line-height:1;font-weight:950;letter-spacing:1.4px;color:#7a838e}
+.trade-fair-title-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:4px;padding-right:4px}
+.trade-fair-title-row h2{font-size:18px;line-height:1;letter-spacing:-.45px}
+.trade-fair-count{padding:4px 6px;border-radius:999px;background:rgba(23,105,210,.08);color:var(--accent);font-size:7px;font-weight:950}
+.trade-fair-copy p{margin-top:5px;color:var(--muted);font-size:9px;line-height:1.5}
+.trade-fair-countdown{text-align:right;min-width:132px;padding-left:8px}
+.trade-fair-countdown span{display:block;font-size:7px;letter-spacing:1.2px;color:var(--muted);font-weight:950}
+.trade-fair-countdown strong{display:block;margin-top:2px;font-size:15px;letter-spacing:-.4px;white-space:nowrap}
+.trade-fair-routes-toggle{margin-top:11px;width:100%;height:34px;border:1px solid var(--tradeLine);border-radius:10px;background:rgba(255,255,255,.5);color:var(--text);display:flex;align-items:center;justify-content:center;gap:7px;font-size:9px;font-weight:950}
+.trade-fair-routes-toggle:hover{background:var(--surface)}
+.trade-fair-chevron{font-size:15px;transform:translateY(-1px)}
+.trade-fair-routes{margin-top:7px;border-top:1px solid #e5e0c8}
+.trade-fair-route-row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:11px;align-items:center;padding:11px 2px;border-bottom:1px solid #ece8d9}
+.trade-fair-route-row:last-child{border-bottom:0}
+.trade-fair-route-number{width:31px;height:31px;border-radius:8px;background:var(--primary);color:var(--primaryText);display:grid;place-items:center;font-size:8px;font-weight:950}
+.trade-fair-route-main{min-width:0}
+.trade-fair-route-heading{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:9px;color:var(--text)}
+.trade-fair-route-heading span{color:var(--accent);font-weight:950}
+.trade-fair-route-main p{margin-top:3px;font-size:8px;line-height:1.5;color:var(--muted)}
+.trade-fair-route-buses{padding:5px 7px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:7px;font-weight:950;color:var(--muted);white-space:nowrap}
+.trade-fair-footnote{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #e5e0c8;font-size:8px;line-height:1.5;color:var(--muted)}
+.trade-fair-footnote strong{color:var(--text)}
+body.dark .trade-fair-notice{background:var(--tradeBg);border-color:var(--tradeLine)}
+body.dark .trade-fair-badge,body.dark .trade-fair-routes-toggle{background:rgba(255,255,255,.025)}
+body.dark .trade-fair-route-row{border-color:#343229}
+body.dark .trade-fair-route-buses{background:var(--surface)}
+body.dark .trade-fair-footnote{border-color:#343229}
+@media(max-width:760px){
+.trade-fair-bar{grid-template-columns:auto minmax(0,1fr);gap:10px}
+.trade-fair-countdown{grid-column:2;text-align:left;padding-left:0;min-width:0}
+.trade-fair-title-row h2{font-size:16px}
+.trade-fair-route-row{grid-template-columns:32px minmax(0,1fr)}
+.trade-fair-route-buses{grid-column:2;justify-self:start}
+.trade-fair-footnote{grid-template-columns:1fr}
+}
+@media(max-width:460px){
+.trade-fair-badge{padding:5px 6px 5px 5px;gap:5px;font-size:7px}
+.trade-fair-badge-icon{width:29px;height:29px}
+.trade-fair-copy p{font-size:8.5px}
+.trade-fair-title-row{gap:4px}
+.trade-fair-count{font-size:6px}
+.trade-fair-route-row{gap:8px}
+.trade-fair-route-heading{font-size:8.5px}
+.trade-fair-route-main p{font-size:7.5px}
+}
