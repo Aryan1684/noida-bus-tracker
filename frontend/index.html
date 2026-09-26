@@ -219,13 +219,12 @@
                         <button id="retryBtn" class="button button-primary">Try again</button>
                     </div>
 
-                    <div id="emptyState" class="state hidden">
-                        <div class="state-mark">⌁</div>
-                        <h3>No buses in this radius</h3>
-                        <p>Try a larger radius or choose another location.</p>
+                    <div class="bus-list-scroll">
+                        <div id="emptyState" class="state empty-bus-state hidden">
+                            <h3>0 nearby buses</h3>
+                        </div>
+                        <div id="busList" class="bus-grid"></div>
                     </div>
-
-                    <div class="bus-list-scroll"><div id="busList" class="bus-grid"></div></div>
                 </section>
             </aside>
 
