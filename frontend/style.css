@@ -245,3 +245,58 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .map-actions .small-button { min-width: 80px; font-size: 8px; }
   .bus-meta { flex: 1 1 100%; justify-content: center; }
 }
+
+.loader{width:100%;height:112px;display:flex;align-items:center;justify-content:center;overflow:visible}
+.busWrapper{width:200px;height:100px;display:flex;flex-direction:column;position:relative;align-items:center;justify-content:flex-end;overflow:hidden}
+.busBody{width:150px;height:76px;margin-bottom:7px;animation:busMotion 1s linear infinite}
+.busBody svg{display:block;width:150px;height:auto}
+@keyframes busMotion{0%{transform:translateY(0)}50%{transform:translateY(3px)}100%{transform:translateY(0)}}
+.busTires{width:150px;height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 17px;position:absolute;bottom:4px}
+.busWheel{width:24px;height:24px;border-radius:50%;background:#282828;border:3px solid #282828;position:relative;flex:none}
+.busWheel::after{content:"";position:absolute;left:5px;top:5px;width:8px;height:8px;border-radius:50%;background:#dfe3e8}
+.loader .road{width:100%;height:1.5px;background:#282828;position:relative;bottom:0;align-self:flex-end;border-radius:3px}
+.loader .road::before{content:"";position:absolute;width:20px;height:100%;background:#282828;right:-50%;border-radius:3px;animation:roadAnimation 1.4s linear infinite;border-left:10px solid #fff}
+.loader .road::after{content:"";position:absolute;width:10px;height:100%;background:#282828;right:-65%;border-radius:3px;animation:roadAnimation 1.4s linear infinite;border-left:4px solid #fff}
+@keyframes roadAnimation{0%{transform:translateX(0)}100%{transform:translateX(-350px)}}
+
+#locationBtn.location-success,#finderLocationBtn.location-success,#mapLocateBtn.location-success{
+    position:relative;
+    overflow:hidden;
+    background:#171717!important;
+    border-color:#171717!important;
+    color:#fff!important;
+    isolation:isolate;
+}
+#locationBtn.location-success::before,#finderLocationBtn.location-success::before,#mapLocateBtn.location-success::before{
+    content:"";
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    background:#2e9d68;
+    transform:translate(-50%,-50%) scale(.08);
+    z-index:-1;
+    animation:locationSuccessFill 1.45s cubic-bezier(.22,.75,.2,1) forwards;
+}
+#locationBtn.location-loading,#finderLocationBtn.location-loading,#mapLocateBtn.location-loading{
+    opacity:.82;
+    cursor:wait;
+}
+#locationBtn.location-success span,#finderLocationBtn.location-success span,#mapLocateBtn.location-success span{
+    position:relative;
+    z-index:1;
+}
+@keyframes locationSuccessFill{
+    0%{transform:translate(-50%,-50%) scale(.08)}
+    100%{transform:translate(-50%,-50%) scale(22)}
+}
+@media(prefers-reduced-motion:reduce){
+    .busBody{animation:none!important}
+    .loader .road::before,.loader .road::after{animation:none!important}
+    #locationBtn.location-success::before,#finderLocationBtn.location-success::before,#mapLocateBtn.location-success::before{
+        animation:none!important;
+        transform:translate(-50%,-50%) scale(22);
+    }
+}
