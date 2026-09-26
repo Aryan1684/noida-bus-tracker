@@ -285,13 +285,15 @@ function setLocationButtonState(buttonId, state) {
     const button = document.getElementById(buttonId);
     if (!button) return;
 
+    window.clearTimeout(button._locationSuccessTimer);
+
     if (state === "success") {
         button.disabled = false;
         button.classList.remove("location-loading");
         button.classList.add("location-success");
         button.textContent = button.dataset.successLabel || "Use my location";
+        button.dataset.successShown = "false";
 
-        window.clearTimeout(button._locationSuccessTimer);
         button._locationSuccessTimer = window.setTimeout(() => {
             button.textContent = "✓ Location found";
             button.dataset.successShown = "true";
@@ -307,7 +309,6 @@ function setLocationButtonState(buttonId, state) {
         button.textContent = button.dataset.originalText || button.textContent;
     }
 }
-
 function getUserLocation(buttonId = "locationBtn") {
     if (!navigator.geolocation) {
         updateLocationMessage("Your browser does not support location access.");
