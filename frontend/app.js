@@ -287,7 +287,6 @@ function setLocationButtonState(buttonId, state, message) {
     if (!button) return;
 
     window.clearTimeout(button._locationStateTimer);
-    if (button._locationAnimation) button._locationAnimation.cancel();
 
     const label = button.querySelector(".location-button-label");
     const originalText = button.dataset.originalText || "Use my location";
@@ -306,17 +305,6 @@ function setLocationButtonState(buttonId, state, message) {
 
     if (state === "success") {
         button.classList.add("location-success");
-        button._locationAnimation = button.animate(
-            [
-                { backgroundColor: "#171717", borderColor: "#171717", color: "#ffffff" },
-                { backgroundColor: "#2e9d68", borderColor: "#2e9d68", color: "#ffffff" }
-            ],
-            {
-                duration: 1450,
-                easing: "cubic-bezier(.22,.75,.2,1)",
-                fill: "forwards"
-            }
-        );
         button._locationStateTimer = window.setTimeout(() => {
             if (label) label.textContent = "✓ Location found";
             else button.textContent = "✓ Location found";
@@ -327,17 +315,6 @@ function setLocationButtonState(buttonId, state, message) {
     if (state === "error") {
         button.classList.add("location-error");
         const errorText = message || "Location unavailable";
-        button._locationAnimation = button.animate(
-            [
-                { backgroundColor: "#171717", borderColor: "#171717", color: "#ffffff" },
-                { backgroundColor: "#c53b32", borderColor: "#c53b32", color: "#ffffff" }
-            ],
-            {
-                duration: 1200,
-                easing: "cubic-bezier(.22,.75,.2,1)",
-                fill: "forwards"
-            }
-        );
         button._locationStateTimer = window.setTimeout(() => {
             if (label) label.textContent = errorText;
             else button.textContent = errorText;
@@ -732,6 +709,9 @@ async function loadNearbyBuses(
 }
 
 function displayBuses(buses) {
+    const resultsSection = document.querySelector(".results-section");
+    if (resultsSection) resultsSection.classList.remove("is-loading");
+
     clearBusMarkers();
 
     const busList = document.getElementById("busList");
@@ -1003,6 +983,18 @@ function clearBusMarkers() {
 function showLoadingState() {
     hideAllStates();
 
+    clearBusMarkers();
+    currentBuses = [];
+    selectedBusId = null;
+
+    const busList = document.getElementById("busList");
+    if (busList) busList.replaceChildren();
+
+    updateSelectedBusPanel(null);
+
+    const resultsSection = document.querySelector(".results-section");
+    if (resultsSection) resultsSection.classList.add("is-loading");
+
     document
         .getElementById(
             "loadingState"
@@ -1065,6 +1057,9 @@ function hideAllStates() {
         .classList.add(
             "hidden"
         );
+
+    const resultsSection = document.querySelector(".results-section");
+    if (resultsSection) resultsSection.classList.remove("is-loading");
 }
 
 function updateLocationMessage(
