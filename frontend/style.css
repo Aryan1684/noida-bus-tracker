@@ -396,3 +396,40 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   #locationBtn.location-success,#finderLocationBtn.location-success,#mapLocateBtn.location-success{background-color:#2e9d68!important;border-color:#2e9d68!important}
   #locationBtn.location-error,#finderLocationBtn.location-error,#mapLocateBtn.location-error{background-color:#c53b32!important;border-color:#c53b32!important}
 }
+
+
+/* Final mobile QA overrides */
+@media (max-width: 700px){
+  .results-section{
+    min-height:0;
+    overflow:visible!important;
+  }
+  .bus-grid{
+    display:flex!important;
+    flex-direction:column!important;
+    height:min(56dvh,560px)!important;
+    max-height:min(56dvh,560px)!important;
+    min-height:220px!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-y:contain!important;
+    touch-action:pan-y!important;
+    scrollbar-width:thin!important;
+    padding-right:6px!important;
+  }
+  .bus-card{
+    flex:0 0 auto!important;
+    touch-action:manipulation;
+  }
+}
+@media (max-width:480px){
+  .bus-grid{
+    height:min(58dvh,520px)!important;
+    max-height:min(58dvh,520px)!important;
+  }
+}
+.location-success,.location-error{
+  animation:none!important;
+  background-image:none!important;
+}
