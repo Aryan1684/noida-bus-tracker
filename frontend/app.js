@@ -281,34 +281,37 @@ function initializeMap() {
 }
 
 
-function setLocationButtonState(buttonId, state) {
+function setLocationButtonState(buttonId, state, message) {
     const button = document.getElementById(buttonId);
     if (!button) return;
 
-    window.clearTimeout(button._locationSuccessTimer);
+    window.clearTimeout(button._locationStateTimer);
+    button.classList.remove("location-success", "location-error", "location-loading");
 
     if (state === "success") {
         button.disabled = false;
-        button.classList.remove("location-loading");
+        button.textContent = button.dataset.originalText || "Use my location";
         button.classList.add("location-success");
-        button.textContent = button.dataset.successLabel || "Use my location";
-        button.dataset.successShown = "false";
-
-        button._locationSuccessTimer = window.setTimeout(() => {
+        button._locationStateTimer = window.setTimeout(() => {
             button.textContent = "✓ Location found";
-            button.dataset.successShown = "true";
         }, 1450);
+        return;
+    }
+
+    if (state === "error") {
+        button.disabled = false;
+        button.textContent = message || "Location unavailable";
+        button.classList.add("location-error");
         return;
     }
 
     if (state === "loading") {
         button.disabled = true;
-        button.classList.remove("location-success");
-        button.classList.add("location-loading");
-        button.dataset.successShown = "false";
         button.textContent = button.dataset.originalText || button.textContent;
+        button.classList.add("location-loading");
     }
 }
+
 function getUserLocation(buttonId = "locationBtn") {
     if (!navigator.geolocation) {
         updateLocationMessage("Your browser does not support location access.");
@@ -384,9 +387,14 @@ function getUserLocation(buttonId = "locationBtn") {
             updateLocationMessage(message);
 
             buttons.forEach(button => {
-                button.disabled = false;
-                button.classList.remove("location-success", "location-loading");
-                button.textContent = button.dataset.originalText || "Use my location";
+                if (button.id === buttonId) {
+                    const errorLabel = error.code === 1 ? "Location denied" : error.code === 2 ? "Location unavailable" : "Try again";
+                    setLocationButtonState(buttonId, "error", errorLabel);
+                } else {
+                    button.disabled = false;
+                    button.classList.remove("location-success", "location-error", "location-loading");
+                    button.textContent = button.dataset.originalText || "Use my location";
+                }
             });
         },
         {
