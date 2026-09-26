@@ -780,3 +780,45 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     display:none!important;
   }
 }
+
+
+/* Compact zero-bus state */
+.bus-list-scroll:has(.empty-bus-state:not(.hidden)){
+  flex:none!important;
+  min-height:0!important;
+  height:auto!important;
+}
+.empty-bus-state{
+  min-height:0!important;
+  height:44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 12px!important;
+  margin:9px 0 0!important;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--surface2);
+  color:var(--muted);
+}
+.empty-bus-state h3{
+  margin:0!important;
+  font-size:10px!important;
+  font-weight:850;
+  color:var(--text);
+}
+.empty-bus-state.hidden{
+  display:none!important;
+}
+.bus-list-scroll:has(.empty-bus-state.hidden) .empty-bus-state{
+  display:none!important;
+}
+.bus-list-scroll:has(.empty-bus-state:not(.hidden)) .bus-grid{
+  display:none!important;
+}
+@media(max-width:700px){
+  .empty-bus-state{
+    height:42px;
+    margin-top:8px!important;
+  }
+}
