@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title>Noida Bus Tracker mark</title>
+<desc>Electric bus following a route loop beneath a location pin.</desc>
+<defs>
+  <linearGradient id="pin" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#00C8FF"/>
+    <stop offset="1" stop-color="#86F23F"/>
+  </linearGradient>
+  <linearGradient id="route" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#1677FF"/>
+    <stop offset="1" stop-color="#00C8FF"/>
+  </linearGradient>
+</defs>
+<rect width="512" height="512" rx="112" fill="#0B1220"/>
+<path d="M74 344 C112 402 197 414 283 377 C357 345 393 294 434 224" fill="none" stroke="#000814" stroke-width="34" stroke-linecap="round" opacity=".42"/>
+<path d="M74 344 C112 402 197 414 283 377 C357 345 393 294 434 224" fill="none" stroke="url(#route)" stroke-width="28" stroke-linecap="round"/>
+<path d="M84 344 C118 375 160 388 198 384" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-dasharray="15 13" opacity=".95"/>
+<path d="M330 144c0-34 28-60 62-60s62 26 62 60c0 47-62 108-62 108s-62-61-62-108Z" fill="url(#pin)"/>
+<circle cx="392" cy="144" r="21" fill="#0B1220"/>
+<circle cx="392" cy="144" r="11" fill="#F7FBFF"/>
+<g transform="translate(116 186)">
+  <rect x="0" y="0" width="254" height="122" rx="28" fill="#FFFFFF" stroke="#0B1220" stroke-width="10"/>
+  <rect x="15" y="18" width="224" height="42" rx="12" fill="#0B1220"/>
+  <rect x="28" y="28" width="60" height="21" rx="5" fill="#1A7CFF"/>
+  <rect x="98" y="28" width="60" height="21" rx="5" fill="#123D67"/>
+  <rect x="168" y="28" width="56" height="21" rx="5" fill="#123D67"/>
+  <rect x="212" y="72" width="14" height="14" rx="4" fill="#86F23F"/>
+  <circle cx="56" cy="122" r="22" fill="#0B1220"/>
+  <circle cx="198" cy="122" r="22" fill="#0B1220"/>
+  <circle cx="56" cy="122" r="10" fill="#FFFFFF"/>
+  <circle cx="198" cy="122" r="10" fill="#FFFFFF"/>
+</g>
+</svg>
