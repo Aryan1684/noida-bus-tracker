@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 220" role="img" aria-labelledby="title desc">
+<title>Noida Bus Tracker</title>
+<desc>Stylized electric bus following a blue route loop with a green-blue location pin.</desc>
+<defs>
+  <linearGradient id="pin" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#00C8FF"/>
+    <stop offset="1" stop-color="#86F23F"/>
+  </linearGradient>
+  <linearGradient id="route" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#1677FF"/>
+    <stop offset="1" stop-color="#00C8FF"/>
+  </linearGradient>
+</defs>
+<g transform="translate(22 18)">
+  <path d="M66 150 C92 184 155 190 221 163 C272 142 305 106 329 73" fill="none" stroke="#0B1C35" stroke-width="26" stroke-linecap="round" opacity=".18"/>
+  <path d="M66 150 C92 184 155 190 221 163 C272 142 305 106 329 73" fill="none" stroke="url(#route)" stroke-width="22" stroke-linecap="round"/>
+  <path d="M74 150 C95 170 127 178 158 176" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="12 11"/>
+  <path d="M274 46c0-25 20-44 44-44s44 19 44 44c0 33-44 76-44 76S274 79 274 46Z" fill="url(#pin)"/>
+  <circle cx="318" cy="44" r="16" fill="#0B1C35"/>
+  <circle cx="318" cy="44" r="9" fill="#F4F8FF"/>
+  <g transform="translate(92 52)">
+    <rect x="0" y="0" width="174" height="84" rx="20" fill="#FFFFFF" stroke="#0B1C35" stroke-width="7"/>
+    <rect x="11" y="13" width="152" height="29" rx="8" fill="#0B1C35"/>
+    <rect x="20" y="20" width="42" height="15" rx="4" fill="#1A7CFF"/>
+    <rect x="69" y="20" width="42" height="15" rx="4" fill="#123D67"/>
+    <rect x="118" y="20" width="36" height="15" rx="4" fill="#123D67"/>
+    <rect x="152" y="50" width="10" height="10" rx="3" fill="#86F23F"/>
+    <circle cx="38" cy="84" r="15" fill="#0B1C35"/>
+    <circle cx="139" cy="84" r="15" fill="#0B1C35"/>
+    <circle cx="38" cy="84" r="7" fill="#FFFFFF"/>
+    <circle cx="139" cy="84" r="7" fill="#FFFFFF"/>
+  </g>
+</g>
+<g transform="translate(390 52)">
+  <text x="0" y="58" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="54" font-weight="800" letter-spacing="-2.4" fill="#111827">Noida</text>
+  <text x="2" y="113" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="54" font-weight="800" letter-spacing="-2.4" fill="#1769D2">Bus</text>
+  <text x="135" y="113" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="54" font-weight="800" letter-spacing="-2.4" fill="#111827"> Tracker</text>
+  <text x="3" y="144" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" font-weight="600" letter-spacing="3.1" fill="#69717D">LIVE  ·  REAL TIME  ·  SMART COMMUTE</text>
+</g>
+</svg>
