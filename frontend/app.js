@@ -159,12 +159,19 @@ function initializeTradeFairNotice() {
 
     const update = () => {
         const now = new Date();
+
         if (now < start || now >= end) {
             notice.classList.add("hidden");
             return;
         }
 
+        if (localStorage.getItem("tradeFairNoticeDismissed") === "true") {
+            notice.classList.add("hidden");
+            return;
+        }
+
         notice.classList.remove("hidden");
+
         const totalSeconds = Math.max(0, Math.floor((end - now) / 1000));
         const days = Math.floor(totalSeconds / 86400);
         const hours = Math.floor((totalSeconds % 86400) / 3600);
