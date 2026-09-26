@@ -642,3 +642,66 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   border-color:#c53b32!important;
   animation:none!important;
 }
+
+
+/* Final bus action button styling */
+.bus-card .feature-actions{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:8px!important;
+  margin-top:12px!important;
+}
+.bus-card .feature-actions button{
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  width:100%!important;
+  min-height:44px!important;
+  height:44px!important;
+  margin:0!important;
+  padding:0 12px!important;
+  border:1px solid var(--line)!important;
+  border-radius:12px!important;
+  background:var(--surface)!important;
+  color:var(--text)!important;
+  font:inherit!important;
+  font-size:11px!important;
+  font-weight:850!important;
+  line-height:1!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  box-shadow:none!important;
+  outline:none!important;
+  transition:background-color .18s ease,border-color .18s ease,transform .18s ease,box-shadow .18s ease!important;
+}
+.bus-card .feature-actions button:hover{
+  background:var(--surface2)!important;
+  border-color:#c8ced6!important;
+}
+.bus-card .feature-actions button:active{
+  transform:scale(.98)!important;
+}
+.bus-card .feature-actions button:focus-visible{
+  outline:2px solid var(--primary)!important;
+  outline-offset:2px!important;
+}
+.bus-card .feature-actions button:first-child{
+  background:var(--primary)!important;
+  border-color:var(--primary)!important;
+  color:var(--primaryText)!important;
+}
+.bus-card .feature-actions button:first-child:hover{
+  filter:brightness(.96);
+}
+@media(max-width:700px){
+  .bus-card .feature-actions{
+    gap:8px!important;
+    margin-top:11px!important;
+  }
+  .bus-card .feature-actions button{
+    min-height:42px!important;
+    height:42px!important;
+    border-radius:11px!important;
+    font-size:11px!important;
+  }
+}
