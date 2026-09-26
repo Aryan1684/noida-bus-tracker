@@ -9,6 +9,7 @@ let isLoading = false;
 let pinAdjustMode = false;
 let searchTimer = null;
 let searchController = null;
+let currentBuses = [];
 
 const API_BASE_URL = "https://noida-bus-tracker.onrender.com";
 
@@ -102,6 +103,49 @@ document.addEventListener(
 
         initializePlaceSearch();
         initializePinControl();
+
+        const selectedBusClose = document.getElementById("selectedBusClose");
+        if (selectedBusClose) selectedBusClose.addEventListener("click", closeSelectedBusPanel);
+
+        const selectedShareBtn = document.getElementById("selectedShareBtn");
+        if (selectedShareBtn) {
+            selectedShareBtn.addEventListener("click", () => {
+                const bus = currentBuses.find(item => String(item.bus_id) === String(selectedBusId));
+                if (bus && typeof navigator.share === "function") {
+                    navigator.share({title:"Noida Bus " + bus.bus_id,text:"Track this Noida Electric Bus",url:location.origin + location.pathname + "?bus=" + encodeURIComponent(bus.bus_id)}).catch(() => {});
+                } else if (bus && navigator.clipboard) {
+                    const url = location.origin + location.pathname + "?bus=" + encodeURIComponent(bus.bus_id);
+                    navigator.clipboard.writeText(url).then(() => updateLocationMessage("Live bus link copied."));
+                }
+            });
+        }
+
+        const selectedFollowBtn = document.getElementById("selectedFollowBtn");
+        if (selectedFollowBtn) {
+            selectedFollowBtn.addEventListener("click", () => {
+                const bus = currentBuses.find(item => String(item.bus_id) === String(selectedBusId));
+                if (!bus) return;
+                selectBus(bus.bus_id);
+                updateLocationMessage("Selected " + bus.bus_id + ". Use the Follow action in the bus tools below.");
+            });
+        }
+
+        const shareLocationBtn = document.getElementById("shareLocationBtn");
+        if (shareLocationBtn) {
+            shareLocationBtn.addEventListener("click", () => {
+                const target = confirmedLocation || userLocation;
+                if (!target) {
+                    updateLocationMessage("Select or detect a location first.");
+                    return;
+                }
+                const url = location.origin + location.pathname + "?lat=" + encodeURIComponent(target.lat) + "&lon=" + encodeURIComponent(target.lon);
+                if (navigator.share) {
+                    navigator.share({title:"Noida Bus Tracker",text:"Open this map location in Noida Bus Tracker.",url}).catch(() => {});
+                } else if (navigator.clipboard) {
+                    navigator.clipboard.writeText(url).then(() => updateLocationMessage("Map location link copied."));
+                }
+            });
+        }
     }
 );
 
@@ -604,6 +648,7 @@ function displayBuses(buses) {
         return (Number.isFinite(da) ? da : 9999) - (Number.isFinite(db) ? db : 9999);
     });
 
+    currentBuses = buses.slice();
     busCount.textContent = buses.length + " buses";
     hideAllStates();
     busList.innerHTML = "";
@@ -656,207 +701,85 @@ function createBusMarker(bus) {
 }
 
 function createBusCard(bus, rankIndex = 0) {
-    const card =
-        document.createElement(
-            "div"
-        );
-
+    const card = document.createElement("div");
     card.className = "bus-card rank-" + Math.min(rankIndex + 1, 3);
-    card.style.animationDelay = Math.min(rankIndex * 45, 500) + "ms";
+    card.style.animationDelay = Math.min(rankIndex * 35, 400) + "ms";
+    card.id = "bus-card-" + bus.bus_id;
+    card.dataset.distance = Number.isFinite(Number(bus.distance_km)) ? String(Number(bus.distance_km)) : "9999";
 
-    card.id =
-        `bus-card-${bus.bus_id}`;
-
-    card.dataset.distance = Number.isFinite(Number(bus.distance_km))
-        ? String(Number(bus.distance_km))
-        : "9999";
-
+    const heading = Number.isFinite(Number(bus.heading)) ? Number(bus.heading) : 0;
     let directionHtml;
 
-    const heading =
-        Number.isFinite(
-            Number(bus.heading)
-        )
-            ? Number(bus.heading)
-            : 0;
-
     if (bus.likely_towards) {
-        directionHtml = `
-            <div class="bus-direction">
-
-                <span
-                    class="direction-arrow"
-                    style="transform: rotate(${heading}deg)"
-                >➤</span>
-
-                <div>
-                    <small>
-                        MOVING TOWARDS
-                    </small>
-
-                    <strong>
-                        ${bus.likely_towards}
-                    </strong>
-                </div>
-
-            </div>
-        `;
+        directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'>➤</span><div><small>MOVING TOWARDS</small><strong>" + escapeHtml(bus.likely_towards) + "</strong></div></div>";
     } else if (bus.direction) {
-        directionHtml = `
-            <div class="bus-direction">
-
-                <span
-                    class="direction-arrow"
-                    style="transform: rotate(${heading}deg)"
-                >➤</span>
-
-                <div>
-                    <small>
-                        MOVING
-                    </small>
-
-                    <strong>
-                        ${bus.direction}
-                    </strong>
-                </div>
-
-            </div>
-        `;
+        directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'>➤</span><div><small>MOVING</small><strong>" + escapeHtml(bus.direction) + "</strong></div></div>";
     } else {
-        directionHtml = `
-            <div class="bus-direction">
-
-                <span class="direction-wait">
-                    ⏳
-                </span>
-
-                <div>
-                    <small>
-                        MOVEMENT
-                    </small>
-
-                    <strong>
-                        Determining...
-                    </strong>
-                </div>
-
-            </div>
-        `;
+        directionHtml = "<div class='bus-direction'><span class='direction-wait'>⏳</span><div><small>MOVEMENT</small><strong>Determining...</strong></div></div>";
     }
 
-    const movement =
-        bus.movement_km !== undefined
-            ? bus.movement_km
-            : 0;
-
-    const history =
-        bus.history_minutes !== undefined
-            ? bus.history_minutes
-            : 0;
-
     const route = getBusRoute(bus.bus_id);
+    const status = formatStatus(bus.vehicle_status);
+    const movement = bus.movement_km !== undefined ? bus.movement_km : 0;
+    const history = bus.history_minutes !== undefined ? bus.history_minutes : 0;
+    const sourceLabel = bus.data_stale ? "Last available GPS" : "Live GPS";
 
-    card.innerHTML = `
-        <div class="bus-card-top">
-            <span class="bus-rank">#${rankIndex + 1}</span>
-            <h3>${bus.bus_id || "Unknown Bus"}</h3>
-            ${route ? `<span class="route-badge">R1</span>` : ""}
-        </div>
+    card.innerHTML =
+        "<div class='bus-card-top'>" +
+            "<h3>" + escapeHtml(bus.bus_id || "Unknown Bus") + "</h3>" +
+            (route ? "<span class='route-badge'>" + escapeHtml(route) + "</span>" : "") +
+            "<span class='bus-rank'>#" + (rankIndex + 1) + "</span>" +
+        "</div>" +
+        directionHtml +
+        "<div class='bus-meta-row'>" +
+            "<span class='bus-meta'>⌖ " + (bus.distance_km ?? "—") + " km</span>" +
+            "<span class='bus-meta'>⚡ " + (bus.speed ?? 0) + " km/h</span>" +
+            "<span class='bus-meta'>↗ " + movement + " km / " + history + " min</span>" +
+        "</div>" +
+        "<p class='status'>● " + escapeHtml(status) + "</p>" +
+        "<p class='updated'>" + sourceLabel + " · Tap for details</p>";
 
-        ${directionHtml}
+    card.addEventListener("click", () => {
+        selectBus(bus.bus_id);
+        map.setView([bus.latitude, bus.longitude], 16, {animate:true,duration:.35});
+        const marker = busMarkers.find(item => String(item.busId) === String(bus.bus_id));
+        if (marker) marker.openPopup();
+    });
 
-        <div class="bus-distance">⌖ ${bus.distance_km ?? "—"} km away</div>    <p>
-            Speed:
-            ${bus.speed ?? 0} km/h
-        </p>
-
-        <p>
-            Movement:
-            ${movement} km
-            in ${history} min
-        </p>
-
-        <p class="status">
-            Status:
-            ${formatStatus(
-                bus.vehicle_status
-            )}
-        </p>
-
-        <p class="updated">
-            ● Live GPS position
-        </p>
-    `;
-
-    card.addEventListener(
-        "click",
-        () => {
-            selectBus(
-                bus.bus_id
-            );
-
-            map.setView(
-                [
-                    bus.latitude,
-                    bus.longitude
-                ],
-                16
-            );
-
-            const marker =
-                busMarkers.find(
-                    item =>
-                        item.busId ===
-                        bus.bus_id
-                );
-
-            if (marker) {
-                marker.openPopup();
-            }
-        }
-    );
-
-    document
-        .getElementById(
-            "busList"
-        )
-        .appendChild(card);
+    document.getElementById("busList").appendChild(card);
 }
 
 function selectBus(busId) {
     selectedBusId = busId;
 
     const list = document.getElementById("busList");
-    const selectedCard = document.getElementById(`bus-card-${busId}`);
+    const selectedCard = document.getElementById("bus-card-" + busId);
 
     if (selectedCard && list && list.firstElementChild !== selectedCard) {
         list.prepend(selectedCard);
     }
 
     document.querySelectorAll(".bus-card").forEach(card => {
-        card.classList.toggle("selected", card.id === `bus-card-${busId}`);
+        card.classList.toggle("selected", card.id === "bus-card-" + busId);
     });
 
     document.querySelectorAll(".bus-card").forEach((card, index) => {
         const rank = card.querySelector(".bus-rank");
-        if (rank) rank.textContent = `#${index + 1}`;
+        if (rank) rank.textContent = "#" + (index + 1);
     });
-
-    if (selectedCard) {
-        selectedCard.scrollIntoView({
-            behavior: "smooth",
-            block: "nearest"
-        });
-    }
 
     document.querySelectorAll(".bus-marker").forEach(marker => {
         marker.classList.remove("selected");
     });
 
-    const selectedMarker = document.getElementById(`marker-${busId}`);
+    const selectedMarker = document.getElementById("marker-" + busId);
+    if (selectedMarker) selectedMarker.classList.add("selected");
 
-    if (selectedMarker) {
-        selectedMarker.classList.add("selected");
+    const bus = currentBuses.find(item => String(item.bus_id) === String(busId));
+    updateSelectedBusPanel(bus);
+
+    if (selectedCard) {
+        selectedCard.scrollIntoView({behavior:"smooth",block:"nearest"});
     }
 }
 
@@ -1278,4 +1201,47 @@ async function showAddress(latitude, longitude) {
     } catch (error) {
         if (!confirmedLocation) message.textContent = "Current location selected.";
     }
+}
+
+
+function updateSelectedBusPanel(bus) {
+    const panel = document.getElementById("selectedBusPanel");
+    if (!panel) return;
+
+    if (!bus) {
+        panel.classList.add("hidden");
+        return;
+    }
+
+    const idNode = document.getElementById("selectedBusId");
+    const routeNode = document.getElementById("selectedBusRoute");
+    const statusNode = document.getElementById("selectedBusStatus");
+    const directionNode = document.getElementById("selectedBusDirection");
+    const arrowNode = document.getElementById("selectedBusArrow");
+    const distanceNode = document.getElementById("selectedBusDistance");
+    const speedNode = document.getElementById("selectedBusSpeed");
+    const movementNode = document.getElementById("selectedBusMovement");
+    const followButton = document.getElementById("selectedFollowBtn");
+
+    if (idNode) idNode.textContent = bus.bus_id || "Unknown Bus";
+    if (routeNode) {
+        const route = getBusRoute(bus.bus_id);
+        routeNode.textContent = route ? route : "";
+        routeNode.classList.toggle("hidden", !route);
+    }
+    if (statusNode) statusNode.textContent = bus.data_stale ? "LAST AVAILABLE" : "LIVE";
+    if (directionNode) directionNode.textContent = bus.likely_towards || bus.direction || "Determining...";
+    if (arrowNode && Number.isFinite(Number(bus.heading))) arrowNode.style.transform = "rotate(" + Number(bus.heading) + "deg)";
+    if (distanceNode) distanceNode.textContent = (bus.distance_km ?? "—") + " km away";
+    if (speedNode) speedNode.textContent = (bus.speed ?? 0) + " km/h";
+    if (movementNode) movementNode.textContent = (bus.movement_km ?? 0) + " km / " + (bus.history_minutes ?? 0) + " min";
+    if (followButton) followButton.textContent = "Follow bus";
+
+    panel.classList.remove("hidden");
+}
+
+function closeSelectedBusPanel() {
+    selectedBusId = null;
+    updateSelectedBusPanel(null);
+    clearBusSelection();
 }
