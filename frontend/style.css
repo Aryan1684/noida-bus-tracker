@@ -445,6 +445,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 }
 
 
+}
+
 /* Final bus list scroll system */
 .bus-list-scroll{
   min-height:0;
