@@ -66,6 +66,7 @@
         </section>
 
         <section id="tradeFairNotice" class="trade-fair-notice hidden" aria-label="UP International Trade Fair 2026 special free bus service">
+            <button id="tradeFairClose" class="trade-fair-close" type="button" aria-label="Hide Trade Fair notice" title="Hide notice">×</button>
             <div class="trade-fair-main">
                 <div class="trade-fair-icon">₹0</div>
                 <div>
@@ -75,7 +76,11 @@
                 </div>
             </div>
 
-            <div class="trade-fair-route-grid">
+            <button id="tradeFairRoutesToggle" class="trade-fair-routes-toggle" type="button" aria-expanded="false" aria-controls="tradeFairRoutes">
+                <span>View routes</span><span class="trade-fair-chevron">⌄</span>
+            </button>
+
+            <div id="tradeFairRoutes" class="trade-fair-route-grid hidden">
                 <article class="trade-fair-route">
                     <div class="trade-fair-route-top">
                         <span class="trade-fair-route-number">1</span>
