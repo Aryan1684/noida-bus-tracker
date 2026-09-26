@@ -1164,6 +1164,70 @@ function initializePlaceSearch() {
     });
 }
 
+const LOCAL_PLACES = [
+    { name: "Botanical Garden, Noida", latitude: 28.5672, longitude: 77.3346 },
+    { name: "Sector 37, Noida", latitude: 28.5650, longitude: 77.3440 },
+    { name: "Noida City Center", latitude: 28.5740, longitude: 77.3560 },
+    { name: "Sector 52, Noida", latitude: 28.5850, longitude: 77.3700 },
+    { name: "Parthala, Noida", latitude: 28.6075, longitude: 77.3755 },
+    { name: "Chaar Murti, Greater Noida West", latitude: 28.6020, longitude: 77.4180 },
+    { name: "Ek Murti, Greater Noida West", latitude: 28.6063, longitude: 77.4337 },
+    { name: "Surajpur, Greater Noida", latitude: 28.5185, longitude: 77.4990 },
+    { name: "Pari Chowk, Greater Noida", latitude: 28.4652, longitude: 77.5080 }
+];
+
+function renderPlaceSuggestions(results, input, suggestions) {
+    suggestions.innerHTML = "";
+
+    if (!results.length) {
+        suggestions.innerHTML = "<div class='search-empty'>No matching place found</div>";
+        return;
+    }
+
+    results.slice(0, 7).forEach(result => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "search-result";
+
+        const label = result.name || "Unnamed place";
+        item.innerHTML =
+            "<strong>" + escapeHtml(label.split(",")[0]) + "</strong>" +
+            "<span>" + escapeHtml(label) + "</span>";
+
+        item.addEventListener("click", () => {
+            const lat = Number(result.latitude);
+            const lon = Number(result.longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+            setLocationMarker(lat, lon);
+            confirmedLocation = { lat, lon };
+
+            const refreshButton = document.getElementById("refreshBtn");
+            if (refreshButton) refreshButton.disabled = false;
+
+            updateLocationMessage("Place selected. Finding nearby electric buses...");
+            loadNearbyBuses(confirmedLocation);
+            startAutoRefresh();
+
+            map.setView([lat, lon], 15, { animate: true, duration: 0.5 });
+
+            input.value = label;
+            suggestions.classList.add("hidden");
+            pinAdjustMode = false;
+
+            const button = document.getElementById("adjustPinBtn");
+            if (button) {
+                button.textContent = "Move pin";
+                button.classList.remove("active");
+            }
+
+            if (locationMarker) locationMarker.dragging.disable();
+        });
+
+        suggestions.appendChild(item);
+    });
+}
+
 async function searchPlaces(query) {
     const input = document.getElementById("placeSearch");
     const suggestions = document.getElementById("searchSuggestions");
@@ -1173,35 +1237,44 @@ async function searchPlaces(query) {
     searchController = new AbortController();
 
     input.setAttribute("aria-busy", "true");
-    suggestions.innerHTML = "<div class='search-empty'>Searching...</div>";
+
+    const q = query.toLowerCase();
+    const localResults = LOCAL_PLACES.filter(place =>
+        place.name.toLowerCase().includes(q)
+    );
+
+    renderPlaceSuggestions(localResults, input, suggestions);
     suggestions.classList.remove("hidden");
 
+    const timeoutId = setTimeout(() => searchController.abort(), 4500);
+
     try {
-        let results = [];
-        let response = await fetch(
+        const response = await fetch(
             API_BASE_URL + "/api/search-location?q=" + encodeURIComponent(query),
             { signal: searchController.signal }
         );
 
+        let externalResults = [];
+
         if (response.ok) {
             const data = await response.json();
-            results = Array.isArray(data.results) ? data.results : [];
+            externalResults = Array.isArray(data.results) ? data.results : [];
         }
 
-        if (!results.length) {
-            const fallbackUrl =
-                "https://nominatim.openstreetmap.org/search?format=jsonv2" +
-                "&q=" + encodeURIComponent(query) +
-                "&countrycodes=in&limit=5&addressdetails=1";
-
-            const fallbackResponse = await fetch(fallbackUrl, {
-                signal: searchController.signal,
-                headers: { "Accept": "application/json" }
-            });
+        if (!externalResults.length) {
+            const fallbackResponse = await fetch(
+                "https://nominatim.openstreetmap.org/search?format=jsonv2&q=" +
+                encodeURIComponent(query) +
+                "&countrycodes=in&limit=5&addressdetails=1",
+                {
+                    signal: searchController.signal,
+                    headers: { "Accept": "application/json" }
+                }
+            );
 
             if (fallbackResponse.ok) {
                 const fallbackData = await fallbackResponse.json();
-                results = fallbackData.map(item => ({
+                externalResults = fallbackData.map(item => ({
                     name: item.display_name,
                     latitude: Number(item.lat),
                     longitude: Number(item.lon)
@@ -1209,64 +1282,27 @@ async function searchPlaces(query) {
             }
         }
 
-        suggestions.innerHTML = "";
-
-        if (!results.length) {
-            suggestions.innerHTML = "<div class='search-empty'>No matching place found</div>";
-            return;
-        }
-
-        results.forEach(result => {
-            const item = document.createElement("button");
-            item.type = "button";
-            item.className = "search-result";
-
-            const label = result.name || "Unnamed place";
-            item.innerHTML =
-                "<strong>" + escapeHtml(label.split(",")[0]) + "</strong>" +
-                "<span>" + escapeHtml(label) + "</span>";
-
-            item.addEventListener("click", () => {
-                const lat = Number(result.latitude);
-                const lon = Number(result.longitude);
-                if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
-
-                setLocationMarker(lat, lon);
-                confirmedLocation = { lat, lon };
-
-                const refreshButton = document.getElementById("refreshBtn");
-                if (refreshButton) refreshButton.disabled = false;
-
-                updateLocationMessage("Place selected. Finding nearby electric buses...");
-                loadNearbyBuses(confirmedLocation);
-                startAutoRefresh();
-
-                map.setView([lat, lon], 15, { animate: true, duration: 0.5 });
-
-                input.value = label;
-                suggestions.classList.add("hidden");
-                pinAdjustMode = false;
-
-                if (locationMarker) locationMarker.dragging.disable();
-
-                const button = document.getElementById("adjustPinBtn");
-                if (button) {
-                    button.textContent = "Move pin";
-                    button.classList.remove("active");
-                }
-            });
-
-            suggestions.appendChild(item);
+        const seen = new Set();
+        const merged = [...localResults, ...externalResults].filter(result => {
+            const key = String(result.name || "").toLowerCase();
+            if (!key || seen.has(key)) return false;
+            seen.add(key);
+            return true;
         });
+
+        renderPlaceSuggestions(merged, input, suggestions);
+        suggestions.classList.remove("hidden");
     } catch (error) {
-        if (error.name !== "AbortError") {
-            console.error("Place search failed:", error);
+        if (error.name !== "AbortError" && !localResults.length) {
             suggestions.innerHTML = "<div class='search-empty'>Search is temporarily unavailable</div>";
+            suggestions.classList.remove("hidden");
         }
     } finally {
+        clearTimeout(timeoutId);
         input.setAttribute("aria-busy", "false");
     }
 }
+
 function escapeHtml(value) {
     return String(value).replace(/[&<>"']/g, char => ({
         "&":"&amp;",
