@@ -46,7 +46,7 @@
             ".feature-modal-card h3{font-size:18px;margin-bottom:8px}.feature-modal-card p{font-size:12px;color:var(--muted);line-height:1.5}"+
             ".feature-modal-card select{width:100%;margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text)}"+
             "@media(max-width:650px){#advancedFeatures{padding:10px}.feature-toolbar{grid-template-columns:1fr 1fr}.feature-summary{grid-template-columns:1fr 1fr 1fr}.feature-summary div{padding:8px 6px}.feature-actions{grid-template-columns:repeat(3,1fr)}.feature-actions button{font-size:9px;padding:6px 3px}}";
-        document.head.appendChild(s);
+        s.textContent += ".report-modal{position:fixed;inset:0;z-index:7000;background:rgba(11,13,16,.55);display:grid;place-items:center;padding:18px}.report-modal-card{width:min(520px,100%);max-height:min(700px,calc(100vh - 36px));overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 28px 70px rgba(0,0,0,.24)}.report-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.report-modal-head h3{font-size:18px}.report-close{width:30px;height:30px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--muted);font-size:18px}.report-field{display:grid;gap:5px;margin-top:13px}.report-field label,.report-consent{font-size:9px;font-weight:800;color:var(--text)}.report-field select,.report-field textarea{width:100%;border:1px solid var(--line);border-radius:10px;background:var(--surface2);color:var(--text);padding:10px;font-size:10px;outline:0}.report-field textarea{min-height:90px;resize:vertical}.report-help{font-size:8px;color:var(--muted);line-height:1.5}.report-consent{display:flex;align-items:flex-start;gap:8px;margin-top:13px;line-height:1.5}.report-consent input{margin-top:1px;accent-color:var(--accent);width:14px;height:14px}.report-form-actions{display:flex;gap:7px;margin-top:15px}.report-form-actions button{flex:1;min-height:38px;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:10px;font-weight:900;background:var(--surface);color:var(--text)}.report-form-actions button[type=\"submit\"]{background:var(--primary);border-color:var(--primary);color:var(--primaryText)}.report-status{margin-top:10px;font-size:9px;color:var(--muted)}.footer-links{display:flex;flex-wrap:wrap;justify-content:center;gap:5px 11px;margin-top:8px}.footer-links a{color:inherit;text-decoration:none}.footer-links a:hover{text-decoration:underline}";document.head.appendChild(s);
     }
 
     function readHistory() {
@@ -368,35 +368,90 @@
     }
 
     function report(bus){
-        var choice=prompt("Report:\\n1 Not moving\\n2 Wrong location\\n3 Already passed\\n4 Occupancy");
-        var types={"1":"not_moving","2":"wrong_location","3":"already_passed","4":"occupancy"};
-        var type=types[choice];
-        if(!type)return;
+        if(document.querySelector(".report-modal")) return;
 
-        var value="";
-        if(type==="occupancy"){
-            var o=prompt("Occupancy:\\n1 Empty\\n2 Seats available\\n3 Crowded\\n4 Full");
-            value=({"1":"empty","2":"seats_available","3":"crowded","4":"full"})[o]||"";
-            if(!value)return;
-        }
+        var modal=document.createElement("div");
+        modal.className="report-modal";
+        modal.setAttribute("role","dialog");
+        modal.setAttribute("aria-modal","true");
+        modal.setAttribute("aria-labelledby","reportTitle");
 
-        var form=new URLSearchParams();
-        form.set("form-name","bus-reports");
-        form.set("bus_id",bus.bus_id);
-        form.set("report_type",type);
-        form.set("value",value);
-        form.set("note","");
+        modal.innerHTML=
+            "<div class='report-modal-card'>"+
+                "<div class='report-modal-head'>"+
+                    "<div><p class='eyebrow'>BUS REPORT</p><h3 id='reportTitle'>Report "+bus.bus_id+"</h3></div>"+
+                    "<button type='button' class='report-close' aria-label='Close report'>×</button>"+
+                "</div>"+
+                "<form class='report-form'>"+
+                    "<div class='report-field'><label for='reportType'>What is wrong?</label><select id='reportType' required><option value=''>Choose an issue</option><option value='not_moving'>Bus is not moving</option><option value='wrong_location'>Location looks wrong</option><option value='already_passed'>Bus already passed</option><option value='occupancy'>Occupancy</option></select></div>"+
+                    "<div class='report-field hidden' id='reportOccupancyField'><label for='reportOccupancy'>Occupancy</label><select id='reportOccupancy'><option value=''>Choose occupancy</option><option value='empty'>Empty</option><option value='seats_available'>Seats available</option><option value='crowded'>Crowded</option><option value='full'>Full</option></select></div>"+
+                    "<div class='report-field'><label for='reportNote'>Additional note <span class='report-help'>Do not include your name, phone number, email, address, or other personal information.</span></label><textarea id='reportNote' maxlength='500' placeholder='Optional details...'></textarea></div>"+
+                    "<label class='report-consent'><input id='reportConsent' type='checkbox' required><span>I understand that this report will be submitted through our form provider for service improvement. I have not included personal information. <a href='privacy.html' target='_blank' rel='noopener'>Privacy Notice</a></span></label>"+
+                    "<div class='report-form-actions'><button type='button' class='report-cancel'>Cancel</button><button type='submit'>Submit report</button></div>"+
+                    "<div class='report-status' aria-live='polite'></div>"+
+                "</form>"+
+            "</div>";
 
-        fetch("/",{
-            method:"POST",
-            headers:{"Content-Type":"application/x-www-form-urlencoded"},
-            body:form.toString()
-        }).then(function(r){
-            if(!r.ok)throw new Error("failed");
-            alert("Thanks. Your report was submitted.");
-        }).catch(function(){alert("Could not submit the report right now.");});
+        document.body.appendChild(modal);
+
+        var close=modal.querySelector(".report-close");
+        var cancel=modal.querySelector(".report-cancel");
+        var form=modal.querySelector(".report-form");
+        var type=modal.querySelector("#reportType");
+        var occupancyField=modal.querySelector("#reportOccupancyField");
+        var occupancy=modal.querySelector("#reportOccupancy");
+        var note=modal.querySelector("#reportNote");
+        var consent=modal.querySelector("#reportConsent");
+        var status=modal.querySelector(".report-status");
+
+        function remove(){modal.remove();}
+
+        close.addEventListener("click",remove);
+        cancel.addEventListener("click",remove);
+        modal.addEventListener("click",function(event){if(event.target===modal)remove();});
+        document.addEventListener("keydown",function onKey(event){
+            if(!document.body.contains(modal))return;
+            if(event.key==="Escape"){document.removeEventListener("keydown",onKey);remove();}
+        });
+
+        type.addEventListener("change",function(){
+            var isOccupancy=type.value==="occupancy";
+            occupancyField.classList.toggle("hidden",!isOccupancy);
+            occupancy.required=isOccupancy;
+        });
+
+        form.addEventListener("submit",function(event){
+            event.preventDefault();
+            if(!form.reportValidity())return;
+
+            var formData=new URLSearchParams();
+            formData.set("form-name","bus-reports");
+            formData.set("bus_id",bus.bus_id || "");
+            formData.set("report_type",type.value);
+            formData.set("value",type.value==="occupancy"?occupancy.value:"");
+            formData.set("note",note.value.trim());
+            formData.set("consent","accepted");
+
+            status.textContent="Submitting report...";
+
+            fetch("/",{
+                method:"POST",
+                headers:{"Content-Type":"application/x-www-form-urlencoded"},
+                body:formData.toString()
+            }).then(function(response){
+                if(!response.ok)throw new Error("failed");
+                status.textContent="Report submitted. Thank you.";
+                form.reset();
+                occupancyField.classList.add("hidden");
+                occupancy.required=false;
+                setTimeout(remove,900);
+            }).catch(function(){
+                status.textContent="Could not submit the report right now. Please try again later.";
+            });
+        });
+
+        type.focus();
     }
-
     function toggleStops(){
         if(landmarkLayer){
             map.removeLayer(landmarkLayer);
