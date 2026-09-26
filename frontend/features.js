@@ -431,6 +431,87 @@
 
         type.focus();
     }
+    function openFeedback(){
+        if(document.querySelector(".feedback-modal")) return;
+
+        var modal=document.createElement("div");
+        modal.className="report-modal feedback-modal";
+        modal.setAttribute("role","dialog");
+        modal.setAttribute("aria-modal","true");
+        modal.setAttribute("aria-labelledby","feedbackTitle");
+
+        modal.innerHTML=
+            "<div class='report-modal-card'>"+
+                "<div class='report-modal-head'>"+
+                    "<div><p class='eyebrow'>YOUR FEEDBACK</p><h3 id='feedbackTitle'>Help improve Noida Bus Tracker</h3></div>"+
+                    "<button type='button' class='report-close' aria-label='Close feedback'>×</button>"+
+                "</div>"+
+                "<form class='feedback-form'>"+
+                    "<div class='report-field'><label for='feedbackRating'>How would you rate the tracker?</label><select id='feedbackRating' required><option value=''>Choose a rating</option><option value='5'>5 · Excellent</option><option value='4'>4 · Good</option><option value='3'>3 · Okay</option><option value='2'>2 · Poor</option><option value='1'>1 · Very poor</option></select></div>"+
+                    "<div class='report-field'><label for='feedbackType'>What is your feedback about?</label><select id='feedbackType' required><option value=''>Choose a category</option><option value='general'>General</option><option value='bus-data'>Bus data / accuracy</option><option value='location'>Location / map</option><option value='performance'>Speed / performance</option><option value='design'>Design / usability</option><option value='bug'>Bug or problem</option><option value='other'>Other</option></select></div>"+
+                    "<div class='report-field'><label for='feedbackMessage'>Tell us what you think</label><textarea id='feedbackMessage' maxlength='1000' required placeholder='What should we improve? What worked well?'></textarea></div>"+
+                    "<p class='report-help'>Please do not include your name, phone number, email, address, or other personal information.</p>"+
+                    "<div class='report-form-actions'><button type='button' class='report-cancel'>Cancel</button><button type='submit'>Send feedback</button></div>"+
+                    "<div class='report-status' aria-live='polite'></div>"+
+                "</form>"+
+            "</div>";
+
+        document.body.appendChild(modal);
+
+        var close=modal.querySelector(".report-close");
+        var cancel=modal.querySelector(".report-cancel");
+        var form=modal.querySelector(".feedback-form");
+        var status=modal.querySelector(".report-status");
+        var rating=modal.querySelector("#feedbackRating");
+        var type=modal.querySelector("#feedbackType");
+        var message=modal.querySelector("#feedbackMessage");
+
+        function remove(){modal.remove();}
+
+        close.addEventListener("click",remove);
+        cancel.addEventListener("click",remove);
+        modal.addEventListener("click",function(event){
+            if(event.target===modal)remove();
+        });
+
+        function onKey(event){
+            if(!document.body.contains(modal))return;
+            if(event.key==="Escape"){
+                document.removeEventListener("keydown",onKey);
+                remove();
+            }
+        }
+        document.addEventListener("keydown",onKey);
+
+        form.addEventListener("submit",function(event){
+            event.preventDefault();
+            if(!form.reportValidity())return;
+
+            var formData=new URLSearchParams();
+            formData.set("form-name","site-feedback");
+            formData.set("rating",rating.value);
+            formData.set("feedback_type",type.value);
+            formData.set("message",message.value.trim());
+
+            status.textContent="Sending feedback...";
+
+            fetch("/",{
+                method:"POST",
+                headers:{"Content-Type":"application/x-www-form-urlencoded"},
+                body:formData.toString()
+            }).then(function(response){
+                if(!response.ok)throw new Error("failed");
+                status.textContent="Thanks. Your feedback was submitted.";
+                form.reset();
+                setTimeout(remove,1200);
+            }).catch(function(){
+                status.textContent="Could not send feedback right now. Please try again.";
+            });
+        });
+
+        rating.focus();
+    }
+
     function enableAlert(){
         if(!("Notification" in window)){alert("Notifications are not supported in this browser.");return;}
         Notification.requestPermission().then(function(permission){
@@ -510,6 +591,12 @@
         initPWA();
         toolbar();
         wrapDisplay();
+
+        var feedbackButton=document.getElementById("feedbackBtn");
+        if(feedbackButton && feedbackButton.dataset.bound!=="true"){
+            feedbackButton.dataset.bound="true";
+            feedbackButton.addEventListener("click",openFeedback);
+        }
     }
 
     var observer=new MutationObserver(function(){
