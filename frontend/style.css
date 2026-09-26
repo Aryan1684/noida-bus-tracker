@@ -773,3 +773,10 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     transition:transform .12s ease,background-color .12s ease,border-color .12s ease,box-shadow .12s ease!important;
   }
 }
+
+
+@media(max-width:700px){
+  #locationBtn.heading-location{
+    display:none!important;
+  }
+}
