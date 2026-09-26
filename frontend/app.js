@@ -282,24 +282,30 @@ function initializeMap() {
 
 
 function setLocationButtonState(buttonId, state) {
-    const buttons = [
-        document.getElementById("locationBtn"),
-        document.getElementById("finderLocationBtn"),
-        document.getElementById("mapLocateBtn")
-    ].filter(Boolean);
+    const button = document.getElementById(buttonId);
+    if (!button) return;
 
-    buttons.forEach(button => {
-        button.classList.remove("location-success", "location-loading");
-        if (button.id === buttonId) {
-            if (state === "success") {
-                button.classList.add("location-success");
-                button.textContent = "✓ Location found";
-            } else if (state === "loading") {
-                button.classList.add("location-loading");
-                button.textContent = "Locating...";
-            }
-        }
-    });
+    if (state === "success") {
+        button.disabled = false;
+        button.classList.remove("location-loading");
+        button.classList.add("location-success");
+        button.textContent = button.dataset.successLabel || "Use my location";
+
+        window.clearTimeout(button._locationSuccessTimer);
+        button._locationSuccessTimer = window.setTimeout(() => {
+            button.textContent = "✓ Location found";
+            button.dataset.successShown = "true";
+        }, 1450);
+        return;
+    }
+
+    if (state === "loading") {
+        button.disabled = true;
+        button.classList.remove("location-success");
+        button.classList.add("location-loading");
+        button.dataset.successShown = "false";
+        button.textContent = button.dataset.originalText || button.textContent;
+    }
 }
 
 function getUserLocation(buttonId = "locationBtn") {
@@ -322,7 +328,7 @@ function getUserLocation(buttonId = "locationBtn") {
     });
 
     if (activeButton) {
-        activeButton.textContent = "Locating...";
+        activeButton.dataset.successLabel = activeButton.textContent;
         setLocationButtonState(buttonId, "loading");
     }
 
@@ -356,7 +362,8 @@ function getUserLocation(buttonId = "locationBtn") {
             buttons.forEach(button => {
                 button.disabled = false;
                 if (button.id !== buttonId) {
-                    button.textContent = button.id === "mapLocateBtn" ? "My location" : "⌖ " + (button.id === "finderLocationBtn" ? "Use my current location" : "Use my location");
+                    button.classList.remove("location-success", "location-loading");
+                    button.textContent = button.dataset.originalText || button.textContent;
                 }
             });
             setLocationButtonState(buttonId, "success");
