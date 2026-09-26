@@ -209,7 +209,13 @@
     function enhance(){
         buses.forEach(function(bus){
             var card=document.getElementById("bus-card-"+bus.bus_id);
-            if(!card || card.dataset.advanced==="true") return;
+            if(!card) return;
+
+            if(card.dataset.advanced==="true"){
+                var followButton=card.querySelector(".feature-actions button[data-f='follow']");
+                if(followButton) followButton.textContent=followId===bus.bus_id?"Following":"Follow";
+                return;
+            }
 
             var route=routeFor(bus);
             var routeText=route ? "Likely route: "+route.route+" · Confidence: "+route.confidence : "Route prediction: not enough movement data";
@@ -285,12 +291,20 @@
 
     function follow(bus){
         followId=followId===bus.bus_id?null:bus.bus_id;
+
+        document.querySelectorAll(".feature-actions button[data-f='follow']").forEach(function(button){
+            var card=button.closest(".bus-card");
+            if(!card)return;
+            button.textContent=card.id==="bus-card-"+bus.bus_id && followId===bus.bus_id?"Following":"Follow";
+        });
+
         if(followId){
-            map.setView([bus.latitude,bus.longitude],16);
-            updateLocationMessage("Following "+bus.bus_id+".");
+            map.setView([bus.latitude,bus.longitude],16,{animate:true,duration:.35});
+            updateLocationMessage("Following "+bus.bus_id+". The map will stay centered on this bus as new data arrives.");
         }else{
             updateLocationMessage("Bus follow mode stopped.");
         }
+
         enhance();
     }
 
