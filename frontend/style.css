@@ -376,7 +376,17 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .map-panel{order:5;height:min(68dvh,620px);min-height:430px;padding:10px}
   .results-section{order:6;margin-top:0;padding:0 14px 14px;border-top:1px solid var(--line);background:var(--surface)}
   .results-section .section-header{position:relative;top:auto}
-  .bus-grid{height:auto;max-height:none;overflow:visible;overscroll-behavior:auto;-webkit-overflow-scrolling:auto}
+  .bus-grid{
+    height:min(56dvh,560px);
+    max-height:min(56dvh,560px);
+    min-height:220px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;
+    touch-action:pan-y;
+    scrollbar-width:thin;
+  }
   .bus-card:hover{transform:none;box-shadow:none}
   #advancedFeatures{margin:10px 0 0}
 }
