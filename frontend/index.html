@@ -177,7 +177,29 @@
                     </div>
 
                     <div id="loadingState" class="state hidden">
-                        <div class="spinner"></div>
+                        <div class="loader" aria-hidden="true">
+                            <div class="busWrapper">
+                                <div class="busBody">
+                                    <svg viewBox="0 0 198 93" xmlns="http://www.w3.org/2000/svg" role="presentation">
+                                        <rect x="6.5" y="1.5" width="121" height="90" rx="2.5" fill="#f8f9fb" stroke="#282828" stroke-width="3"/>
+                                        <rect x="15" y="13" width="104" height="30" rx="7" fill="#1769d2"/>
+                                        <rect x="21" y="19" width="26" height="16" rx="3" fill="#dff4ff"/>
+                                        <rect x="51" y="19" width="26" height="16" rx="3" fill="#dff4ff"/>
+                                        <rect x="81" y="19" width="26" height="16" rx="3" fill="#dff4ff"/>
+                                        <rect x="15" y="49" width="104" height="22" rx="5" fill="#eef1f4"/>
+                                        <rect x="99" y="77" width="15" height="6" rx="2" fill="#86f23f"/>
+                                        <rect x="17" y="77" width="8" height="6" rx="2" fill="#282828"/>
+                                        <path d="M127 22H171c4.5 0 8.6 2.7 10.4 6.8l10 23.4c.7 1.7-.6 3.6-2.5 3.6H127z" fill="#f8f9fb" stroke="#282828" stroke-width="3"/>
+                                        <path d="M140 31h36l8 20h-44z" fill="#1769d2" stroke="#282828" stroke-width="2"/>
+                                    </svg>
+                                </div>
+                                <div class="busTires" aria-hidden="true">
+                                    <span class="busWheel"></span>
+                                    <span class="busWheel"></span>
+                                </div>
+                                <div class="road" aria-hidden="true"></div>
+                            </div>
+                        </div>
                         <h3>Finding buses</h3>
                         <p>Getting the latest GPS positions.</p>
                     </div>
