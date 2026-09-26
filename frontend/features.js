@@ -1,6 +1,9 @@
 
 (function () {
     var API = "https://noida-bus-tracker.onrender.com";
+    var WEB3FORMS_API = "https://api.web3forms.com/submit";
+    var FEEDBACK_ACCESS_KEY = "9f660460-b738-4ab4-88ae-2f986f049c5d";
+    var REPORT_ACCESS_KEY = "71c0fdce-19da-41d6-8ed9-9b663bd80d54";
     var HISTORY_KEY = "noidaBusFeatureHistory";
     var FAVORITES_KEY = "noidaBusFavorites";
     var ALERT_KEY = "noidaNearbyAlert";
@@ -435,6 +438,9 @@
             if(!form.reportValidity())return;
 
             var payload={
+                access_key:REPORT_ACCESS_KEY,
+                subject:"Noida Bus Tracker - Bus Report",
+                from_name:"Noida Bus Tracker",
                 bus_id:bus.bus_id || "",
                 report_type:type.value,
                 value:type.value==="occupancy"?occupancy.value:"",
@@ -445,13 +451,13 @@
 
             status.textContent="Submitting report...";
 
-            fetch(API+"/api/report",{
+            fetch(WEB3FORMS_API,{
                 method:"POST",
                 headers:{"Content-Type":"application/json","Accept":"application/json"},
                 body:JSON.stringify(payload)
             }).then(function(response){
                 return response.json().then(function(data){
-                    if(!response.ok || !data.success)throw new Error(data.detail || "failed");
+                    if(!response.ok || !data.success)throw new Error(data.message || "failed");
                     return data;
                 });
             }).then(function(){
@@ -524,6 +530,9 @@
             if(!form.reportValidity())return;
 
             var payload={
+                access_key:FEEDBACK_ACCESS_KEY,
+                subject:"Noida Bus Tracker - Feedback",
+                from_name:"Noida Bus Tracker",
                 rating:rating.value,
                 feedback_type:type.value,
                 message:message.value.trim(),
@@ -532,13 +541,13 @@
 
             status.textContent="Sending feedback...";
 
-            fetch(API+"/api/feedback",{
+            fetch(WEB3FORMS_API,{
                 method:"POST",
                 headers:{"Content-Type":"application/json","Accept":"application/json"},
                 body:JSON.stringify(payload)
             }).then(function(response){
                 return response.json().then(function(data){
-                    if(!response.ok || !data.success)throw new Error(data.detail || "failed");
+                    if(!response.ok || !data.success)throw new Error(data.message || "failed");
                     return data;
                 });
             }).then(function(){
