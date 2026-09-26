@@ -165,7 +165,7 @@ function initializeTradeFairNotice() {
             return;
         }
 
-        if (localStorage.getItem("tradeFairNoticeDismissed") === "true") {
+        if (sessionStorage.getItem("tradeFairNoticeDismissed") === "true") {
             notice.classList.add("hidden");
             return;
         }
@@ -197,14 +197,14 @@ function initializeTradeFairControls() {
 
     if (!notice) return;
 
-    if (localStorage.getItem("tradeFairNoticeDismissed") === "true") {
+    if (sessionStorage.getItem("tradeFairNoticeDismissed") === "true") {
         notice.classList.add("hidden");
     }
 
     if (closeButton) {
         closeButton.addEventListener("click", () => {
             notice.classList.add("hidden");
-            localStorage.setItem("tradeFairNoticeDismissed", "true");
+            sessionStorage.setItem("tradeFairNoticeDismissed", "true");
         });
     }
 
@@ -286,30 +286,53 @@ function setLocationButtonState(buttonId, state, message) {
     if (!button) return;
 
     window.clearTimeout(button._locationStateTimer);
-    button.classList.remove("location-success", "location-error", "location-loading");
+
+    const label = button.querySelector(".location-button-label");
+    const originalText = button.dataset.originalText || button.textContent;
 
     if (state === "success") {
         button.disabled = false;
-        button.textContent = button.dataset.originalText || "Use my location";
+        button.classList.remove("location-loading", "location-error");
         button.classList.add("location-success");
+        if (label) label.textContent = originalText;
+        else button.textContent = originalText;
+
         button._locationStateTimer = window.setTimeout(() => {
-            button.textContent = "✓ Location found";
+            if (label) label.textContent = "✓ Location found";
+            else button.textContent = "✓ Location found";
         }, 1450);
         return;
     }
 
     if (state === "error") {
         button.disabled = false;
-        button.textContent = message || "Location unavailable";
+        button.classList.remove("location-loading", "location-success");
         button.classList.add("location-error");
+        const errorText = message || "Location unavailable";
+        button.dataset.errorLabel = errorText;
+        if (label) label.textContent = originalText;
+        else button.textContent = originalText;
+
+        button._locationStateTimer = window.setTimeout(() => {
+            if (label) label.textContent = errorText;
+            else button.textContent = errorText;
+        }, 1200);
         return;
     }
 
     if (state === "loading") {
         button.disabled = true;
-        button.textContent = button.dataset.originalText || button.textContent;
+        button.classList.remove("location-success", "location-error");
         button.classList.add("location-loading");
+        if (label) label.textContent = originalText;
+        else button.textContent = originalText;
+        return;
     }
+
+    button.disabled = false;
+    button.classList.remove("location-success", "location-error", "location-loading");
+    if (label) label.textContent = originalText;
+    else button.textContent = originalText;
 }
 
 function getUserLocation(buttonId = "locationBtn") {
@@ -332,7 +355,10 @@ function getUserLocation(buttonId = "locationBtn") {
     });
 
     if (activeButton) {
-        activeButton.dataset.successLabel = activeButton.textContent;
+        activeButton.dataset.originalText = activeButton.textContent;
+        if (!activeButton.querySelector(".location-button-label")) {
+            activeButton.innerHTML = "<span class="location-button-label">" + activeButton.dataset.originalText + "</span>";
+        }
         setLocationButtonState(buttonId, "loading");
     }
 
@@ -389,6 +415,10 @@ function getUserLocation(buttonId = "locationBtn") {
             buttons.forEach(button => {
                 if (button.id === buttonId) {
                     const errorLabel = error.code === 1 ? "Location denied" : error.code === 2 ? "Location unavailable" : "Try again";
+                    if (!button.dataset.originalText) button.dataset.originalText = button.textContent;
+                    if (!button.querySelector(".location-button-label")) {
+                        button.innerHTML = "<span class="location-button-label">" + button.dataset.originalText + "</span>";
+                    }
                     setLocationButtonState(buttonId, "error", errorLabel);
                 } else {
                     button.disabled = false;
