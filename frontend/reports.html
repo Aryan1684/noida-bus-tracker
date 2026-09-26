@@ -18,5 +18,12 @@
 <label>Do not fill this out <input name="bot-field"></label>
 </p>
 </form>
+<form name="site-feedback" method="POST" data-netlify="true" data-netlify-honeypot="bot-field">
+<input type="hidden" name="form-name" value="site-feedback">
+<input name="rating">
+<input name="feedback_type">
+<textarea name="message"></textarea>
+<input name="bot-field">
+</form>
 </body>
 </html>
