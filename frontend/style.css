@@ -599,3 +599,37 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     animation:none!important;
   }
 }
+
+
+/* Final loading state polish */
+.results-section.is-loading .bus-list-scroll{
+  visibility:hidden;
+}
+.results-section.is-loading .bus-list-scroll .bus-grid{
+  pointer-events:none;
+}
+#loadingState .loader{
+  width:fit-content;
+  margin:0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+#loadingState .busWrapper{
+  margin:0 auto;
+}
+#locationBtn,#finderLocationBtn,#mapLocateBtn{
+  transition:background-color .85s cubic-bezier(.22,.75,.2,1),border-color .85s cubic-bezier(.22,.75,.2,1),color .35s ease,box-shadow .35s ease;
+}
+#locationBtn.location-success,#finderLocationBtn.location-success,#mapLocateBtn.location-success{
+  background-color:#2e9d68!important;
+  background-image:none!important;
+  border-color:#2e9d68!important;
+  animation:none!important;
+}
+#locationBtn.location-error,#finderLocationBtn.location-error,#mapLocateBtn.location-error{
+  background-color:#c53b32!important;
+  background-image:none!important;
+  border-color:#c53b32!important;
+  animation:none!important;
+}
