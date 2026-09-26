@@ -705,3 +705,30 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     font-size:11px!important;
   }
 }
+
+
+/* Feedback entry point */
+.results-actions{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.feedback-button{
+  border-color:var(--primary);
+  background:var(--surface);
+  color:var(--text);
+}
+.feedback-button:hover{
+  background:var(--text);
+  color:var(--bg);
+}
+@media(max-width:480px){
+  .results-actions{
+    gap:6px;
+  }
+  .feedback-button,
+  .refresh-button{
+    min-width:0;
+    padding:0 11px;
+  }
+}
