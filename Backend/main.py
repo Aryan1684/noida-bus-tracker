@@ -2,6 +2,7 @@ import os
 import requests
 
 from fastapi import FastAPI, Query, HTTPException
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -11,6 +12,46 @@ from utils.distance import calculate_distance
 load_dotenv()
 
 MAPTILER_API_KEY = os.getenv("MAPTILER_API_KEY")
+WEB3FORMS_API = "https://api.web3forms.com/submit"
+WEB3FORMS_FEEDBACK_KEY = os.getenv("WEB3FORMS_FEEDBACK_KEY")
+WEB3FORMS_REPORT_KEY = os.getenv("WEB3FORMS_REPORT_KEY")
+
+
+class FeedbackSubmission(BaseModel):
+    rating: str
+    feedback_type: str
+    message: str
+    time: str | None = None
+
+
+class ReportSubmission(BaseModel):
+    bus_id: str
+    report_type: str
+    value: str | None = None
+    note: str | None = None
+    consent: str
+    time: str | None = None
+
+
+def submit_web3forms(access_key: str | None, payload: dict):
+    if not access_key:
+        raise HTTPException(status_code=500, detail="Web3Forms is not configured")
+
+    try:
+        response = requests.post(
+            WEB3FORMS_API,
+            json={"access_key": access_key, **payload},
+            headers={"Accept": "application/json"},
+            timeout=10
+        )
+        data = response.json()
+    except (requests.RequestException, ValueError):
+        raise HTTPException(status_code=502, detail="Unable to reach Web3Forms")
+
+    if not response.ok or not data.get("success"):
+        raise HTTPException(status_code=502, detail=data.get("message", "Web3Forms submission failed"))
+
+    return {"success": True}
 
 app = FastAPI(title="Noida Electric Bus Tracker")
 
@@ -28,6 +69,32 @@ def root():
     return {
         "message": "Noida Electric Bus Tracker API is running"
     }
+
+
+@app.post("/api/feedback")
+def submit_feedback(payload: FeedbackSubmission):
+    return submit_web3forms(WEB3FORMS_FEEDBACK_KEY, {
+        "subject": "Noida Bus Tracker - Feedback",
+        "from_name": "Noida Bus Tracker",
+        "rating": payload.rating,
+        "feedback_type": payload.feedback_type,
+        "message": payload.message,
+        "time": payload.time or ""
+    })
+
+
+@app.post("/api/report")
+def submit_report(payload: ReportSubmission):
+    return submit_web3forms(WEB3FORMS_REPORT_KEY, {
+        "subject": "Noida Bus Tracker - Bus Report",
+        "from_name": "Noida Bus Tracker",
+        "bus_id": payload.bus_id,
+        "report_type": payload.report_type,
+        "value": payload.value or "",
+        "note": payload.note or "",
+        "consent": payload.consent,
+        "time": payload.time or ""
+    })
 
 
 @app.get("/api/buses")
