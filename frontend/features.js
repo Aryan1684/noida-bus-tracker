@@ -8,33 +8,20 @@
     var buses = [];
     var followId = null;
     var trail = null;
-    var landmarkLayer = null;
     var playbackTimer = null;
     var playbackMarker = null;
     var installPrompt = null;
 
-    var landmarks = [
-        ["Botanical Garden", 28.5672, 77.3346],
-        ["Sector 37", 28.5650, 77.3440],
-        ["Noida City Center", 28.5740, 77.3560],
-        ["Sector 52", 28.5850, 77.3700],
-        ["Parthala", 28.6075, 77.3755],
-        ["Chaar Murti", 28.6020, 77.4180],
-        ["Ek Murti", 28.6063, 77.4337],
-        ["Surajpur", 28.5185, 77.4990],
-        ["Pari Chowk", 28.4652, 77.5080]
-    ];
-
     function addStyles() {
         var s=document.createElement("style");
         s.textContent=
-            "#advancedFeatures{margin-bottom:18px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--surface2)}"+
-            ".feature-toolbar{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}"+
-            ".feature-toolbar button,.feature-actions button{min-height:36px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--text);padding:7px 9px;font-size:10px;font-weight:800}"+
-            ".feature-toolbar button:hover,.feature-actions button:hover{background:var(--text);color:var(--bg)}"+
-            ".feature-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:8px}"+
-            ".feature-summary div{padding:9px 10px;border-radius:10px;background:var(--surface);color:var(--muted);font-size:9px;border:1px solid var(--line)}"+
-            ".feature-summary strong{display:block;color:var(--text);font-size:10px;margin-bottom:2px}"+
+            "#advancedFeatures{margin:8px 0 16px;padding:0;border:0;background:transparent}"+
+            ".feature-toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px}"+
+            ".feature-toolbar button{min-height:42px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);padding:8px 10px;font-size:10px;font-weight:800}"+
+            ".feature-toolbar button:hover{background:var(--text);color:var(--bg)}"+
+            ".feature-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}"+
+            ".feature-summary div{padding:10px 11px;border-radius:12px;background:var(--surface);color:var(--muted);font-size:9px;border:1px solid var(--line)}"+
+            ".feature-summary strong{display:block;color:var(--text);font-size:10px;margin-bottom:3px}"+
             ".feature-route{margin-top:8px;padding:8px 10px;border-radius:9px;background:var(--surface2);color:var(--muted);font-size:10px;line-height:1.45}"+
             ".feature-meta{margin-top:8px;color:var(--muted);font-size:10px!important;line-height:1.5}"+
             ".feature-meta strong{color:var(--text)}"+
@@ -154,11 +141,7 @@
                 if(!old) return;
                 var closest=data.closest_bus;
                 var live=buses.filter(function(b){return b.vehicle_status==="live";}).length;
-                var moving=buses.map(currentSpeed).filter(function(s){return s>2;});
-                var avg=moving.length?moving.reduce(function(a,b){return a+b;},0)/moving.length:0;
-                var congestion=moving.length<3?"Insufficient data":avg<15?"High":avg<25?"Medium":"Low";
                 old.innerHTML="<div><strong>Closest bus</strong>"+(closest?closest.bus_id+" · "+closest.distance_km+" km":"None")+"</div>"+
-                    "<div><strong>Congestion estimate</strong>"+congestion+"</div>"+
                     "<div><strong>Active nearby</strong>"+live+"</div>";
             })
             .catch(function(){});
@@ -175,8 +158,6 @@
             "<div class='feature-toolbar'>"+
             "<button id='featureAlert'>🔔 Nearby Alert</button>"+
             "<button id='featureFav'>❤️ Favorites</button>"+
-            "<button id='featureStops'>🚏 Stops & Landmarks</button>"+
-            "<button id='featureInstall' hidden>📱 Install App</button>"+
             "</div>"+
             "<div id='featureSummary' class='feature-summary'></div>";
 
@@ -184,8 +165,6 @@
 
         document.getElementById("featureAlert").onclick=enableAlert;
         document.getElementById("featureFav").onclick=saveFavorite;
-        document.getElementById("featureStops").onclick=toggleStops;
-        document.getElementById("featureInstall").onclick=installPWA;
 
         renderFavorites();
     }
@@ -452,22 +431,6 @@
 
         type.focus();
     }
-    function toggleStops(){
-        if(landmarkLayer){
-            map.removeLayer(landmarkLayer);
-            landmarkLayer=null;
-            return;
-        }
-
-        landmarkLayer=L.layerGroup();
-        landmarks.forEach(function(item){
-            L.circleMarker([item[1],item[2]],{radius:6,weight:2})
-                .bindPopup("<strong>"+item[0]+"</strong><br>Route landmark / stop context")
-                .addTo(landmarkLayer);
-        });
-        landmarkLayer.addTo(map);
-    }
-
     function enableAlert(){
         if(!("Notification" in window)){alert("Notifications are not supported in this browser.");return;}
         Notification.requestPermission().then(function(permission){
