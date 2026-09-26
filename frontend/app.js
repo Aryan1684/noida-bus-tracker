@@ -367,7 +367,13 @@ function getUserLocation(buttonId = "locationBtn") {
     if (activeButton) {
         activeButton.dataset.originalText = activeButton.textContent;
         if (!activeButton.querySelector(".location-button-label")) {
-            activeButton.innerHTML = "<span class="location-button-label">" + activeButton.dataset.originalText + "</span>";
+            if (!activeButton.querySelector(".location-button-label")) {
+                const labelNode = document.createElement("span");
+                labelNode.className = "location-button-label";
+                labelNode.textContent = activeButton.dataset.originalText;
+                activeButton.textContent = "";
+                activeButton.appendChild(labelNode);
+            }
         }
         setLocationButtonState(buttonId, "loading");
     }
@@ -427,7 +433,13 @@ function getUserLocation(buttonId = "locationBtn") {
                     const errorLabel = error.code === 1 ? "Location denied" : error.code === 2 ? "Location unavailable" : "Try again";
                     if (!button.dataset.originalText) button.dataset.originalText = button.textContent;
                     if (!button.querySelector(".location-button-label")) {
-                        button.innerHTML = "<span class="location-button-label">" + button.dataset.originalText + "</span>";
+                    if (!button.querySelector(".location-button-label")) {
+                        const labelNode = document.createElement("span");
+                        labelNode.className = "location-button-label";
+                        labelNode.textContent = button.dataset.originalText;
+                        button.textContent = "";
+                        button.appendChild(labelNode);
+                    }
                     }
                     setLocationButtonState(buttonId, "error", errorLabel);
                 } else {
