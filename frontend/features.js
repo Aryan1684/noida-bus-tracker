@@ -236,10 +236,25 @@
                 "<button data-f='share'>Share</button>"+
                 "<button data-f='report'>Report</button>";
 
-            actions.onclick=function(event){
+            actions.addEventListener("pointerdown",function(event){
+                var btn=event.target.closest("button");
+                if(btn)event.stopPropagation();
+            });
+
+            actions.addEventListener("click",function(event){
                 var btn=event.target.closest("button");
                 if(!btn)return;
+                event.preventDefault();
                 event.stopPropagation();
+
+                actions.querySelectorAll("button.action-pressed").forEach(function(item){
+                    item.classList.remove("action-pressed");
+                });
+                btn.classList.add("action-pressed");
+                window.setTimeout(function(){
+                    btn.classList.remove("action-pressed");
+                },220);
+
                 var type=btn.dataset.f;
                 if(type==="eta") eta(bus);
                 if(type==="follow") follow(bus);
@@ -247,7 +262,9 @@
                 if(type==="play") playback(bus);
                 if(type==="share") share(bus);
                 if(type==="report") report(bus);
-            };
+
+                window.setTimeout(function(){btn.blur();},0);
+            });
 
             card.appendChild(actions);
             card.dataset.advanced="true";
