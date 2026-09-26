@@ -434,22 +434,27 @@
             event.preventDefault();
             if(!form.reportValidity())return;
 
-            var formData=new URLSearchParams();
-            formData.set("form-name","bus-reports");
-            formData.set("bus_id",bus.bus_id || "");
-            formData.set("report_type",type.value);
-            formData.set("value",type.value==="occupancy"?occupancy.value:"");
-            formData.set("note",note.value.trim());
-            formData.set("consent","accepted");
+            var payload={
+                bus_id:bus.bus_id || "",
+                report_type:type.value,
+                value:type.value==="occupancy"?occupancy.value:"",
+                note:note.value.trim(),
+                consent:"accepted",
+                time:new Date().toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"})
+            };
 
             status.textContent="Submitting report...";
 
-            fetch("/",{
+            fetch(API+"/api/report",{
                 method:"POST",
-                headers:{"Content-Type":"application/x-www-form-urlencoded"},
-                body:formData.toString()
+                headers:{"Content-Type":"application/json","Accept":"application/json"},
+                body:JSON.stringify(payload)
             }).then(function(response){
-                if(!response.ok)throw new Error("failed");
+                return response.json().then(function(data){
+                    if(!response.ok || !data.success)throw new Error(data.detail || "failed");
+                    return data;
+                });
+            }).then(function(){
                 status.textContent="Report submitted. Thank you.";
                 form.reset();
                 occupancyField.classList.add("hidden");
@@ -518,20 +523,25 @@
             event.preventDefault();
             if(!form.reportValidity())return;
 
-            var formData=new URLSearchParams();
-            formData.set("form-name","site-feedback");
-            formData.set("rating",rating.value);
-            formData.set("feedback_type",type.value);
-            formData.set("message",message.value.trim());
+            var payload={
+                rating:rating.value,
+                feedback_type:type.value,
+                message:message.value.trim(),
+                time:new Date().toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"})
+            };
 
             status.textContent="Sending feedback...";
 
-            fetch("/",{
+            fetch(API+"/api/feedback",{
                 method:"POST",
-                headers:{"Content-Type":"application/x-www-form-urlencoded"},
-                body:formData.toString()
+                headers:{"Content-Type":"application/json","Accept":"application/json"},
+                body:JSON.stringify(payload)
             }).then(function(response){
-                if(!response.ok)throw new Error("failed");
+                return response.json().then(function(data){
+                    if(!response.ok || !data.success)throw new Error(data.detail || "failed");
+                    return data;
+                });
+            }).then(function(){
                 status.textContent="Thanks. Your feedback was submitted.";
                 form.reset();
                 setTimeout(remove,1200);
