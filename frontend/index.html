@@ -57,41 +57,78 @@
 
         <section id="tradeFairNotice" class="trade-fair-notice hidden" aria-label="UP International Trade Fair 2026 special free bus service">
             <button id="tradeFairClose" class="trade-fair-close" type="button" aria-label="Hide Trade Fair notice" title="Hide notice">×</button>
-            <div class="trade-fair-summary">
-                <div class="trade-fair-main">
-                    <div class="trade-fair-icon">₹0</div>
-                    <div>
-                        <p class="eyebrow">UP INTERNATIONAL TRADE FAIR 2026 · 25–29 SEP</p>
-                        <h2>मेला स्पेशल · निःशुल्क सेवा</h2>
-                        <p>25 सितंबर से 29 सितंबर 2026 तक India Expo Mart, Greater Noida के लिए <strong>कुल 25 इलेक्ट्रिक बसें</strong> विशेष निःशुल्क सेवा में चलेंगी।</p>
-                    </div>
+
+            <div class="trade-fair-bar">
+                <div class="trade-fair-badge">
+                    <span class="trade-fair-badge-icon">₹0</span>
+                    <span>25–29 SEP</span>
                 </div>
-                <div class="trade-fair-countdown"><span>Free service ends in</span><strong id="tradeFairCountdown">--d --h --m --s</strong></div>
+
+                <div class="trade-fair-copy">
+                    <div class="trade-fair-kicker">UP INTERNATIONAL TRADE FAIR 2026</div>
+                    <div class="trade-fair-title-row">
+                        <h2>मेला स्पेशल · निःशुल्क सेवा</h2>
+                        <span class="trade-fair-count">25 buses</span>
+                        <span class="trade-fair-count">3 routes</span>
+                    </div>
+                    <p>Free electric-bus service to India Expo Mart, Greater Noida. Look for <strong>“निःशुल्क सेवा”</strong> stickers on the front and rear.</p>
+                </div>
+
+                <div class="trade-fair-countdown">
+                    <span>ENDS IN</span>
+                    <strong id="tradeFairCountdown">--d --h --m --s</strong>
+                </div>
             </div>
+
             <button id="tradeFairRoutesToggle" class="trade-fair-routes-toggle" type="button" aria-expanded="false" aria-controls="tradeFairRoutes">
-                <span>View routes</span><span class="trade-fair-chevron">⌄</span>
+                <span>View routes</span>
+                <span class="trade-fair-chevron">⌄</span>
             </button>
-            <div id="tradeFairRoutes" class="trade-fair-route-grid hidden">
-                <article class="trade-fair-route">
-                    <div class="trade-fair-route-top"><span class="trade-fair-route-number">1</span><div><strong>Route 1</strong><span>10 buses</span></div></div>
-                    <p class="trade-fair-route-terminals"><strong>Botanical Garden</strong> → <strong>India Expo Mart, Greater Noida</strong></p>
-                    <p>Golf Course · City Center · Hoshiyarpur · Sector 51 · Parthala · Gaur Chowk · Greater Noida West (Ek Murti Golchakkar) · Surajpur Collectorate</p>
+
+            <div id="tradeFairRoutes" class="trade-fair-routes hidden">
+                <article class="trade-fair-route-row">
+                    <div class="trade-fair-route-number">01</div>
+                    <div class="trade-fair-route-main">
+                        <div class="trade-fair-route-heading">
+                            <strong>Botanical Garden</strong>
+                            <span>→</span>
+                            <strong>India Expo Mart, Greater Noida</strong>
+                        </div>
+                        <p>Golf Course · City Center · Hoshiyarpur · Sector 51 · Parthala · Gaur Chowk · Ek Murti · Surajpur Collectorate</p>
+                    </div>
+                    <span class="trade-fair-route-buses">10 buses</span>
                 </article>
-                <article class="trade-fair-route">
-                    <div class="trade-fair-route-top"><span class="trade-fair-route-number">2</span><div><strong>Route 2</strong><span>8 buses</span></div></div>
-                    <p class="trade-fair-route-terminals"><strong>Botanical Garden</strong> → <strong>India Expo Mart, Greater Noida</strong></p>
-                    <p>Sector 37 Underpass · Chhalera · Agahpur · Barola · Sector 50 Metro Station · Sector 75 Metro Station · North I Chowk · Sector 116 · Sector 78 · Samsang Phase-2 · Phulmundi · Kulesara · Surajpur</p>
+
+                <article class="trade-fair-route-row">
+                    <div class="trade-fair-route-number">02</div>
+                    <div class="trade-fair-route-main">
+                        <div class="trade-fair-route-heading">
+                            <strong>Botanical Garden</strong>
+                            <span>→</span>
+                            <strong>India Expo Mart, Greater Noida</strong>
+                        </div>
+                        <p>Sector 37 Underpass · Chhalera · Agahpur · Barola · Sector 50 Metro · Sector 75 Metro · North I Chowk · Sector 116 · Sector 78 · Samsang Phase-2 · Phulmundi · Kulesara · Surajpur</p>
+                    </div>
+                    <span class="trade-fair-route-buses">8 buses</span>
                 </article>
-                <article class="trade-fair-route">
-                    <div class="trade-fair-route-top"><span class="trade-fair-route-number">3</span><div><strong>Route 3</strong><span>7 buses</span></div></div>
-                    <p class="trade-fair-route-terminals"><strong>Botanical Garden</strong> → <strong>India Expo Mart, Greater Noida</strong></p>
-                    <p>Mahamaya Flyover · Noida-Greater Noida Expressway · Amity University · Sector 125/126 · Sector 128 · Sector 137 · Advant Sector 142 · Sector 144 · Sector 148 · Pari Chowk</p>
+
+                <article class="trade-fair-route-row">
+                    <div class="trade-fair-route-number">03</div>
+                    <div class="trade-fair-route-main">
+                        <div class="trade-fair-route-heading">
+                            <strong>Botanical Garden</strong>
+                            <span>→</span>
+                            <strong>India Expo Mart, Greater Noida</strong>
+                        </div>
+                        <p>Mahamaya Flyover · Noida-Greater Noida Expressway · Amity University · Sector 125/126 · Sector 128 · Sector 137 · Advant Sector 142 · Sector 144 · Sector 148 · Pari Chowk</p>
+                    </div>
+                    <span class="trade-fair-route-buses">7 buses</span>
                 </article>
             </div>
-            <div class="trade-fair-detail">
-                <strong>25 buses · 3 designated routes</strong>
-                <span>Selected buses carry <b>“निःशुल्क सेवा”</b> stickers on both the front and rear.</span>
-                <small>The live GPS feed does not mark the 25 free-service buses, so check the stickers on the actual bus before boarding.</small>
+
+            <div class="trade-fair-footnote">
+                <span><strong>Bus identification:</strong> the selected free-service buses carry “निःशुल्क सेवा” stickers on both the front and rear.</span>
+                <span>The live GPS feed does not identify the 25 free-service buses, so the sticker is the reliable confirmation.</span>
             </div>
         </section>
 
