@@ -39,6 +39,7 @@ document.addEventListener(
         initializeMap();
         initializeWarningModal();
         initializeTradeFairNotice();
+        initializeTradeFairControls();
 
         const locationButton = document.getElementById("locationBtn");
         if (locationButton) {
@@ -135,6 +136,35 @@ function initializeTradeFairNotice() {
 
     update();
     setInterval(update, 1000);
+}
+
+function initializeTradeFairControls() {
+    const notice = document.getElementById("tradeFairNotice");
+    const closeButton = document.getElementById("tradeFairClose");
+    const routesButton = document.getElementById("tradeFairRoutesToggle");
+    const routes = document.getElementById("tradeFairRoutes");
+
+    if (!notice) return;
+
+    if (localStorage.getItem("tradeFairNoticeDismissed") === "true") {
+        notice.classList.add("hidden");
+    }
+
+    if (closeButton) {
+        closeButton.addEventListener("click", () => {
+            notice.classList.add("hidden");
+            localStorage.setItem("tradeFairNoticeDismissed", "true");
+        });
+    }
+
+    if (routesButton && routes) {
+        routesButton.addEventListener("click", () => {
+            const expanded = routesButton.getAttribute("aria-expanded") === "true";
+            routesButton.setAttribute("aria-expanded", String(!expanded));
+            routes.classList.toggle("hidden", expanded);
+            routesButton.querySelector(".trade-fair-chevron").textContent = expanded ? "⌄" : "⌃";
+        });
+    }
 }
 
 function initializeWarningModal() {
