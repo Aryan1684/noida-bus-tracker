@@ -93,15 +93,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 @media(prefers-reduced-motion:reduce){
     .busBody{animation:none!important}
     .loader .road::before,.loader .road::after{animation:none!important}
-    #locationBtn.location-success,#finderLocationBtn.location-success,#mapLocateBtn.location-success{
-        animation:none!important;
-        background:#2e9d68!important;
-        border-color:#2e9d68!important;
-    }
-}}
-
-
-/* Mobile product layout: map-first, touch-first */
+    /* Mobile product layout: map-first, touch-first */
 @media (max-width: 700px) {
   html { scroll-behavior: smooth; }
   body { min-width: 0; overflow-x: hidden; }
@@ -335,4 +327,72 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     .busBody,.busWrapper .lampPost,.busWrapper .lampPost circle,.loader .road::before,.loader .road::after{animation:none!important}
     #locationBtn.location-success,#finderLocationBtn.location-success,#mapLocateBtn.location-success{animation:none!important;background:#2e9d68!important;border-color:#2e9d68!important}
     #locationBtn.location-error,#finderLocationBtn.location-error,#mapLocateBtn.location-error{animation:none!important;background:#c53b32!important;border-color:#c53b32!important}
+}
+
+
+.location-button-label{position:relative;z-index:2}
+#locationBtn.location-success,#finderLocationBtn.location-success,#mapLocateBtn.location-success,
+#locationBtn.location-error,#finderLocationBtn.location-error,#mapLocateBtn.location-error{
+    position:relative;
+    overflow:hidden;
+    color:#fff!important;
+    border-color:#171717!important;
+    background-color:#171717!important;
+    isolation:isolate;
+}
+#locationBtn.location-success::before,#finderLocationBtn.location-success::before,#mapLocateBtn.location-success::before,
+#locationBtn.location-error::before,#finderLocationBtn.location-error::before,#mapLocateBtn.location-error::before{
+    content:none!important;
+    animation:none!important;
+}
+#locationBtn.location-success,#finderLocationBtn.location-success,#mapLocateBtn.location-success{
+    background-image:linear-gradient(to right,#2e9d68,#2e9d68);
+    background-repeat:no-repeat;
+    background-size:0% 100%;
+    animation:locationSuccessFill 1.45s cubic-bezier(.22,.75,.2,1) forwards;
+}
+#locationBtn.location-error,#finderLocationBtn.location-error,#mapLocateBtn.location-error{
+    background-image:linear-gradient(to right,#c53b32,#c53b32);
+    background-repeat:no-repeat;
+    background-size:0% 100%;
+    animation:locationErrorFill 1.2s cubic-bezier(.22,.75,.2,1) forwards;
+}
+@keyframes locationSuccessFill{from{background-size:0% 100%}to{background-size:100% 100%}}
+@keyframes locationErrorFill{from{background-size:0% 100%}to{background-size:100% 100%}}
+.busWrapper .lampPost{position:absolute;bottom:0;right:-45%;height:78px;width:auto;animation:roadAnimation 1.4s linear infinite;z-index:1}
+.busWrapper .lampPost path{fill:#282828}
+.busWrapper .lampPost circle:nth-of-type(1){animation:lampGlow 1s ease-in-out infinite alternate}
+.busWrapper .lampPost circle:nth-of-type(2){animation:lampHalo 1s ease-in-out infinite alternate}
+@keyframes lampGlow{from{opacity:.35}to{opacity:1}}
+@keyframes lampHalo{from{opacity:.08}to{opacity:.32}}
+
+@media (max-width:1100px){
+  .tracker-shell{display:grid;grid-template-columns:1fr;height:auto;overflow:visible}
+  .fleet-panel{display:contents}
+  .fleet-top{order:1;padding:14px 14px 4px}
+  .location-picker{order:2;padding:0 14px;margin-top:8px}
+  .filter-row{order:3;padding:0 14px;margin-top:8px}
+  .location-status{order:4;padding:0 14px;margin-top:8px}
+  .map-panel{order:5;height:min(68dvh,620px);min-height:430px;padding:10px}
+  .results-section{order:6;margin-top:0;padding:0 14px 14px;border-top:1px solid var(--line);background:var(--surface)}
+  .results-section .section-header{position:relative;top:auto}
+  .bus-grid{height:auto;max-height:none;overflow:visible;overscroll-behavior:auto;-webkit-overflow-scrolling:auto}
+  .bus-card:hover{transform:none;box-shadow:none}
+  #advancedFeatures{margin:10px 0 0}
+}
+@media (max-width:700px){
+  .bus-grid{height:auto;max-height:none;overflow:visible;touch-action:auto}
+  .map-panel{height:min(62dvh,560px);min-height:420px}
+  .results-section{padding-bottom:18px}
+}
+@media(prefers-reduced-motion:reduce){
+  .busBody,.busWrapper .lampPost,.busWrapper .lampPost circle{animation:none!important}
+  .loader .road::before,.loader .road::after{animation:none!important}
+  #locationBtn.location-success,#finderLocationBtn.location-success,#mapLocateBtn.location-success,
+  #locationBtn.location-error,#finderLocationBtn.location-error,#mapLocateBtn.location-error{
+    animation:none!important;
+    background-image:none!important;
+  }
+  #locationBtn.location-success,#finderLocationBtn.location-success,#mapLocateBtn.location-success{background-color:#2e9d68!important;border-color:#2e9d68!important}
+  #locationBtn.location-error,#finderLocationBtn.location-error,#mapLocateBtn.location-error{background-color:#c53b32!important;border-color:#c53b32!important}
 }
