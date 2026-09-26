@@ -732,3 +732,44 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     padding:0 11px;
   }
 }
+
+
+/* Final mobile bus action press feedback */
+.bus-card{
+  -webkit-tap-highlight-color:transparent;
+}
+.bus-card .feature-actions{
+  position:relative;
+  z-index:3;
+}
+.bus-card .feature-actions button{
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  -webkit-touch-callout:none;
+  user-select:none;
+}
+.bus-card .feature-actions button:focus{
+  outline:none!important;
+}
+.bus-card .feature-actions button:active,
+.bus-card .feature-actions button.action-pressed{
+  transform:scale(.96)!important;
+  background:var(--surface2)!important;
+  border-color:#aeb7c3!important;
+  box-shadow:0 0 0 2px var(--accentSoft)!important;
+}
+.bus-card .feature-actions button:first-child:active,
+.bus-card .feature-actions button:first-child.action-pressed{
+  background:var(--primary)!important;
+  border-color:var(--primary)!important;
+  color:var(--primaryText)!important;
+  filter:brightness(.88);
+}
+.bus-card:has(.feature-actions button:active){
+  transform:none!important;
+}
+@media(max-width:700px){
+  .bus-card .feature-actions button{
+    transition:transform .12s ease,background-color .12s ease,border-color .12s ease,box-shadow .12s ease!important;
+  }
+}
