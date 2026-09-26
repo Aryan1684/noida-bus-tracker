@@ -482,3 +482,120 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     height:min(58dvh,520px);
   }
 }
+
+
+/* Final bus loading animation */
+.loader{
+  width:fit-content;
+  height:fit-content;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.busWrapper{
+  width:200px;
+  height:100px;
+  display:flex;
+  flex-direction:column;
+  position:relative;
+  align-items:center;
+  justify-content:flex-end;
+  overflow-x:hidden;
+}
+.busBody{
+  width:130px;
+  height:fit-content;
+  margin-bottom:6px;
+  animation:motion 1s linear infinite;
+}
+.busBody svg{
+  display:block;
+  width:130px;
+  height:auto;
+}
+@keyframes motion{
+  0%{transform:translateY(0)}
+  50%{transform:translateY(3px)}
+  100%{transform:translateY(0)}
+}
+.busTires{
+  width:130px;
+  height:fit-content;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 10px 0 15px;
+  position:absolute;
+  bottom:0;
+}
+.busTires .busWheel{
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  background:#282828;
+  border:3px solid #282828;
+  position:relative;
+  flex:none;
+}
+.busTires .busWheel::after{
+  content:"";
+  position:absolute;
+  left:5px;
+  top:5px;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#dfe3e8;
+}
+.loader .road{
+  width:100%;
+  height:1.5px;
+  background-color:#282828;
+  position:relative;
+  bottom:0;
+  align-self:flex-end;
+  border-radius:3px;
+}
+.loader .road::before{
+  content:"";
+  position:absolute;
+  width:20px;
+  height:100%;
+  background-color:#282828;
+  right:-50%;
+  border-radius:3px;
+  animation:roadAnimation 1.4s linear infinite;
+  border-left:10px solid white;
+}
+.loader .road::after{
+  content:"";
+  position:absolute;
+  width:10px;
+  height:100%;
+  background-color:#282828;
+  right:-65%;
+  border-radius:3px;
+  animation:roadAnimation 1.4s linear infinite;
+  border-left:4px solid white;
+}
+.busWrapper .lampPost{
+  position:absolute;
+  bottom:0;
+  right:-90%;
+  height:90px;
+  width:auto;
+  animation:roadAnimation 1.4s linear infinite;
+  z-index:1;
+}
+@keyframes roadAnimation{
+  0%{transform:translateX(0)}
+  100%{transform:translateX(-350px)}
+}
+@media(prefers-reduced-motion:reduce){
+  .busBody,
+  .loader .road::before,
+  .loader .road::after,
+  .busWrapper .lampPost{
+    animation:none!important;
+  }
+}
