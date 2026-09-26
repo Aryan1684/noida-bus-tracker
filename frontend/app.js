@@ -280,6 +280,28 @@ function initializeMap() {
     ).addTo(map);
 }
 
+
+function setLocationButtonState(buttonId, state) {
+    const buttons = [
+        document.getElementById("locationBtn"),
+        document.getElementById("finderLocationBtn"),
+        document.getElementById("mapLocateBtn")
+    ].filter(Boolean);
+
+    buttons.forEach(button => {
+        button.classList.remove("location-success", "location-loading");
+        if (button.id === buttonId) {
+            if (state === "success") {
+                button.classList.add("location-success");
+                button.textContent = "✓ Location found";
+            } else if (state === "loading") {
+                button.classList.add("location-loading");
+                button.textContent = "Locating...";
+            }
+        }
+    });
+}
+
 function getUserLocation(buttonId = "locationBtn") {
     if (!navigator.geolocation) {
         updateLocationMessage("Your browser does not support location access.");
@@ -299,7 +321,10 @@ function getUserLocation(buttonId = "locationBtn") {
         button.dataset.originalText = button.textContent;
     });
 
-    if (activeButton) activeButton.textContent = "Locating...";
+    if (activeButton) {
+        activeButton.textContent = "Locating...";
+        setLocationButtonState(buttonId, "loading");
+    }
 
     updateLocationMessage("Requesting your current location...");
 
@@ -330,8 +355,11 @@ function getUserLocation(buttonId = "locationBtn") {
 
             buttons.forEach(button => {
                 button.disabled = false;
-                button.textContent = button.id === "mapLocateBtn" ? "My location" : "⌖ " + (button.id === "finderLocationBtn" ? "Use my current location" : "Use my location");
+                if (button.id !== buttonId) {
+                    button.textContent = button.id === "mapLocateBtn" ? "My location" : "⌖ " + (button.id === "finderLocationBtn" ? "Use my current location" : "Use my location");
+                }
             });
+            setLocationButtonState(buttonId, "success");
         },
         error => {
             console.error("Location error:", error);
@@ -349,6 +377,7 @@ function getUserLocation(buttonId = "locationBtn") {
 
             buttons.forEach(button => {
                 button.disabled = false;
+                button.classList.remove("location-success", "location-loading");
                 button.textContent = button.dataset.originalText || "Use my location";
             });
         },
@@ -746,11 +775,21 @@ function createBusCard(bus, rankIndex = 0) {
         "<p class='status'>● " + escapeHtml(status) + "</p>" +
         "<p class='updated'>" + sourceLabel + " · Tap for details</p>";
 
-    card.addEventListener("click", () => {
+    card.setAttribute("role", "button");
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("aria-label", "Bus " + (bus.bus_id || "unknown") + " at " + (bus.distance_km ?? "unknown") + " kilometres");
+    const openBus = () => {
         selectBus(bus.bus_id);
         map.setView([bus.latitude, bus.longitude], 16, {animate:true,duration:.35});
         const marker = busMarkers.find(item => String(item.busId) === String(bus.bus_id));
         if (marker) marker.openPopup();
+    };
+    card.addEventListener("click", openBus);
+    card.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openBus();
+        }
     });
 
     document.getElementById("busList").appendChild(card);
