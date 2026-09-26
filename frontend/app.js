@@ -710,7 +710,10 @@ async function loadNearbyBuses(
 
 function displayBuses(buses) {
     const resultsSection = document.querySelector(".results-section");
-    if (resultsSection) resultsSection.classList.remove("is-loading");
+    if (resultsSection) {
+        resultsSection.classList.remove("is-loading");
+        resultsSection.classList.remove("is-empty");
+    }
 
     clearBusMarkers();
 
@@ -1023,6 +1026,9 @@ function showErrorState(message) {
 
 function showEmptyState() {
     hideAllStates();
+
+    const resultsSection = document.querySelector(".results-section");
+    if (resultsSection) resultsSection.classList.add("is-empty");
 
     document
         .getElementById(
