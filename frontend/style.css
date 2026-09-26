@@ -617,14 +617,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   pointer-events:none;
 }
 #loadingState .loader{
-  width:fit-content;
-  margin:0 auto;
+  width:100%;
+  margin:0;
   display:flex;
   align-items:center;
   justify-content:center;
 }
 #loadingState .busWrapper{
-  margin:0 auto;
+  margin:0;
+  flex:0 0 200px;
 }
 #locationBtn,#finderLocationBtn,#mapLocateBtn{
   transition:background-color .85s cubic-bezier(.22,.75,.2,1),border-color .85s cubic-bezier(.22,.75,.2,1),color .35s ease,box-shadow .35s ease;
