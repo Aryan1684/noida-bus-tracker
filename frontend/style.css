@@ -90,20 +90,6 @@ body.dark .trade-fair-footnote{border-color:#343229}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex="0"]:focus-visible{outline:3px solid rgba(23,105,210,.42);outline-offset:2px}
 .bus-card[tabindex="0"]{outline:none}.bus-card[tabindex="0"]:focus-visible{border-color:var(--accent);box-shadow:0 0 0 3px var(--accentSoft)}
 .location-use-button,#locationBtn,#mapLocateBtn{position:relative;overflow:hidden}
-#locationBtn.location-success,#finderLocationBtn.location-success,#mapLocateBtn.location-success{
-    background:#171717!important;
-    border-color:#171717!important;
-    color:#fff!important;
-    animation:locationSuccessColor 1.45s cubic-bezier(.22,.75,.2,1) forwards;
-}
-#locationBtn.location-loading,#finderLocationBtn.location-loading,#mapLocateBtn.location-loading{
-    opacity:.82;
-    cursor:wait;
-}
-@keyframes locationSuccessColor{
-    0%{background-color:#171717;border-color:#171717}
-    100%{background-color:#2e9d68;border-color:#2e9d68}
-}
 @media(prefers-reduced-motion:reduce){
     .busBody{animation:none!important}
     .loader .road::before,.loader .road::after{animation:none!important}
@@ -192,11 +178,19 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   }
   .count-label { font-size: 18px; }
   .bus-grid {
-    max-height: none;
-    overflow: visible;
+    height: min(54dvh, 540px);
+    max-height: min(54dvh, 540px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     gap: 9px;
-    padding-top: 10px;
+    padding: 10px 5px 18px 0;
+    scrollbar-width: thin;
   }
+  .bus-grid::-webkit-scrollbar{width:6px}
+  .bus-grid::-webkit-scrollbar-thumb{background:#c8cdd4;border-radius:999px}
+  .bus-grid::-webkit-scrollbar-track{background:transparent}
   .bus-card {
     padding: 14px;
     border-radius: 15px;
@@ -313,4 +307,32 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
         animation:none!important;
         transform:translate(-50%,-50%) scale(22);
     }
+}
+
+.busWrapper .lampPost{position:absolute;bottom:0;right:-90%;height:90px;width:auto;animation:roadAnimation 1.4s linear infinite}
+.busWrapper .lampPost path{fill:#282828}
+.busWrapper .lampPost circle:nth-of-type(1){animation:lampGlow 1s ease-in-out infinite alternate}
+.busWrapper .lampPost circle:nth-of-type(2){animation:lampHalo 1s ease-in-out infinite alternate}
+@keyframes lampGlow{from{opacity:.35}to{opacity:1}}
+@keyframes lampHalo{from{opacity:.1}to{opacity:.35}}
+
+#locationBtn.location-success,#finderLocationBtn.location-success,#mapLocateBtn.location-success{
+    position:relative;overflow:hidden;background:#171717!important;border-color:#171717!important;color:#fff!important;isolation:isolate;
+    animation:locationSuccessColor 1.45s cubic-bezier(.22,.75,.2,1) forwards;
+}
+#locationBtn.location-success::before,#finderLocationBtn.location-success::before,#mapLocateBtn.location-success::before{
+    content:"";position:absolute;inset:0;background:#2e9d68;transform:translateX(-102%);animation:locationSuccessSweep 1.45s cubic-bezier(.22,.75,.2,1) forwards;z-index:-1;
+}
+#locationBtn.location-loading,#finderLocationBtn.location-loading,#mapLocateBtn.location-loading{opacity:.82;cursor:wait}
+@keyframes locationSuccessSweep{0%{transform:translateX(-102%)}100%{transform:translateX(0)}}
+@keyframes locationSuccessColor{0%{background-color:#171717;border-color:#171717}100%{background-color:#2e9d68;border-color:#2e9d68}}
+#locationBtn.location-error,#finderLocationBtn.location-error,#mapLocateBtn.location-error{
+    position:relative;overflow:hidden;background:#171717!important;border-color:#171717!important;color:#fff!important;
+    animation:locationErrorColor 1.2s cubic-bezier(.22,.75,.2,1) forwards;
+}
+@keyframes locationErrorColor{0%{background-color:#171717;border-color:#171717}100%{background-color:#c53b32;border-color:#c53b32}}
+@media(prefers-reduced-motion:reduce){
+    .busBody,.busWrapper .lampPost,.busWrapper .lampPost circle,.loader .road::before,.loader .road::after{animation:none!important}
+    #locationBtn.location-success,#finderLocationBtn.location-success,#mapLocateBtn.location-success{animation:none!important;background:#2e9d68!important;border-color:#2e9d68!important}
+    #locationBtn.location-error,#finderLocationBtn.location-error,#mapLocateBtn.location-error{animation:none!important;background:#c53b32!important;border-color:#c53b32!important}
 }
