@@ -114,9 +114,6 @@ def get_noida_electric_buses():
             except (ValueError, TypeError):
                 continue
 
-            if not _in_noida_region(latitude, longitude):
-                continue
-
             result = {
                 "bus_id": bus.get("bus_id"),
                 "latitude": latitude,
