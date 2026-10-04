@@ -1,1 +1,142 @@
-<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Noida Bus Tracker Admin</title><link rel="stylesheet" href="admin.css"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"></head><body><main><header><div><p>NOIDA BUS TRACKER</p><h1>Admin analytics</h1><span>Long-term usage and fleet intelligence</span></div><a href="./">Tracker</a></header><section id="login" class="panel"><h2>Admin access</h2><p>Enter the backend admin token.</p><input id="token" type="password" placeholder="Admin token"><button id="loginBtn">Open dashboard</button><div id="loginStatus"></div></section><section id="dash" hidden><div class="toolbar"><select id="days"><option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option><option value="365">365 days</option></select><button id="refresh">Refresh</button><button id="logout">Log out</button><span id="storage"></span></div><div id="error" class="error" hidden></div><div class="cards"><div><span>Events</span><b id="events">—</b></div><div><span>Sessions</span><b id="sessions">—</b></div><div><span>Page views</span><b id="views">—</b></div><div><span>Bus selections</span><b id="selections">—</b></div><div><span>Location shares</span><b id="locations">—</b></div><div><span>Reports</span><b id="reports">—</b></div></div><section class="panel"><h2>Daily activity</h2><div id="chart" class="chart"></div></section><div class="cols"><section class="panel"><h2>Product events</h2><div id="eventTable"></div></section><section class="panel"><h2>Most selected buses</h2><div id="busTable"></div></section></div><section class="panel"><h2>Approximate demand areas</h2><p>Only aggregated areas with at least 3 consented shares are shown.</p><div id="map"></div></section><section class="panel"><h2>Current fleet</h2><div class="cards fleet"><div><span>Total</span><b id="fleetTotal">—</b></div><div><span>Live</span><b id="fleetLive">—</b></div><div><span>Stationary</span><b id="fleetStationary">—</b></div><div><span>No signal</span><b id="fleetNoSignal">—</b></div><div><span>GPS anomalies</span><b id="fleetAnomalies">—</b></div><div><span>Predictions</span><b id="fleetPredictions">—</b></div><div><span>AI corrected</span><b id="fleetCorrected">—</b></div><div><span>Avg confidence</span><b id="fleetConfidence">—</b></div></div><div id="fleetTable"></div></section></section></main><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="admin.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Noida Bus Tracker Admin</title>
+<link rel="stylesheet" href="admin.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body>
+<main>
+<header class="topbar">
+  <div>
+    <p>NOIDA BUS TRACKER</p>
+    <h1>Admin analytics</h1>
+    <span>Usage, audience, product behaviour and fleet intelligence</span>
+  </div>
+  <div class="top-actions"><a href="./">Tracker</a><button id="logout">Log out</button></div>
+</header>
+
+<section id="login" class="panel login-panel">
+  <h2>Admin access</h2>
+  <p>Enter the backend admin token. It is kept only in this browser session.</p>
+  <div class="login-row"><input id="token" type="password" placeholder="Admin token" autocomplete="off"><button id="loginBtn">Open dashboard</button></div>
+  <div id="loginStatus"></div>
+</section>
+
+<section id="dash" hidden>
+  <div class="toolbar panel">
+    <div><strong>Reporting window</strong><select id="days"><option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option><option value="365">365 days</option></select></div>
+    <button id="refresh">Refresh data</button>
+    <span id="storage"></span>
+    <span id="lastLoaded"></span>
+  </div>
+  <div id="error" class="error" hidden></div>
+
+  <section>
+    <div class="section-title"><span>OVERVIEW</span><h2>Who is using the tracker?</h2></div>
+    <div class="cards cards-main">
+      <div><span>Unique visitors</span><b id="uniqueVisitors">—</b></div>
+      <div><span>Visits / sessions</span><b id="sessions">—</b></div>
+      <div><span>Returning visitors</span><b id="returning">—</b></div>
+      <div><span>Page views / app opens</span><b id="views">—</b></div>
+      <div><span>Total events</span><b id="events">—</b></div>
+      <div><span>Avg session</span><b id="avgSession">—</b></div>
+      <div><span>Engaged sessions</span><b id="engaged">—</b></div>
+      <div><span>Bounce-like sessions</span><b id="bounce">—</b></div>
+    </div>
+  </section>
+
+  <section class="cols">
+    <section class="panel">
+      <div class="panel-head"><div><span class="eyebrow">PLATFORM</span><h2>Web vs Android</h2></div></div>
+      <div id="platformTable" class="table"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><div><span class="eyebrow">ENGAGEMENT</span><h2>Product actions</h2></div></div>
+      <div class="cards compact">
+        <div><span>Refreshes</span><b id="refreshes">—</b></div>
+        <div><span>Bus selections</span><b id="selections">—</b></div>
+        <div><span>Bus shares</span><b id="busShares">—</b></div>
+        <div><span>Location uses</span><b id="locationUses">—</b></div>
+        <div><span>Location shares</span><b id="locations">—</b></div>
+        <div><span>PWA installs</span><b id="installs">—</b></div>
+        <div><span>Feedback sent</span><b id="feedback">—</b></div>
+        <div><span>Reports sent</span><b id="reports">—</b></div>
+      </div>
+    </section>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><div><span class="eyebrow">TRAFFIC</span><h2>Daily visitors, sessions and events</h2></div></div>
+    <div id="dailyChart" class="bar-chart"></div>
+  </section>
+
+  <section class="cols">
+    <section class="panel">
+      <div class="panel-head"><div><span class="eyebrow">TIME OF DAY</span><h2>Hourly activity</h2></div><span id="peakHour" class="badge">—</span></div>
+      <div id="hourlyChart" class="hour-chart"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><div><span class="eyebrow">EVENTS</span><h2>What people do</h2></div></div>
+      <div id="eventTable" class="table"></div>
+    </section>
+  </section>
+
+  <section class="cols">
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">AUDIENCE</span><h2>Devices</h2></div></div><div id="deviceTable" class="table"></div></section>
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">AUDIENCE</span><h2>Browsers</h2></div></div><div id="browserTable" class="table"></div></section>
+  </section>
+
+  <section class="cols">
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">AUDIENCE</span><h2>Operating systems</h2></div></div><div id="osTable" class="table"></div></section>
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">APP</span><h2>Android versions</h2></div></div><div id="versionTable" class="table"></div></section>
+  </section>
+
+  <section class="cols">
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">BUS DEMAND</span><h2>Most selected buses</h2></div></div><div id="busTable" class="table"></div></section>
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">BUS SHARING</span><h2>Most shared buses</h2></div></div><div id="sharedBusTable" class="table"></div></section>
+  </section>
+
+  <section class="cols">
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">SEARCH</span><h2>Most searched places</h2></div></div><div id="searchTable" class="table"></div></section>
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">ACQUISITION</span><h2>Referrers</h2></div></div><div id="referrerTable" class="table"></div></section>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><div><span class="eyebrow">DEMAND MAP</span><h2>Approximate areas people shared</h2></div></div>
+    <p>Only consented areas with at least 3 shares are shown. Locations are rounded before storage.</p>
+    <div id="map"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><div><span class="eyebrow">RECENT ACTIVITY</span><h2>Latest events</h2></div></div>
+    <div id="recentTable" class="table recent"></div>
+  </section>
+
+  <section>
+    <div class="section-title"><span>FLEET</span><h2>Live electric-bus intelligence</h2></div>
+    <div class="cards fleet">
+      <div><span>Total</span><b id="fleetTotal">—</b></div>
+      <div><span>Live</span><b id="fleetLive">—</b></div>
+      <div><span>Moving</span><b id="fleetMoving">—</b></div>
+      <div><span>Stationary</span><b id="fleetStationary">—</b></div>
+      <div><span>No signal</span><b id="fleetNoSignal">—</b></div>
+      <div><span>GPS anomalies</span><b id="fleetAnomalies">—</b></div>
+      <div><span>Predictions</span><b id="fleetPredictions">—</b></div>
+      <div><span>AI corrected</span><b id="fleetCorrected">—</b></div>
+      <div><span>Avg confidence</span><b id="fleetConfidence">—</b></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><div><span class="eyebrow">FLEET TABLE</span><h2>Every detected electric bus</h2></div><span id="fleetUpdated"></span></div>
+    <div id="fleetTable" class="fleet-table"></div>
+  </section>
+</section>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="admin.js?v=3"></script>
+</body>
+</html>
