@@ -102,6 +102,7 @@ class AnalyticsEvent(BaseModel):
     event_name: str
     path: str | None = None
     session_id: str | None = None
+    visitor_id: str | None = None
     metadata: dict | None = None
 
 
