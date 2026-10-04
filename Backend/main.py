@@ -103,6 +103,15 @@ class AnalyticsEvent(BaseModel):
     path: str | None = None
     session_id: str | None = None
     visitor_id: str | None = None
+    source: str | None = "web"
+    device_type: str | None = None
+    browser: str | None = None
+    os: str | None = None
+    language: str | None = None
+    referrer: str | None = None
+    screen_width: int | None = None
+    screen_height: int | None = None
+    app_version: str | None = None
     metadata: dict | None = None
 
 
@@ -111,6 +120,8 @@ class AnalyticsLocation(BaseModel):
     longitude: float
     path: str | None = None
     session_id: str | None = None
+    visitor_id: str | None = None
+    source: str | None = "web"
 
 
 @app.post("/api/analytics/event")
@@ -119,6 +130,16 @@ def analytics_event(payload: AnalyticsEvent):
         payload.event_name,
         path=payload.path,
         session_id=payload.session_id,
+        visitor_id=payload.visitor_id,
+        source=payload.source or "web",
+        device_type=payload.device_type,
+        browser=payload.browser,
+        os_name=payload.os,
+        language=payload.language,
+        referrer=payload.referrer,
+        screen_width=payload.screen_width,
+        screen_height=payload.screen_height,
+        app_version=payload.app_version,
         metadata=payload.metadata,
     )
     return {"success": accepted}
@@ -135,6 +156,8 @@ def analytics_location(payload: AnalyticsLocation):
             payload.longitude,
             path=payload.path,
             session_id=payload.session_id,
+            visitor_id=payload.visitor_id,
+            source=payload.source or "web",
         )
     }
 
