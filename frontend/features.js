@@ -100,7 +100,7 @@
     function routeFor(bus) {
         if (bus.route && bus.likely_towards) {
             return {
-                route: bus.route,
+                route: String(bus.route).replace(/\s*→\s*/g, " ↔ "),
                 confidence: bus.route_confidence || "Medium"
             };
         }
