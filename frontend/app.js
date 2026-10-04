@@ -32,6 +32,30 @@ function getBusRoute(busId) {
     return BUS_ROUTES[String(busId || "").trim().toUpperCase()] || null;
 }
 
+function isBusMoving(bus) {
+    const movement = Number(bus && bus.movement_km);
+    const speed = Number(bus && bus.speed);
+    return (
+        (Number.isFinite(movement) && movement >= 0.08) ||
+        (Number.isFinite(speed) && speed >= 5 && String(bus.vehicle_status || "").toLowerCase() === "live")
+    );
+}
+
+function compareBusRanking(a, b) {
+    const aMoving = isBusMoving(a);
+    const bMoving = isBusMoving(b);
+
+    if (aMoving !== bMoving) {
+        return aMoving ? -1 : 1;
+    }
+
+    const da = Number(a.distance_km);
+    const db = Number(b.distance_km);
+
+    return (Number.isFinite(da) ? da : 9999) -
+        (Number.isFinite(db) ? db : 9999);
+}
+
 
 
 function initializeAppComingSoon() {
@@ -768,10 +792,7 @@ function displayBuses(buses) {
             if (!aSelected && bSelected) return 1;
         }
 
-        const da = Number(a.distance_km);
-        const db = Number(b.distance_km);
-
-        return (Number.isFinite(da) ? da : 9999) - (Number.isFinite(db) ? db : 9999);
+        return compareBusRanking(a, b);
     });
 
     currentBuses = buses.slice();
@@ -854,6 +875,7 @@ function createBusCard(bus, rankIndex = 0) {
     card.style.animationDelay = Math.min(rankIndex * 35, 400) + "ms";
     card.id = "bus-card-" + bus.bus_id;
     card.dataset.distance = Number.isFinite(Number(bus.distance_km)) ? String(Number(bus.distance_km)) : "9999";
+    card.dataset.moving = isBusMoving(bus) ? "true" : "false";
 
     const heading = Number.isFinite(Number(bus.heading)) ? Number(bus.heading) : 0;
     let directionHtml;
@@ -967,6 +989,10 @@ function clearBusSelection() {
         cards.sort((a, b) => {
             const aDistance = Number(a.dataset.distance);
             const bDistance = Number(b.dataset.distance);
+            const aMoving = a.dataset.moving === "true";
+            const bMoving = b.dataset.moving === "true";
+
+            if (aMoving !== bMoving) return aMoving ? -1 : 1;
 
             return (Number.isFinite(aDistance) ? aDistance : 9999) -
                 (Number.isFinite(bDistance) ? bDistance : 9999);
