@@ -185,6 +185,10 @@ def admin_fleet(
     total = len(buses)
     live = sum(1 for bus in buses if bus.get("vehicle_status") == "live")
     stationary = sum(1 for bus in buses if bus.get("vehicle_status") == "stationary")
+    moving = sum(
+        1 for bus in buses
+        if bus.get("vehicle_status") == "live" and (float(bus.get("speed") or 0) > 3)
+    )
     no_signal = sum(1 for bus in buses if bus.get("vehicle_status") == "no_signal")
     anomalies = sum(1 for bus in buses if bus.get("gps_anomaly"))
     predictions = sum(1 for bus in buses if bus.get("prediction_available"))
@@ -200,6 +204,7 @@ def admin_fleet(
         "total": total,
         "live": live,
         "stationary": stationary,
+        "moving": moving,
         "no_signal": no_signal,
         "gps_anomalies": anomalies,
         "predictions_available": predictions,
