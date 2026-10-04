@@ -3,3 +3,4 @@ uvicorn
 requests
 python-dotenv
 scikit-learn>=1.5,<2
+psycopg[binary]>=3.2,<4
