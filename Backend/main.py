@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from services.gps_service import get_noida_electric_buses
+from services.prediction_collector import collector_running, start_collector, stop_collector
 from utils.distance import calculate_distance
 from services.analytics_service import dashboard as get_analytics_dashboard, record_consented_location, record_event, verify_admin_token
 
@@ -65,10 +66,21 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+def startup_prediction_collector():
+    start_collector()
+
+
+@app.on_event("shutdown")
+def shutdown_prediction_collector():
+    stop_collector()
+
+
 @app.get("/")
 def root():
     return {
-        "message": "Noida Electric Bus Tracker API is running"
+        "message": "Noida Electric Bus Tracker API is running",
+        "prediction_collector_running": collector_running()
     }
 
 
@@ -214,6 +226,8 @@ def admin_fleet(
             3,
         ) if confidence_values else None,
         "buses": buses,
+        "prediction_collector_running": collector_running(),
+        "prediction_history_points_per_bus": 10,
     }
 
 
