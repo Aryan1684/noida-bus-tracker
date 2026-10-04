@@ -1,13 +1,14 @@
 import os
 import requests
 
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Header
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from services.gps_service import get_noida_electric_buses
 from utils.distance import calculate_distance
+from services.analytics_service import dashboard as get_analytics_dashboard, record_consented_location, record_event, verify_admin_token
 
 load_dotenv()
 
@@ -95,6 +96,96 @@ def submit_report(payload: ReportSubmission):
         "consent": payload.consent,
         "time": payload.time or ""
     })
+
+
+class AnalyticsEvent(BaseModel):
+    event_name: str
+    path: str | None = None
+    session_id: str | None = None
+    metadata: dict | None = None
+
+
+class AnalyticsLocation(BaseModel):
+    latitude: float
+    longitude: float
+    path: str | None = None
+    session_id: str | None = None
+
+
+@app.post("/api/analytics/event")
+def analytics_event(payload: AnalyticsEvent):
+    accepted = record_event(
+        payload.event_name,
+        path=payload.path,
+        session_id=payload.session_id,
+        metadata=payload.metadata,
+    )
+    return {"success": accepted}
+
+
+@app.post("/api/analytics/location")
+def analytics_location(payload: AnalyticsLocation):
+    if not (-90 <= payload.latitude <= 90 and -180 <= payload.longitude <= 180):
+        raise HTTPException(status_code=400, detail="Invalid coordinates")
+
+    return {
+        "success": record_consented_location(
+            payload.latitude,
+            payload.longitude,
+            path=payload.path,
+            session_id=payload.session_id,
+        )
+    }
+
+
+@app.get("/api/admin/analytics")
+def admin_analytics(
+    days: int = Query(30, ge=1, le=365),
+    x_admin_token: str | None = Header(default=None),
+):
+    if not verify_admin_token(x_admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+
+    return get_analytics_dashboard(days)
+
+
+@app.get("/api/admin/fleet")
+def admin_fleet(
+    x_admin_token: str | None = Header(default=None),
+):
+    if not verify_admin_token(x_admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+
+    buses = get_noida_electric_buses()
+
+    total = len(buses)
+    live = sum(1 for bus in buses if bus.get("vehicle_status") == "live")
+    stationary = sum(1 for bus in buses if bus.get("vehicle_status") == "stationary")
+    no_signal = sum(1 for bus in buses if bus.get("vehicle_status") == "no_signal")
+    anomalies = sum(1 for bus in buses if bus.get("gps_anomaly"))
+    predictions = sum(1 for bus in buses if bus.get("prediction_available"))
+    corrected = sum(1 for bus in buses if bus.get("prediction_applied"))
+
+    confidence_values = [
+        float(bus["prediction_confidence"])
+        for bus in buses
+        if bus.get("prediction_available") and bus.get("prediction_confidence") is not None
+    ]
+
+    return {
+        "total": total,
+        "live": live,
+        "stationary": stationary,
+        "no_signal": no_signal,
+        "gps_anomalies": anomalies,
+        "predictions_available": predictions,
+        "predictions_applied": corrected,
+        "average_prediction_confidence": round(
+            sum(confidence_values) / len(confidence_values),
+            3,
+        ) if confidence_values else None,
+        "buses": buses,
+    }
 
 
 @app.get("/api/buses")
