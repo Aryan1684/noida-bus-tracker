@@ -140,7 +140,7 @@ def record_event(event_name, path=None, session_id=None, metadata=None, coarse_l
     metadata = _clean_metadata(metadata or {})
     path = str(path or "")[:500]
     session_id = str(session_id or "")[:80] or None
-    visitor_id = str(visitor_id or "")[:80] or None
+    visitor_id = None
 
     if DATABASE_URL:
         connection = _connect()
