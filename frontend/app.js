@@ -999,9 +999,9 @@ function createPopupContent(bus) {
             ${bus.prediction_applied ? "AI-estimated display position" : "Live GPS position"}
         </strong>
 
-        "${bus.prediction_available ? "<br><br>AI forecast: " + Math.round(Number(bus.prediction_confidence || 0) * 100) + "% confidence" : ""}"
+        ${bus.prediction_available ? "<br><br>AI forecast: " + Math.round(Number(bus.prediction_confidence || 0) * 100) + "% confidence" : ""}
 
-        "${bus.gps_anomaly ? "<br>GPS quality: anomaly detected" : ""}"
+        ${bus.gps_anomaly ? "<br>GPS quality: anomaly detected" : ""}
     `;
 }
 
