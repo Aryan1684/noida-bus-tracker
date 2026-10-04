@@ -353,7 +353,7 @@ def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=
     confidence = "High" if difference <= 30 and segment["distance"] <= 0.8 else "Medium"
 
     return {
-        "route_id": best_route["id"].split("-")[1] if "-" in best_route["id"] else best_route["id"],
+        "route_id": "R1" if best_route["id"].startswith("N-R01") else best_route["id"],
         "likely_towards": segment["to"],
         "route": best_route["name"],
         "route_confidence": confidence,
