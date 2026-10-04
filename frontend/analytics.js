@@ -64,7 +64,6 @@
                     keepalive: true
                 }).then(function (response) {
                     if (!response.ok) throw new Error("location analytics failed");
-                    track("location_shared");
                     alert("Thanks. Only an approximate area was shared.");
                 }).catch(function () {
                     alert("Could not share the approximate area right now.");
