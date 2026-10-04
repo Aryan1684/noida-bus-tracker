@@ -486,6 +486,18 @@ def _analyze_single(bus, history, anomaly_model):
         "prediction_history_minutes": prediction["history_span_minutes"] if prediction else 0,
         "implied_speed_kmh": round(implied_speed, 1) if implied_speed is not None else None,
         "gps_history_points": len(history),
+        "prediction_history": [
+            {
+                "latitude": round(point["latitude"], 6),
+                "longitude": round(point["longitude"], 6),
+                "speed": round(point["speed"], 1),
+                "time": datetime.fromtimestamp(
+                    point["time"],
+                    timezone.utc,
+                ).isoformat(),
+            }
+            for point in history[-MAX_HISTORY:]
+        ],
         "prediction_updated_at": datetime.now(timezone.utc).isoformat(),
     }
 
