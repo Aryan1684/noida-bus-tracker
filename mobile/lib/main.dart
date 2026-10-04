@@ -747,22 +747,12 @@ class _HomeState extends State<Home> {
   return total;
  }
 
- String? _routeForBus(String id){
-  const routes={
-    'UP80KT3702':'R1',
-    'UP80KT4582':'R1',
-    'UP70PT6077':'R1',
-    'UP70PT6268':'R1',
-    'UP80LT4113':'R1',
-    'UP80LT4117':'R1',
-    'UP80LT4126':'R1',
-    'UP80KT3630':'R1',
-    'UP80KT3703':'R1',
-    'UP70PT6330':'R1',
-    'UP80LT4114':'R1',
-    'UP80LT4120':'R1',
-  };
-  return routes[id.toUpperCase()];
+ String? _routeForBus(dynamic bus){
+  final backendRoute=bus['route_id']?.toString().trim();
+  if(backendRoute!=null&&backendRoute.isNotEmpty&&backendRoute.toLowerCase()!='null'){
+    return backendRoute=='R01'?'R1':backendRoute;
+  }
+  return null;
  }
 
  dynamic _find(String id){for(final b in buses){if(b['bus_id'].toString()==id)return b;}return null;}
@@ -1386,7 +1376,7 @@ class _HomeState extends State<Home> {
   final speed=double.tryParse(b['speed'].toString());
   final dist=double.tryParse(b['distance_km'].toString());
   final dir=b['likely_towards'];
-  final route=_routeForBus(id);
+  final route=_routeForBus(b);
   final moved=_movedLastMinutes(id);
   final isSelected=selected==id;
 
