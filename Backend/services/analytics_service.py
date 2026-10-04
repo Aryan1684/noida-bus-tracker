@@ -54,7 +54,6 @@ def _init_db():
                     """
                     CREATE TABLE IF NOT EXISTS analytics_events (
                         id BIGSERIAL PRIMARY KEY,
-                        visitor_id VARCHAR(80),
                         event_name VARCHAR(80) NOT NULL,
                         event_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                         path TEXT,
@@ -64,12 +63,6 @@ def _init_db():
                         coarse_lon DOUBLE PRECISION
                     )
                     """
-                )
-                cursor.execute(
-                    "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS visitor_id VARCHAR(80)"
-                )
-                cursor.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_analytics_events_visitor ON analytics_events(visitor_id)"
                 )
                 cursor.execute(
                     "CREATE INDEX IF NOT EXISTS idx_analytics_events_time ON analytics_events(event_time)"
@@ -89,7 +82,6 @@ def _init_db():
                     event_time TEXT NOT NULL,
                     path TEXT,
                     session_id TEXT,
-                    visitor_id TEXT,
                     metadata TEXT NOT NULL DEFAULT '{}',
                     coarse_lat REAL,
                     coarse_lon REAL
@@ -140,7 +132,6 @@ def record_event(event_name, path=None, session_id=None, metadata=None, coarse_l
     metadata = _clean_metadata(metadata or {})
     path = str(path or "")[:500]
     session_id = str(session_id or "")[:80] or None
-    visitor_id = None
 
     if DATABASE_URL:
         connection = _connect()
@@ -150,14 +141,13 @@ def record_event(event_name, path=None, session_id=None, metadata=None, coarse_l
                 cursor.execute(
                     """
                     INSERT INTO analytics_events
-                    (event_name, path, session_id, visitor_id, metadata, coarse_lat, coarse_lon)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    (event_name, path, session_id, metadata, coarse_lat, coarse_lon)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                     """,
                     (
                         event_name,
                         path,
                         session_id,
-                        visitor_id,
                         json.dumps(metadata),
                         coarse_lat,
                         coarse_lon,
@@ -173,15 +163,14 @@ def record_event(event_name, path=None, session_id=None, metadata=None, coarse_l
             connection.execute(
                 """
                 INSERT INTO analytics_events
-                (event_name, event_time, path, session_id, visitor_id, metadata, coarse_lat, coarse_lon)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (event_name, event_time, path, session_id, metadata, coarse_lat, coarse_lon)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     event_name,
                     _event_time_iso(),
                     path,
                     session_id,
-                    visitor_id,
                     json.dumps(metadata),
                     coarse_lat,
                     coarse_lon,
@@ -194,7 +183,7 @@ def record_event(event_name, path=None, session_id=None, metadata=None, coarse_l
     return True
 
 
-def record_consented_location(latitude, longitude, path=None, session_id=None, visitor_id=None):
+def record_consented_location(latitude, longitude, path=None, session_id=None):
     latitude = round(float(latitude), 2)
     longitude = round(float(longitude), 2)
 
@@ -202,7 +191,6 @@ def record_consented_location(latitude, longitude, path=None, session_id=None, v
         "location_shared",
         path=path,
         session_id=session_id,
-        visitor_id=visitor_id,
         metadata={"source": "web", "location_mode": "user_consented_approximate"},
         coarse_lat=latitude,
         coarse_lon=longitude,
@@ -220,7 +208,7 @@ def _read_rows(days):
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT event_name, event_time, path, session_id, visitor_id, metadata, coarse_lat, coarse_lon
+                    SELECT event_name, event_time, path, session_id, metadata, coarse_lat, coarse_lon
                     FROM analytics_events
                     WHERE event_time >= %s
                     ORDER BY event_time ASC
@@ -232,7 +220,7 @@ def _read_rows(days):
         else:
             rows = connection.execute(
                 """
-                SELECT event_name, event_time, path, session_id, visitor_id, metadata, coarse_lat, coarse_lon
+                SELECT event_name, event_time, path, session_id, metadata, coarse_lat, coarse_lon
                 FROM analytics_events
                 WHERE event_time >= ?
                 ORDER BY event_time ASC
@@ -245,7 +233,7 @@ def _read_rows(days):
 
     normalized = []
 
-    for event_name, event_time, path, session_id, visitor_id, metadata, coarse_lat, coarse_lon in rows:
+    for event_name, event_time, path, session_id, metadata, coarse_lat, coarse_lon in rows:
         if isinstance(metadata, str):
             try:
                 metadata = json.loads(metadata)
@@ -263,7 +251,6 @@ def _read_rows(days):
                 "event_time": str(event_time),
                 "path": path or "",
                 "session_id": session_id or "",
-                "visitor_id": visitor_id or "",
                 "metadata": metadata if isinstance(metadata, dict) else {},
                 "coarse_lat": coarse_lat,
                 "coarse_lon": coarse_lon,
@@ -300,12 +287,6 @@ def dashboard(days=30):
 
     event_counts = Counter(row["event_name"] for row in rows)
     sessions = {row["session_id"] for row in rows if row["session_id"]}
-    visitors = {row["visitor_id"] for row in rows if row["visitor_id"]}
-    visitor_sessions = defaultdict(set)
-    for row in rows:
-        if row["visitor_id"] and row["session_id"]:
-            visitor_sessions[row["visitor_id"]].add(row["session_id"])
-    returning_visitors = sum(1 for session_set in visitor_sessions.values() if len(session_set) > 1)
 
     bus_counts = Counter()
     path_counts = Counter()
@@ -352,9 +333,7 @@ def dashboard(days=30):
         "storage": storage_mode(),
         "days": days,
         "total_events": len(rows),
-        "unique_visitors": len(visitors),
         "unique_sessions": len(sessions),
-        "returning_visitors": returning_visitors,
         "page_views": event_counts["page_view"],
         "refreshes": event_counts["refresh"],
         "location_uses": event_counts["location_used"],
