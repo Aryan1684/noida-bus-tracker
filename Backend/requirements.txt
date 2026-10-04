@@ -2,3 +2,4 @@ fastapi
 uvicorn
 requests
 python-dotenv
+scikit-learn>=1.5,<2
