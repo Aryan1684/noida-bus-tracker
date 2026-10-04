@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui' as ui;import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -367,13 +368,16 @@ class Home extends StatefulWidget { final bool dark; final VoidCallback toggle; 
 
 class _HomeState extends State<Home> {
  static const api='https://noida-bus-tracker.onrender.com';
+ String? analyticsVisitorId;
+ late final String analyticsSessionId;
+ String analyticsAppVersion='1.0.0';
  final map=MapController(); final search=TextEditingController(); Timer? refreshTimer,searchTimer;
  LatLng location=const LatLng(28.4598,77.5184); List<dynamic> buses=[]; List<dynamic> suggestions=[]; Set<String> favs={}; Map<String,List<LatLng>> history={}; Map<String,List<DateTime>> historyTimes={}; List<LatLng> trail=[]; Map<String,DateTime> alertHistory={};
  double radius=5; bool loading=false,locating=false,movePin=false,stops=false,following=false,permissionBlocked=false,dontShowNotice=false,nearbyAlerts=false; String? error,selected,followed; String locationLabel='Use your current location'; DateTime? refreshed;
  final stopData=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060]];
  final searchPlaces=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Sector 62',28.6280,77.3770],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Gaur Chowk',28.6150,77.4350],['Gaur City',28.6155,77.4240],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060],['Sector 90',28.5340,77.4380],['Noida International Airport',28.5562,77.5849]];
 
- @override void initState(){super.initState();_initApp();_checkForUpdate();}
+ @override void initState(){super.initState();analyticsSessionId=DateTime.now().microsecondsSinceEpoch.toString()+'-'+hashCode.toString();_initAnalytics();_initApp();_checkForUpdate();}
  @override void dispose(){refreshTimer?.cancel();searchTimer?.cancel();search.dispose();super.dispose();}
  Future<void> _initApp() async {
   final prefs = await SharedPreferences.getInstance();
@@ -469,12 +473,38 @@ class _HomeState extends State<Home> {
   }
 }
 
- Future<void> _analytics(String name, [Map<String,Object>? parameters]) async {
+ Future<void> _initAnalytics() async {
   try {
-    await appAnalytics?.logEvent(name: name, parameters: parameters);
+   final prefs=await SharedPreferences.getInstance();
+   analyticsVisitorId=prefs.getString('analytics_visitor_id');
+   if(analyticsVisitorId==null||analyticsVisitorId!.isEmpty){
+    analyticsVisitorId=DateTime.now().microsecondsSinceEpoch.toString()+'-'+hashCode.toString();
+    await prefs.setString('analytics_visitor_id',analyticsVisitorId!);
+   }
+   final info=await PackageInfo.fromPlatform();
+   analyticsAppVersion=info.version;
+   await _sendAnalytics('app_open');
   } catch (_) {}
  }
 
+ Future<void> _sendAnalytics(String name,[Map<String,Object>? parameters]) async {
+  final visitor=analyticsVisitorId;
+  if(visitor==null||visitor.isEmpty)return;
+  try {
+   await http.post(
+    Uri.parse(api+'/api/analytics/event'),
+    headers:{'Content-Type':'application/json','Accept':'application/json'},
+    body:jsonEncode({'event_name':name,'path':'/mobile','session_id':analyticsSessionId,'visitor_id':visitor,'source':'android','device_type':'mobile','os':Platform.operatingSystem,'language':Platform.localeName,'app_version':analyticsAppVersion,'metadata':parameters??{}}),
+   ).timeout(const Duration(seconds:5));
+  } catch (_) {}
+ }
+
+ Future<void> _analytics(String name, [Map<String,Object>? parameters]) async {
+  try {
+   await appAnalytics?.logEvent(name:name,parameters:parameters);
+  } catch (_) {}
+  await _sendAnalytics(name,parameters);
+ }
  Future<void> _checkForUpdate() async {
   try {
     final info = await PackageInfo.fromPlatform();
