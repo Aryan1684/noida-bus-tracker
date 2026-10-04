@@ -39,7 +39,7 @@
             </a>
             <nav class="top-actions" aria-label="Site actions">
                 <span class="live-status"><i></i> Live GPS</span>
-                <a class="get-app-button" href="/noida-bus-tracker.apk" download><span>↓</span><span>Android app</span></a>
+                <button id="appComingSoonBtn" class="get-app-button" type="button"><span>↓</span><span>Android app</span></button>
                 <button id="themeToggle" class="icon-button" aria-label="Toggle dark mode" title="Toggle dark mode"><span id="themeIcon">☾</span></button>
             </nav>
         </div>
@@ -317,5 +317,39 @@
     <script src="analytics.js?v=1"></script>
     <script src="features.js?v=14"></script>
     <script src="theme.js?v=9"></script>
+
+    <div id="appComingSoonModal" class="app-coming-soon-modal hidden" role="dialog" aria-modal="true" aria-labelledby="appComingSoonTitle">
+        <div class="app-coming-soon-card">
+            <button id="appComingSoonClose" class="app-coming-soon-close" type="button" aria-label="Close">×</button>
+            <div class="app-coming-soon-visual" aria-hidden="true">
+                <div class="app-orbit orbit-one"></div>
+                <div class="app-orbit orbit-two"></div>
+                <div class="app-bus-icon">
+                    <span></span>
+                    <i></i>
+                    <b></b>
+                    <em></em>
+                </div>
+                <div class="app-spark spark-one">+</div>
+                <div class="app-spark spark-two">+</div>
+                <div class="app-spark spark-three">+</div>
+            </div>
+            <p class="eyebrow">ANDROID APP</p>
+            <h2 id="appComingSoonTitle">We’re building the app.</h2>
+            <p class="app-coming-soon-lead">The Noida Bus Tracker Android app is currently under development.</p>
+            <div class="app-progress-track"><span></span></div>
+            <div class="app-coming-soon-points">
+                <span>Live bus tracking</span>
+                <span>Nearby bus alerts</span>
+                <span>Faster mobile experience</span>
+            </div>
+            <div class="app-coming-soon-note">
+                <strong>For now, the web app is live.</strong>
+                <span>You can track electric buses, check movement, follow buses and share locations directly from your browser.</span>
+            </div>
+            <button id="appComingSoonOkay" class="button button-primary app-coming-soon-okay" type="button">Got it · Keep using the web app</button>
+        </div>
+    </div>
+
 </body>
 </html>
