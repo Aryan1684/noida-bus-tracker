@@ -754,7 +754,29 @@ function displayBuses(buses) {
     if (selectedBusId) highlightBus(selectedBusId);
 }
 
+function getBusDisplayPosition(bus) {
+    const predictedLatitude = Number(bus.display_latitude);
+    const predictedLongitude = Number(bus.display_longitude);
+
+    if (
+        bus.prediction_applied &&
+        Number.isFinite(predictedLatitude) &&
+        Number.isFinite(predictedLongitude)
+    ) {
+        return {
+            latitude: predictedLatitude,
+            longitude: predictedLongitude
+        };
+    }
+
+    return {
+        latitude: Number(bus.latitude),
+        longitude: Number(bus.longitude)
+    };
+}
+
 function createBusMarker(bus) {
+    const position = getBusDisplayPosition(bus);
     const icon = L.divIcon({
         className: "",
         html: `
@@ -771,7 +793,7 @@ function createBusMarker(bus) {
     });
 
     const marker = L.marker(
-        [bus.latitude, bus.longitude],
+        [position.latitude, position.longitude],
         { icon: icon }
     ).addTo(map);
 
@@ -810,6 +832,13 @@ function createBusCard(bus, rankIndex = 0) {
     const movement = bus.movement_km !== undefined ? bus.movement_km : 0;
     const history = bus.history_minutes !== undefined ? bus.history_minutes : 0;
     const sourceLabel = bus.data_stale ? "Last available GPS" : "Live GPS";
+    const predictionConfidence = Number(bus.prediction_confidence);
+    const predictionLabel =
+        bus.prediction_applied && Number.isFinite(predictionConfidence)
+            ? "AI corrected position · " + Math.round(predictionConfidence * 100) + "% confidence"
+            : bus.prediction_available && Number.isFinite(predictionConfidence)
+            ? "AI forecast · " + Math.round(predictionConfidence * 100) + "% confidence"
+            : "";
 
     card.innerHTML =
         "<div class='bus-card-top'>" +
@@ -824,14 +853,15 @@ function createBusCard(bus, rankIndex = 0) {
             "<span class='bus-meta'>↗ " + movement + " km / " + history + " min</span>" +
         "</div>" +
         "<p class='status'>● " + escapeHtml(status) + "</p>" +
-        "<p class='updated'>" + sourceLabel + " · Tap for details</p>";
+        "<p class='updated'>" + sourceLabel + (predictionLabel ? " · " + predictionLabel : "") + " · Tap for details</p>";
 
     card.setAttribute("role", "button");
     card.setAttribute("tabindex", "0");
     card.setAttribute("aria-label", "Bus " + (bus.bus_id || "unknown") + " at " + (bus.distance_km ?? "unknown") + " kilometres");
     const openBus = () => {
         selectBus(bus.bus_id);
-        map.setView([bus.latitude, bus.longitude], 16, {animate:true,duration:.35});
+        const position = getBusDisplayPosition(bus);
+        map.setView([position.latitude, position.longitude], 16, {animate:true,duration:.35});
         const marker = busMarkers.find(item => String(item.busId) === String(bus.bus_id));
         if (marker) marker.openPopup();
     };
@@ -966,8 +996,12 @@ function createPopupContent(bus) {
         <br><br>
 
         <strong>
-            Live GPS position
+            ${bus.prediction_applied ? "AI-estimated display position" : "Live GPS position"}
         </strong>
+
+        "${bus.prediction_available ? "<br><br>AI forecast: " + Math.round(Number(bus.prediction_confidence || 0) * 100) + "% confidence" : ""}"
+
+        "${bus.gps_anomaly ? "<br>GPS quality: anomaly detected" : ""}"
     `;
 }
 
