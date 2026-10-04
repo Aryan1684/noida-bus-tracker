@@ -118,11 +118,14 @@ def get_nearby_buses(
     nearby_buses = []
 
     for bus in buses:
+        display_latitude = bus.get("display_latitude", bus["latitude"])
+        display_longitude = bus.get("display_longitude", bus["longitude"])
+
         distance = calculate_distance(
             lat,
             lon,
-            bus["latitude"],
-            bus["longitude"]
+            display_latitude,
+            display_longitude
         )
 
         if distance <= radius:
