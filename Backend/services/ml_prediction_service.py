@@ -2,6 +2,7 @@ import math
 import os
 import sqlite3
 from datetime import datetime, timezone
+from typing import Any
 
 from sklearn.ensemble import IsolationForest
 from sklearn.linear_model import Ridge
@@ -9,10 +10,9 @@ from sklearn.linear_model import Ridge
 from utils.distance import calculate_distance
 
 DB_PATH = os.getenv("PREDICTION_DB_PATH", "/tmp/noidabus_prediction_history.sqlite3")
-MAX_HISTORY = 30
+MAX_HISTORY = 40
 MODEL_HISTORY = 12
 MIN_MODEL_POINTS = 5
-
 _initialized = False
 
 
@@ -36,8 +36,8 @@ def _connection():
         connection.execute(
             "CREATE INDEX IF NOT EXISTS idx_bus_positions_bus_time ON bus_positions(bus_id, event_time)"
         )
-        _initialized = True
         connection.commit()
+        _initialized = True
     return connection
 
 
@@ -45,10 +45,8 @@ def _parse_timestamp(value):
     if not value:
         return None
 
-    text = str(value).strip()
     try:
-        normalized = text.replace("Z", "+00:00")
-        parsed = datetime.fromisoformat(normalized)
+        parsed = datetime.fromisoformat(str(value).strip().replace("Z", "+00:00"))
         if parsed.tzinfo is None:
             parsed = parsed.replace(tzinfo=timezone.utc)
         return parsed.timestamp()
@@ -59,110 +57,110 @@ def _parse_timestamp(value):
 def _safe_float(value, default=0.0):
     try:
         number = float(value)
-        if math.isfinite(number):
-            return number
+        return number if math.isfinite(number) else default
     except (TypeError, ValueError):
-        pass
-    return default
+        return default
 
 
-def record_position(bus):
-    bus_id = str(bus.get("bus_id") or "").strip().upper()
-    if not bus_id:
-        return
+def record_positions(buses):
+    rows = []
 
-    latitude = _safe_float(bus.get("latitude"), math.nan)
-    longitude = _safe_float(bus.get("longitude"), math.nan)
+    import time
 
-    if not math.isfinite(latitude) or not math.isfinite(longitude):
-        return
+    fallback_now = time.time()
 
-    source_timestamp = bus.get("timestamp")
-    event_time = _parse_timestamp(source_timestamp)
+    for bus in buses:
+        bus_id = str(bus.get("bus_id") or "").strip().upper()
+        latitude = _safe_float(bus.get("latitude"), math.nan)
+        longitude = _safe_float(bus.get("longitude"), math.nan)
 
-    if event_time is None:
-        import time
-        event_time = time.time()
-        source_timestamp = f"fallback-{event_time:.3f}"
+        if not bus_id or not math.isfinite(latitude) or not math.isfinite(longitude):
+            continue
 
-    speed = _safe_float(bus.get("speed"), 0.0)
+        source_timestamp = bus.get("timestamp")
+        event_time = _parse_timestamp(source_timestamp)
 
-    connection = _connection()
-    try:
-        connection.execute(
-            """
-            INSERT OR REPLACE INTO bus_positions
-            (bus_id, source_timestamp, event_time, latitude, longitude, speed)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
+        if event_time is None:
+            event_time = fallback_now
+
+        rows.append(
             (
                 bus_id,
                 str(source_timestamp or ""),
                 event_time,
                 latitude,
                 longitude,
-                speed,
-            ),
+                _safe_float(bus.get("speed"), 0.0),
+            )
         )
-        connection.execute(
+
+    if not rows:
+        return
+
+    connection = _connection()
+    try:
+        connection.executemany(
             """
-            DELETE FROM bus_positions
-            WHERE bus_id = ?
-              AND rowid NOT IN (
-                  SELECT rowid
-                  FROM bus_positions
-                  WHERE bus_id = ?
-                  ORDER BY event_time DESC
-                  LIMIT ?
-              )
+            INSERT OR REPLACE INTO bus_positions
+            (bus_id, source_timestamp, event_time, latitude, longitude, speed)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (bus_id, bus_id, MAX_HISTORY),
+            rows,
         )
+
+        bus_ids = sorted({row[0] for row in rows})
+
+        for bus_id in bus_ids:
+            connection.execute(
+                """
+                DELETE FROM bus_positions
+                WHERE bus_id = ?
+                  AND rowid NOT IN (
+                      SELECT rowid
+                      FROM bus_positions
+                      WHERE bus_id = ?
+                      ORDER BY event_time DESC
+                      LIMIT ?
+                  )
+                """,
+                (bus_id, bus_id, MAX_HISTORY),
+            )
+
         connection.commit()
     finally:
         connection.close()
 
 
-def load_history(bus_id):
+def load_histories(bus_ids):
     connection = _connection()
+    histories = {}
+
     try:
-        rows = connection.execute(
-            """
-            SELECT event_time, latitude, longitude, speed
-            FROM bus_positions
-            WHERE bus_id = ?
-            ORDER BY event_time ASC
-            LIMIT ?
-            """,
-            (str(bus_id).strip().upper(), MAX_HISTORY),
-        ).fetchall()
-    finally:
-        connection.close()
-
-    return [
-        {
-            "time": float(row[0]),
-            "latitude": float(row[1]),
-            "longitude": float(row[2]),
-            "speed": float(row[3] or 0.0),
-        }
-        for row in rows
-    ]
-
-
-def _all_recent_histories():
-    connection = _connection()
-    try:
-        bus_ids = [
-            row[0]
-            for row in connection.execute(
-                "SELECT DISTINCT bus_id FROM bus_positions"
+        for bus_id in bus_ids:
+            rows = connection.execute(
+                """
+                SELECT event_time, latitude, longitude, speed
+                FROM bus_positions
+                WHERE bus_id = ?
+                ORDER BY event_time ASC
+                LIMIT ?
+                """,
+                (str(bus_id).strip().upper(), MAX_HISTORY),
             ).fetchall()
-        ]
+
+            histories[str(bus_id).strip().upper()] = [
+                {
+                    "time": float(row[0]),
+                    "latitude": float(row[1]),
+                    "longitude": float(row[2]),
+                    "speed": float(row[3] or 0.0),
+                }
+                for row in rows
+            ]
     finally:
         connection.close()
 
-    return {bus_id: load_history(bus_id) for bus_id in bus_ids}
+    return histories
 
 
 def _bearing(lat1, lon1, lat2, lon2):
@@ -173,9 +171,7 @@ def _bearing(lat1, lon1, lat2, lon2):
     y = math.sin(delta_lon) * math.cos(lat2_rad)
     x = (
         math.cos(lat1_rad) * math.sin(lat2_rad)
-        - math.sin(lat1_rad)
-        * math.cos(lat2_rad)
-        * math.cos(delta_lon)
+        - math.sin(lat1_rad) * math.cos(lat2_rad) * math.cos(delta_lon)
     )
 
     return (math.degrees(math.atan2(y, x)) + 360) % 360
@@ -231,33 +227,26 @@ def _transition_features(history):
     return features
 
 
-def _fleet_anomaly_score(history):
-    current_features = _transition_features(history)
+def _build_anomaly_model(histories):
+    training_rows = []
 
-    if not current_features:
-        return None, None
+    for history in histories.values():
+        training_rows.extend(_transition_features(history))
 
-    latest = current_features[-1]
-    all_features = []
-
-    for other_history in _all_recent_histories().values():
-        all_features.extend(_transition_features(other_history))
-
-    if len(all_features) < 20:
-        return None, latest
+    if len(training_rows) < 30:
+        return None
 
     model = IsolationForest(
-        n_estimators=100,
+        n_estimators=80,
         contamination="auto",
         random_state=42,
+        n_jobs=-1,
     )
-    model.fit(all_features)
-
-    score = float(model.decision_function([latest])[0])
-    return score, latest
+    model.fit(training_rows)
+    return model
 
 
-def _fit_trajectory(history):
+def _trajectory_prediction(history):
     if len(history) < MIN_MODEL_POINTS:
         return None
 
@@ -290,16 +279,18 @@ def _fit_trajectory(history):
         )
 
     residual_km = sum(residuals) / len(residuals)
+    current = points[-1]
+    observed_speeds = [point["speed"] for point in points[-5:] if point["speed"] > 0]
+    speed_reference = sum(observed_speeds) / len(observed_speeds) if observed_speeds else 25.0
 
     future = {}
-    current_x = x_values[-1][0]
 
     for horizon_minutes in (1, 3, 5):
+        current_x = x_values[-1][0]
         future_x = [[current_x + horizon_minutes]]
         predicted_latitude = float(latitude_model.predict(future_x)[0])
         predicted_longitude = float(longitude_model.predict(future_x)[0])
 
-        current = points[-1]
         displacement = calculate_distance(
             current["latitude"],
             current["longitude"],
@@ -307,20 +298,9 @@ def _fit_trajectory(history):
             predicted_longitude,
         )
 
-        observed_speeds = [
-            point["speed"]
-            for point in points[-5:]
-            if point["speed"] > 0
-        ]
-        speed_reference = (
-            sum(observed_speeds) / len(observed_speeds)
-            if observed_speeds
-            else 25.0
-        )
-
         maximum_displacement = max(
             0.35,
-            speed_reference * horizon_minutes / 60.0 * 1.7 + 0.3
+            speed_reference * horizon_minutes / 60.0 * 1.65 + 0.25,
         )
 
         if displacement > maximum_displacement and displacement > 0:
@@ -337,14 +317,11 @@ def _fit_trajectory(history):
             "longitude": round(predicted_longitude, 6),
         }
 
-    confidence = 0.35
+    confidence = 0.25
     confidence += min(0.25, len(points) * 0.025)
-    confidence += min(0.2, span_minutes * 0.03)
-    confidence += 0.2 * max(
-        0.0,
-        1.0 - min(residual_km / 0.30, 1.0),
-    )
-    confidence = max(0.0, min(0.98, confidence))
+    confidence += min(0.20, span_minutes * 0.03)
+    confidence += 0.30 * max(0.0, 1.0 - min(residual_km / 0.30, 1.0))
+    confidence = max(0.0, min(0.97, confidence))
 
     return {
         "predicted_1m": future[1],
@@ -357,14 +334,13 @@ def _fit_trajectory(history):
     }
 
 
-def analyze_bus(bus):
-    record_position(bus)
+def _analyze_single(bus, history, anomaly_model):
+    transition_features = _transition_features(history)
+    latest_features = transition_features[-1] if transition_features else None
 
-    bus_id = str(bus.get("bus_id") or "").strip().upper()
-    history = load_history(bus_id)
-
-    prediction = _fit_trajectory(history)
-    anomaly_score, latest_features = _fleet_anomaly_score(history)
+    anomaly_score = None
+    if anomaly_model is not None and latest_features:
+        anomaly_score = float(anomaly_model.decision_function([latest_features])[0])
 
     implied_speed = latest_features[1] if latest_features else None
     current_speed = _safe_float(bus.get("speed"), 0.0)
@@ -379,37 +355,40 @@ def analyze_bus(bus):
             )
         )
 
+    latitude = _safe_float(bus.get("latitude"), math.nan)
+    longitude = _safe_float(bus.get("longitude"), math.nan)
+
     invalid_region = not (
-        27.70 <= float(bus["latitude"]) <= 29.20
-        and 76.70 <= float(bus["longitude"]) <= 78.10
+        27.70 <= latitude <= 29.20
+        and 76.70 <= longitude <= 78.10
     )
 
-    model_outlier = anomaly_score is not None and anomaly_score < 0.0
-    gps_anomaly = bool(hard_teleport or invalid_region or model_outlier)
+    fleet_outlier = anomaly_score is not None and anomaly_score < 0.0
+    gps_anomaly = bool(hard_teleport or invalid_region or fleet_outlier)
 
-    prediction_confidence = prediction["confidence"] if prediction else 0.0
+    prediction = _trajectory_prediction(history)
+    confidence = prediction["confidence"] if prediction else 0.0
+
     prediction_applied = bool(
-        gps_anomaly
-        and prediction
-        and prediction_confidence >= 0.72
+        gps_anomaly and prediction and confidence >= 0.72
     )
 
-    output = {
+    result = {
         "gps_anomaly": gps_anomaly,
         "gps_anomaly_score": round(anomaly_score, 3) if anomaly_score is not None else None,
         "gps_anomaly_reason": (
             "invalid_region"
             if invalid_region
-            else "teleport"
+            else "impossible_jump"
             if hard_teleport
-            else "fleet_outlier"
-            if model_outlier
+            else "fleet_motion_outlier"
+            if fleet_outlier
             else None
         ),
         "prediction_available": bool(prediction),
-        "prediction_confidence": prediction_confidence,
+        "prediction_confidence": confidence,
         "prediction_applied": prediction_applied,
-        "prediction_source": "ML_Ridge" if prediction else None,
+        "prediction_source": "ML_Ridge_Trajectory" if prediction else None,
         "predicted_latitude": prediction["predicted_1m"]["latitude"] if prediction else None,
         "predicted_longitude": prediction["predicted_1m"]["longitude"] if prediction else None,
         "predicted_3m": prediction["predicted_3m"] if prediction else None,
@@ -422,10 +401,36 @@ def analyze_bus(bus):
     }
 
     if prediction_applied:
-        output["display_latitude"] = prediction["predicted_1m"]["latitude"]
-        output["display_longitude"] = prediction["predicted_1m"]["longitude"]
+        result["display_latitude"] = prediction["predicted_1m"]["latitude"]
+        result["display_longitude"] = prediction["predicted_1m"]["longitude"]
     else:
-        output["display_latitude"] = float(bus["latitude"])
-        output["display_longitude"] = float(bus["longitude"])
+        result["display_latitude"] = latitude
+        result["display_longitude"] = longitude
 
-    return output
+    return result
+
+
+def analyze_buses(buses):
+    record_positions(buses)
+
+    bus_ids = [
+        str(bus.get("bus_id") or "").strip().upper()
+        for bus in buses
+        if bus.get("bus_id")
+    ]
+    histories = load_histories(bus_ids)
+    anomaly_model = _build_anomaly_model(histories)
+
+    analysis = {}
+
+    for bus in buses:
+        bus_id = str(bus.get("bus_id") or "").strip().upper()
+        if not bus_id:
+            continue
+        analysis[bus_id] = _analyze_single(
+            bus,
+            histories.get(bus_id, []),
+            anomaly_model,
+        )
+
+    return analysis
