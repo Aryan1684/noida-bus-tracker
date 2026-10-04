@@ -34,10 +34,49 @@ function getBusRoute(busId) {
 
 
 
+function initializeAppComingSoon() {
+    const openButton = document.getElementById("appComingSoonBtn");
+    const modal = document.getElementById("appComingSoonModal");
+    const closeButton = document.getElementById("appComingSoonClose");
+    const okayButton = document.getElementById("appComingSoonOkay");
+
+    if (!openButton || !modal) return;
+
+    function open() {
+        modal.classList.remove("hidden");
+        document.body.style.overflow = "hidden";
+        if (closeButton) closeButton.focus();
+        if (window.noidaBusAnalytics && window.noidaBusAnalytics.track) {
+            window.noidaBusAnalytics.track("pwa_install", {source:"android_app_button"});
+        }
+    }
+
+    function close() {
+        modal.classList.add("hidden");
+        document.body.style.overflow = "";
+        openButton.focus();
+    }
+
+    openButton.addEventListener("click", open);
+    if (closeButton) closeButton.addEventListener("click", close);
+    if (okayButton) okayButton.addEventListener("click", close);
+
+    modal.addEventListener("click", event => {
+        if (event.target === modal) close();
+    });
+
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && !modal.classList.contains("hidden")) {
+            close();
+        }
+    });
+}
+
 document.addEventListener(
     "DOMContentLoaded",
     () => {
         initializeMap();
+        initializeAppComingSoon();
         initializeWarningModal();
         initializeTradeFairNotice();
         initializeTradeFairControls();
