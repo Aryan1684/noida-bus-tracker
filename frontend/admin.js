@@ -141,6 +141,8 @@ function fleet(data) {
     document.getElementById("fleetCorrected").textContent = data.predictions_applied ?? "—";
     document.getElementById("fleetConfidence").textContent =
         data.average_prediction_confidence == null ? "—" : Math.round(Number(data.average_prediction_confidence) * 100) + "%";
+    document.getElementById("collectorStatus").textContent =
+        data.prediction_collector_running ? "RUNNING" : "STOPPED";
 
     const box = document.getElementById("fleetTable");
     box.innerHTML = "";
