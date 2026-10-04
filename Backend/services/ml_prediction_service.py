@@ -1,43 +1,77 @@
 import math
 import os
 import sqlite3
+import time
 from datetime import datetime, timezone
-from typing import Any
 
 from sklearn.ensemble import IsolationForest
 from sklearn.linear_model import Ridge
 
 from utils.distance import calculate_distance
 
-DB_PATH = os.getenv("PREDICTION_DB_PATH", "/tmp/noidabus_prediction_history.sqlite3")
-MAX_HISTORY = 40
-MODEL_HISTORY = 12
-MIN_MODEL_POINTS = 5
+DATABASE_URL = os.getenv("DATABASE_URL")
+SQLITE_PATH = os.getenv("PREDICTION_DB_PATH", "/tmp/noidabus_prediction_history.sqlite3")
+MAX_HISTORY = 10
+MODEL_HISTORY = 10
+MIN_MODEL_POINTS = 3
 _initialized = False
 
 
-def _connection():
+def _connect():
     global _initialized
-    connection = sqlite3.connect(DB_PATH, timeout=10)
+
+    if DATABASE_URL:
+        import psycopg
+
+        connection = psycopg.connect(DATABASE_URL, connect_timeout=8)
+
+        if not _initialized:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS bus_positions (
+                        id BIGSERIAL PRIMARY KEY,
+                        bus_id VARCHAR(80) NOT NULL,
+                        source_timestamp TEXT NOT NULL DEFAULT '',
+                        event_time DOUBLE PRECISION NOT NULL,
+                        latitude DOUBLE PRECISION NOT NULL,
+                        longitude DOUBLE PRECISION NOT NULL,
+                        speed DOUBLE PRECISION,
+                        UNIQUE (bus_id, source_timestamp, latitude, longitude)
+                    )
+                    """
+                )
+                cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_bus_positions_bus_time ON bus_positions(bus_id, event_time DESC)"
+                )
+            connection.commit()
+            _initialized = True
+
+        return connection
+
+    connection = sqlite3.connect(SQLITE_PATH, timeout=10)
+
     if not _initialized:
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS bus_positions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 bus_id TEXT NOT NULL,
-                source_timestamp TEXT,
+                source_timestamp TEXT NOT NULL DEFAULT '',
                 event_time REAL NOT NULL,
                 latitude REAL NOT NULL,
                 longitude REAL NOT NULL,
                 speed REAL,
-                PRIMARY KEY (bus_id, source_timestamp, latitude, longitude)
+                UNIQUE (bus_id, source_timestamp, latitude, longitude)
             )
             """
         )
         connection.execute(
-            "CREATE INDEX IF NOT EXISTS idx_bus_positions_bus_time ON bus_positions(bus_id, event_time)"
+            "CREATE INDEX IF NOT EXISTS idx_bus_positions_bus_time ON bus_positions(bus_id, event_time DESC)"
         )
         connection.commit()
         _initialized = True
+
     return connection
 
 
@@ -62,11 +96,66 @@ def _safe_float(value, default=0.0):
         return default
 
 
+def _insert_positions(connection, rows):
+    if DATABASE_URL:
+        with connection.cursor() as cursor:
+            cursor.executemany(
+                """
+                INSERT INTO bus_positions
+                (bus_id, source_timestamp, event_time, latitude, longitude, speed)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (bus_id, source_timestamp, latitude, longitude) DO NOTHING
+                """,
+                rows,
+            )
+    else:
+        connection.executemany(
+            """
+            INSERT OR IGNORE INTO bus_positions
+            (bus_id, source_timestamp, event_time, latitude, longitude, speed)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            rows,
+        )
+
+
+def _prune_positions(connection, bus_ids):
+    for bus_id in bus_ids:
+        if DATABASE_URL:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    DELETE FROM bus_positions
+                    WHERE bus_id = %s
+                      AND id NOT IN (
+                          SELECT id
+                          FROM bus_positions
+                          WHERE bus_id = %s
+                          ORDER BY event_time DESC, id DESC
+                          LIMIT %s
+                      )
+                    """,
+                    (bus_id, bus_id, MAX_HISTORY),
+                )
+        else:
+            connection.execute(
+                """
+                DELETE FROM bus_positions
+                WHERE bus_id = ?
+                  AND id NOT IN (
+                      SELECT id
+                      FROM bus_positions
+                      WHERE bus_id = ?
+                      ORDER BY event_time DESC, id DESC
+                      LIMIT ?
+                  )
+                """,
+                (bus_id, bus_id, MAX_HISTORY),
+            )
+
+
 def record_positions(buses):
     rows = []
-
-    import time
-
     fallback_now = time.time()
 
     for bus in buses:
@@ -77,7 +166,7 @@ def record_positions(buses):
         if not bus_id or not math.isfinite(latitude) or not math.isfinite(longitude):
             continue
 
-        source_timestamp = bus.get("timestamp")
+        source_timestamp = str(bus.get("timestamp") or "")
         event_time = _parse_timestamp(source_timestamp)
 
         if event_time is None:
@@ -86,7 +175,7 @@ def record_positions(buses):
         rows.append(
             (
                 bus_id,
-                str(source_timestamp or ""),
+                source_timestamp,
                 event_time,
                 latitude,
                 longitude,
@@ -97,58 +186,52 @@ def record_positions(buses):
     if not rows:
         return
 
-    connection = _connection()
+    connection = _connect()
+
     try:
-        connection.executemany(
-            """
-            INSERT OR REPLACE INTO bus_positions
-            (bus_id, source_timestamp, event_time, latitude, longitude, speed)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            rows,
-        )
-
-        bus_ids = sorted({row[0] for row in rows})
-
-        for bus_id in bus_ids:
-            connection.execute(
-                """
-                DELETE FROM bus_positions
-                WHERE bus_id = ?
-                  AND rowid NOT IN (
-                      SELECT rowid
-                      FROM bus_positions
-                      WHERE bus_id = ?
-                      ORDER BY event_time DESC
-                      LIMIT ?
-                  )
-                """,
-                (bus_id, bus_id, MAX_HISTORY),
-            )
-
+        _insert_positions(connection, rows)
+        _prune_positions(connection, sorted({row[0] for row in rows}))
         connection.commit()
     finally:
         connection.close()
 
 
 def load_histories(bus_ids):
-    connection = _connection()
+    connection = _connect()
     histories = {}
 
     try:
         for bus_id in bus_ids:
-            rows = connection.execute(
-                """
-                SELECT event_time, latitude, longitude, speed
-                FROM bus_positions
-                WHERE bus_id = ?
-                ORDER BY event_time ASC
-                LIMIT ?
-                """,
-                (str(bus_id).strip().upper(), MAX_HISTORY),
-            ).fetchall()
+            normalized_id = str(bus_id).strip().upper()
 
-            histories[str(bus_id).strip().upper()] = [
+            if DATABASE_URL:
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT event_time, latitude, longitude, speed
+                        FROM bus_positions
+                        WHERE bus_id = %s
+                        ORDER BY event_time DESC, id DESC
+                        LIMIT %s
+                        """,
+                        (normalized_id, MAX_HISTORY),
+                    )
+                    rows = cursor.fetchall()
+            else:
+                rows = connection.execute(
+                    """
+                    SELECT event_time, latitude, longitude, speed
+                    FROM bus_positions
+                    WHERE bus_id = ?
+                    ORDER BY event_time DESC, id DESC
+                    LIMIT ?
+                    """,
+                    (normalized_id, MAX_HISTORY),
+                ).fetchall()
+
+            rows.reverse()
+
+            histories[normalized_id] = [
                 {
                     "time": float(row[0]),
                     "latitude": float(row[1]),
@@ -200,7 +283,6 @@ def _transition_features(history):
             current["longitude"],
         )
         implied_speed = distance / (delta_seconds / 3600)
-
         speed_delta = abs(current["speed"] - previous["speed"])
         turn_change = 0.0
 
@@ -255,7 +337,7 @@ def _trajectory_prediction(history):
     x_values = [[(point["time"] - first_time) / 60.0] for point in points]
     span_minutes = x_values[-1][0] - x_values[0][0]
 
-    if span_minutes < 1.5:
+    if span_minutes < 1.0:
         return None
 
     latitude_model = Ridge(alpha=0.0001)
@@ -269,6 +351,7 @@ def _trajectory_prediction(history):
     for x_value, point in zip(x_values, points):
         predicted_latitude = float(latitude_model.predict([x_value])[0])
         predicted_longitude = float(longitude_model.predict([x_value])[0])
+
         residuals.append(
             calculate_distance(
                 point["latitude"],
@@ -288,6 +371,7 @@ def _trajectory_prediction(history):
     for horizon_minutes in (1, 3, 5):
         current_x = x_values[-1][0]
         future_x = [[current_x + horizon_minutes]]
+
         predicted_latitude = float(latitude_model.predict(future_x)[0])
         predicted_longitude = float(longitude_model.predict(future_x)[0])
 
@@ -317,10 +401,10 @@ def _trajectory_prediction(history):
             "longitude": round(predicted_longitude, 6),
         }
 
-    confidence = 0.25
+    confidence = 0.22
     confidence += min(0.25, len(points) * 0.025)
-    confidence += min(0.20, span_minutes * 0.03)
-    confidence += 0.30 * max(0.0, 1.0 - min(residual_km / 0.30, 1.0))
+    confidence += min(0.22, span_minutes * 0.035)
+    confidence += 0.31 * max(0.0, 1.0 - min(residual_km / 0.30, 1.0))
     confidence = max(0.0, min(0.97, confidence))
 
     return {
@@ -339,13 +423,17 @@ def _analyze_single(bus, history, anomaly_model):
     latest_features = transition_features[-1] if transition_features else None
 
     anomaly_score = None
+
     if anomaly_model is not None and latest_features:
-        anomaly_score = float(anomaly_model.decision_function([latest_features])[0])
+        anomaly_score = float(
+            anomaly_model.decision_function([latest_features])[0]
+        )
 
     implied_speed = latest_features[1] if latest_features else None
     current_speed = _safe_float(bus.get("speed"), 0.0)
 
     hard_teleport = False
+
     if implied_speed is not None:
         hard_teleport = (
             implied_speed > 120.0
@@ -398,6 +486,7 @@ def _analyze_single(bus, history, anomaly_model):
         "prediction_history_minutes": prediction["history_span_minutes"] if prediction else 0,
         "implied_speed_kmh": round(implied_speed, 1) if implied_speed is not None else None,
         "gps_history_points": len(history),
+        "prediction_updated_at": datetime.now(timezone.utc).isoformat(),
     }
 
     if prediction_applied:
@@ -418,6 +507,7 @@ def analyze_buses(buses):
         for bus in buses
         if bus.get("bus_id")
     ]
+
     histories = load_histories(bus_ids)
     anomaly_model = _build_anomaly_model(histories)
 
@@ -425,8 +515,10 @@ def analyze_buses(buses):
 
     for bus in buses:
         bus_id = str(bus.get("bus_id") or "").strip().upper()
+
         if not bus_id:
             continue
+
         analysis[bus_id] = _analyze_single(
             bus,
             histories.get(bus_id, []),
