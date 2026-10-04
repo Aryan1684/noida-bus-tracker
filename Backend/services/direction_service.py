@@ -12,12 +12,17 @@ bus_history = defaultdict(deque)
 LANDMARKS = {
     "Sector 90": (28.5350, 77.3890),
     "Botanical Garden": (28.5641, 77.3358),
+    "Golf Course": (28.5678, 77.3420),
     "Sector 37": (28.5626, 77.3402),
     "Noida City Center": (28.5745, 77.3560),
+    "Hoshiyarpur": (28.5925, 77.3575),
+    "Sector 51": (28.5855, 77.3608),
     "Sector 52": (28.5850, 77.3640),
     "Parthala": (28.6075, 77.3755),
+    "Gaur Chowk": (28.6150, 77.4350),
     "Chaar Murti": (28.6020, 77.4180),
     "Ek Murti": (28.6063, 77.4337),
+    "Surajpur Collectorate": (28.5095, 77.4770),
     "Surajpur": (28.5185, 77.4990),
     "Kasna Village": (28.4300, 77.5150),
     "Pari Chowk": (28.4652, 77.5080),
@@ -90,7 +95,14 @@ ROUTES = [
         "points": [
             "Sector 90",
             "Botanical Garden",
+            "Golf Course",
+            "Noida City Center",
+            "Hoshiyarpur",
+            "Sector 51",
+            "Parthala",
+            "Gaur Chowk",
             "Ek Murti",
+            "Surajpur Collectorate",
             "Pari Chowk"
         ],
         "buses": R01_BUSES
@@ -100,7 +112,14 @@ ROUTES = [
         "name": "Pari Chowk → Ek Murti → Botanical → Sector 90",
         "points": [
             "Pari Chowk",
+            "Surajpur Collectorate",
             "Ek Murti",
+            "Gaur Chowk",
+            "Parthala",
+            "Sector 51",
+            "Hoshiyarpur",
+            "Noida City Center",
+            "Golf Course",
             "Botanical Garden",
             "Sector 90"
         ],
@@ -111,7 +130,14 @@ ROUTES = [
         "name": "Botanical → Ek Murti → Pari Chowk",
         "points": [
             "Botanical Garden",
+            "Golf Course",
+            "Noida City Center",
+            "Hoshiyarpur",
+            "Sector 51",
+            "Parthala",
+            "Gaur Chowk",
             "Ek Murti",
+            "Surajpur Collectorate",
             "Pari Chowk"
         ],
         "buses": R01_BUSES
@@ -121,7 +147,14 @@ ROUTES = [
         "name": "Pari Chowk → Ek Murti → Botanical",
         "points": [
             "Pari Chowk",
+            "Surajpur Collectorate",
             "Ek Murti",
+            "Gaur Chowk",
+            "Parthala",
+            "Sector 51",
+            "Hoshiyarpur",
+            "Noida City Center",
+            "Golf Course",
             "Botanical Garden"
         ],
         "buses": R01_BUSES
@@ -207,6 +240,8 @@ def route_applies(bus_id, route):
 
 def nearest_segment(latitude, longitude, route):
     best = None
+    latitude_scale = 111.32
+    longitude_scale = 111.32 * math.cos(math.radians(latitude))
 
     for index in range(len(route["points"]) - 1):
         a_name = route["points"][index]
@@ -215,14 +250,30 @@ def nearest_segment(latitude, longitude, route):
         a = LANDMARKS[a_name]
         b = LANDMARKS[b_name]
 
-        da = calculate_distance(latitude, longitude, a[0], a[1])
-        db = calculate_distance(latitude, longitude, b[0], b[1])
+        ax = (a[1] - longitude) * longitude_scale
+        ay = (a[0] - latitude) * latitude_scale
+        bx = (b[1] - longitude) * longitude_scale
+        by = (b[0] - latitude) * latitude_scale
+
+        dx = bx - ax
+        dy = by - ay
+        segment_length_sq = dx * dx + dy * dy
+
+        if segment_length_sq == 0:
+            projection = 0.0
+        else:
+            projection = max(0.0, min(1.0, -(ax * dx + ay * dy) / segment_length_sq))
+
+        px = ax + projection * dx
+        py = ay + projection * dy
+        segment_distance = math.hypot(px, py)
 
         candidate = {
             "index": index,
             "from": a_name,
             "to": b_name,
-            "distance": min(da, db)
+            "distance": segment_distance,
+            "projection": projection
         }
 
         if best is None or candidate["distance"] < best["distance"]:
@@ -230,7 +281,7 @@ def nearest_segment(latitude, longitude, route):
 
     return best
 
-def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=None):
+def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=None, history_points=None):
     candidates = []
 
     for route in ROUTES:
@@ -238,7 +289,7 @@ def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=
             continue
 
         segment = nearest_segment(latitude, longitude, route)
-        if not segment:
+        if not segment or segment["distance"] > 2.5:
             continue
 
         target = LANDMARKS[segment["to"]]
@@ -254,7 +305,30 @@ def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=
             target_bearing
         )
 
-        score = segment["distance"] * 8 + difference / 8
+        score = segment["distance"] * 10 + difference / 6
+
+        if history_points:
+            recent_points = list(history_points)[-5:]
+            matched = 0
+            jumps = 0
+            previous_index = None
+
+            for point in recent_points:
+                history_segment = nearest_segment(
+                    point["latitude"],
+                    point["longitude"],
+                    route
+                )
+                if history_segment["distance"] <= 3.0:
+                    matched += 1
+                    if previous_index is not None and abs(history_segment["index"] - previous_index) > 2:
+                        jumps += 1
+                    previous_index = history_segment["index"]
+
+            history_ratio = matched / len(recent_points)
+            score += (1 - history_ratio) * 18 + jumps * 4
+            if history_ratio < 0.4:
+                continue
 
         if previous_bearing is not None:
             turn_change = calculate_bearing_difference(
@@ -273,12 +347,13 @@ def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=
     candidates.sort(key=lambda item: item[0])
     best_score, best_route, segment, difference = candidates[0]
 
-    if difference > 75:
+    if difference > 70 or segment["distance"] > 2.0:
         return None
 
-    confidence = "High" if difference <= 35 else "Medium"
+    confidence = "High" if difference <= 30 and segment["distance"] <= 0.8 else "Medium"
 
     return {
+        "route_id": best_route["id"].split("-")[1] if "-" in best_route["id"] else best_route["id"],
         "likely_towards": segment["to"],
         "route": best_route["name"],
         "route_confidence": confidence,
@@ -309,6 +384,7 @@ def update_bus_history(bus):
             "heading": None,
             "likely_towards": None,
             "route": None,
+            "route_id": None,
             "route_confidence": None,
             "route_distance_km": None,
             "movement_km": 0,
@@ -363,7 +439,8 @@ def update_bus_history(bus):
         last["latitude"],
         last["longitude"],
         bearing,
-        previous_bearing
+        previous_bearing,
+        history
     )
 
     result = {
@@ -371,6 +448,7 @@ def update_bus_history(bus):
         "heading": round(bearing, 1),
         "likely_towards": None,
         "route": None,
+        "route_id": None,
         "route_confidence": None,
         "route_distance_km": None,
         "movement_km": round(movement_km, 2),
