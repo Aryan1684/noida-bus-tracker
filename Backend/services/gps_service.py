@@ -2,6 +2,7 @@ import time
 import requests
 
 from services.direction_service import update_bus_history
+from services.ml_prediction_service import analyze_buses
 
 GPS_API_URL = "https://margdarshi.upsrtcvlt.com/php/getGpsLiveData.php"
 
@@ -131,6 +132,13 @@ def get_noida_electric_buses():
             buses.append(result)
 
         if buses:
+            ml_analysis = analyze_buses(buses)
+
+            for result in buses:
+                prediction = ml_analysis.get(str(result.get("bus_id") or "").strip().upper())
+                if prediction:
+                    result.update(prediction)
+
             _last_good_buses = buses
             _last_good_at = time.time()
 
