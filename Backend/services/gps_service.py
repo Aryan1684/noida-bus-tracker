@@ -1,4 +1,6 @@
+import threading
 import time
+
 import requests
 
 from services.direction_service import update_bus_history
@@ -8,7 +10,11 @@ GPS_API_URL = "https://margdarshi.upsrtcvlt.com/php/getGpsLiveData.php"
 
 _last_good_buses = []
 _last_good_at = None
+_latest_processed_buses = []
+_latest_processed_at = None
+_cache_lock = threading.Lock()
 MAX_CACHE_SECONDS = 900
+PROCESSED_CACHE_SECONDS = 55
 
 NOIDA_POLYGON = [
     (28.69, 77.28),
@@ -43,8 +49,13 @@ def _point_in_polygon(latitude, longitude, polygon):
         lat_j, lon_j = polygon[j]
 
         crosses = (lat_i > latitude) != (lat_j > latitude)
+
         if crosses:
-            lon_at_lat = (lon_j - lon_i) * (latitude - lat_i) / (lat_j - lat_i) + lon_i
+            lon_at_lat = (
+                (lon_j - lon_i) * (latitude - lat_i) / (lat_j - lat_i)
+                + lon_i
+            )
+
             if longitude < lon_at_lat:
                 inside = not inside
 
@@ -58,6 +69,7 @@ def _in_noida_region(latitude, longitude):
         _point_in_polygon(latitude, longitude, NOIDA_POLYGON)
         or _point_in_polygon(latitude, longitude, GREATER_NOIDA_POLYGON)
     )
+
 
 def _fetch_live_data():
     headers = {
@@ -84,65 +96,105 @@ def _fetch_live_data():
                 raise ValueError("MARGDARSHI returned an unexpected response")
 
             return data
+
         except (requests.RequestException, ValueError) as error:
             last_error = error
+
             if attempt < 2:
                 time.sleep(1.5 * (attempt + 1))
 
     raise RuntimeError(f"MARGDARSHI live GPS request failed: {last_error}")
 
 
-def get_noida_electric_buses():
+def _process_live_buses(data):
+    buses = []
+
+    for bus in data:
+        if bus.get("depot_name") != "NOIDA ELECTRIC":
+            continue
+
+        latitude = bus.get("latitude")
+        longitude = bus.get("longitude")
+
+        if latitude is None or longitude is None:
+            continue
+
+        try:
+            latitude = float(latitude)
+            longitude = float(longitude)
+        except (ValueError, TypeError):
+            continue
+
+        result = {
+            "bus_id": bus.get("bus_id"),
+            "latitude": latitude,
+            "longitude": longitude,
+            "speed": bus.get("speed"),
+            "timestamp": bus.get("timestamp"),
+            "vehicle_status": bus.get("vehicle_status")
+        }
+
+        direction = update_bus_history(result)
+
+        if direction:
+            result.update(direction)
+
+        buses.append(result)
+
+    if not buses:
+        return []
+
+    ml_analysis = analyze_buses(buses)
+
+    for result in buses:
+        prediction = ml_analysis.get(
+            str(result.get("bus_id") or "").strip().upper()
+        )
+
+        if prediction:
+            result.update(prediction)
+
+    return buses
+
+
+def refresh_noida_electric_buses():
     global _last_good_buses, _last_good_at
+    global _latest_processed_buses, _latest_processed_at
 
     try:
         data = _fetch_live_data()
-        buses = []
-
-        for bus in data:
-            if bus.get("depot_name") != "NOIDA ELECTRIC":
-                continue
-
-            latitude = bus.get("latitude")
-            longitude = bus.get("longitude")
-
-            if latitude is None or longitude is None:
-                continue
-
-            try:
-                latitude = float(latitude)
-                longitude = float(longitude)
-            except (ValueError, TypeError):
-                continue
-
-            result = {
-                "bus_id": bus.get("bus_id"),
-                "latitude": latitude,
-                "longitude": longitude,
-                "speed": bus.get("speed"),
-                "timestamp": bus.get("timestamp"),
-                "vehicle_status": bus.get("vehicle_status")
-            }
-
-            direction = update_bus_history(result)
-
-            if direction:
-                result.update(direction)
-
-            buses.append(result)
+        buses = _process_live_buses(data)
 
         if buses:
-            ml_analysis = analyze_buses(buses)
+            now = time.time()
 
-            for result in buses:
-                prediction = ml_analysis.get(str(result.get("bus_id") or "").strip().upper())
-                if prediction:
-                    result.update(prediction)
+            with _cache_lock:
+                _latest_processed_buses = [dict(bus) for bus in buses]
+                _latest_processed_at = now
 
             _last_good_buses = buses
-            _last_good_at = time.time()
+            _last_good_at = now
 
         return buses
+
+    except Exception:
+        raise
+
+
+def get_noida_electric_buses(force_refresh=False):
+    global _last_good_buses, _last_good_at
+
+    if not force_refresh:
+        with _cache_lock:
+            if (
+                _latest_processed_buses
+                and _latest_processed_at
+                and time.time() - _latest_processed_at <= PROCESSED_CACHE_SECONDS
+            ):
+                return [dict(bus) for bus in _latest_processed_buses]
+
+    try:
+        return refresh_noida_electric_buses()
 
     except Exception:
         if _last_good_buses and _last_good_at:
