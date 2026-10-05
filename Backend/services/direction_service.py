@@ -18,15 +18,23 @@ LANDMARKS = {
     "Hoshiyarpur": (28.5925, 77.3575),
     "Sector 51": (28.5855, 77.3608),
     "Sector 52": (28.5850, 77.3640),
+    "Sector 62": (28.6280, 77.3770),
     "Parthala": (28.6075, 77.3755),
     "Gaur Chowk": (28.6150, 77.4350),
+    "Kisan Chowk": (28.6050, 77.4370),
     "Chaar Murti": (28.6020, 77.4180),
     "Ek Murti": (28.6063, 77.4337),
+    "Advant": (28.6205, 77.3785),
     "Surajpur Collectorate": (28.5095, 77.4770),
     "Surajpur": (28.5185, 77.4990),
     "Kasna Village": (28.4300, 77.5150),
     "Pari Chowk": (28.4652, 77.5080),
     "GIMS": (28.4400, 77.5030),
+    "Noida Entry Gate": (28.5680, 77.3235),
+    "Sector 14A": (28.5715, 77.3185),
+    "Akshardham": (28.6127, 77.2773),
+    "Kaushambi": (28.6450, 77.3210),
+    "Anand Vihar Bus Station": (28.6469, 77.3168),
     "Noida International Airport": (28.17556, 77.60500)
 }
 
@@ -34,7 +42,7 @@ LANDMARKS = {
 
 CITY_ROUTES = {
     "R1": {
-        "name": "Botanical Garden → Pari Chowk via Surajpur",
+        "name": "Botanical Garden ↔ Pari Chowk via Surajpur",
         "stops": [
             "Botanical Garden", "Golf Course", "Noida City Center",
             "Hoshiyarpur", "Sector 51", "Parthala", "Gaur Chowk",
@@ -42,7 +50,7 @@ CITY_ROUTES = {
         ]
     },
     "R2": {
-        "name": "Botanical Garden → Jewar Airport",
+        "name": "Botanical Garden ↔ Jewar Airport",
         "stops": [
             "Botanical Garden", "Sector 44", "Chhalera", "Amity School",
             "Expressway", "Pari Chowk", "Galgotias University",
@@ -50,7 +58,7 @@ CITY_ROUTES = {
         ]
     },
     "R3": {
-        "name": "Botanical Garden → Surajpur via Sector 37",
+        "name": "Botanical Garden ↔ Surajpur via Sector 37",
         "stops": [
             "Botanical Garden", "Sector 37", "Chhalera", "Agahpur",
             "Barola", "Sector 50", "Sector 75", "Sector 75 North",
@@ -59,7 +67,7 @@ CITY_ROUTES = {
         ]
     },
     "R4": {
-        "name": "Botanical Garden → New Bus Adda Ghaziabad",
+        "name": "Botanical Garden ↔ New Bus Adda Ghaziabad",
         "stops": [
             "Botanical Garden", "Golf Course", "Noida City Center",
             "Sector 52", "Sain Mandir", "Sector 61", "Sector 62",
@@ -67,7 +75,7 @@ CITY_ROUTES = {
         ]
     },
     "R5": {
-        "name": "Botanical Garden → Anand Vihar Bus Station",
+        "name": "Botanical Garden ↔ Anand Vihar Bus Station",
         "stops": [
             "Botanical Garden", "Sector 16", "Noida Entry Gate",
             "Sector 14A", "Akshardham", "Kaushambi", "Anand Vihar Bus Station"
@@ -91,7 +99,7 @@ GR01_BUSES = {
 ROUTES = [
     {
         "id": "N-R01-OUT",
-        "name": "Sector 90 → Botanical → Ek Murti → Pari Chowk",
+        "name": "Sector 90 ↔ Botanical ↔ Ek Murti ↔ Pari Chowk",
         "points": [
             "Sector 90",
             "Botanical Garden",
@@ -109,7 +117,7 @@ ROUTES = [
     },
     {
         "id": "N-R01-RETURN",
-        "name": "Pari Chowk → Ek Murti → Botanical → Sector 90",
+        "name": "Pari Chowk ↔ Ek Murti ↔ Botanical ↔ Sector 90",
         "points": [
             "Pari Chowk",
             "Surajpur Collectorate",
@@ -127,7 +135,7 @@ ROUTES = [
     },
     {
         "id": "N-R01-BOTANICAL-OUT",
-        "name": "Botanical → Ek Murti → Pari Chowk",
+        "name": "Botanical ↔ Ek Murti ↔ Pari Chowk",
         "points": [
             "Botanical Garden",
             "Golf Course",
@@ -144,7 +152,7 @@ ROUTES = [
     },
     {
         "id": "N-R01-PARI-RETURN",
-        "name": "Pari Chowk → Ek Murti → Botanical",
+        "name": "Pari Chowk ↔ Ek Murti ↔ Botanical",
         "points": [
             "Pari Chowk",
             "Surajpur Collectorate",
@@ -161,7 +169,7 @@ ROUTES = [
     },
     {
         "id": "GR01-OUT",
-        "name": "Sector 90 → Botanical → Chaar Murti → Surajpur → Kasna Village",
+        "name": "Sector 90 ↔ Botanical ↔ Chaar Murti ↔ Surajpur ↔ Kasna Village",
         "points": [
             "Sector 90",
             "Botanical Garden",
@@ -173,7 +181,7 @@ ROUTES = [
     },
     {
         "id": "GR01-RETURN",
-        "name": "Kasna Village → Surajpur → Chaar Murti → Botanical → Sector 90",
+        "name": "Kasna Village ↔ Surajpur ↔ Chaar Murti ↔ Botanical ↔ Sector 90",
         "points": [
             "Kasna Village",
             "Surajpur",
@@ -185,7 +193,7 @@ ROUTES = [
     },
     {
         "id": "GR01-LOOP",
-        "name": "Botanical → Chaar Murti → Surajpur → Kasna Village",
+        "name": "Botanical ↔ Chaar Murti ↔ Surajpur ↔ Kasna Village",
         "points": [
             "Botanical Garden",
             "Chaar Murti",
@@ -196,7 +204,7 @@ ROUTES = [
     },
     {
         "id": "GR01-LOOP-RETURN",
-        "name": "Kasna Village → Surajpur → Chaar Murti → Botanical",
+        "name": "Kasna Village ↔ Surajpur ↔ Chaar Murti ↔ Botanical",
         "points": [
             "Kasna Village",
             "Surajpur",
@@ -281,6 +289,48 @@ def nearest_segment(latitude, longitude, route):
 
     return best
 
+def _history_movement_bearing(history):
+    if len(history) < 2:
+        return None
+
+    for index in range(len(history) - 1, 0, -1):
+        previous = history[index - 1]
+        current = history[index]
+        distance_km = calculate_distance(
+            previous["latitude"],
+            previous["longitude"],
+            current["latitude"],
+            current["longitude"],
+        )
+
+        if distance_km >= 0.03:
+            return calculate_bearing(
+                previous["latitude"],
+                previous["longitude"],
+                current["latitude"],
+                current["longitude"],
+            )
+
+    first = history[0]
+    last = history[-1]
+    distance_km = calculate_distance(
+        first["latitude"],
+        first["longitude"],
+        last["latitude"],
+        last["longitude"],
+    )
+
+    if distance_km < 0.03:
+        return None
+
+    return calculate_bearing(
+        first["latitude"],
+        first["longitude"],
+        last["latitude"],
+        last["longitude"],
+    )
+
+
 def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=None, history_points=None):
     candidates = []
 
@@ -288,58 +338,94 @@ def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=
         if not route_applies(bus_id, route):
             continue
 
-        segment = nearest_segment(latitude, longitude, route)
-        if not segment or segment["distance"] > 2.5:
-            continue
+        route_points = route["points"]
+        route_bearings = []
 
-        target = LANDMARKS[segment["to"]]
-        target_bearing = calculate_bearing(
-            latitude,
-            longitude,
-            target[0],
-            target[1]
-        )
+        for index in range(len(route_points) - 1):
+            a = LANDMARKS[route_points[index]]
+            b = LANDMARKS[route_points[index + 1]]
+            route_bearings.append(
+                calculate_bearing(a[0], a[1], b[0], b[1])
+            )
 
-        difference = calculate_bearing_difference(
-            bearing,
-            target_bearing
-        )
-
-        score = segment["distance"] * 10 + difference / 6
+        history_indices = []
 
         if history_points:
             recent_points = list(history_points)[-10:]
-            matched = 0
-            jumps = 0
-            previous_index = None
 
             for point in recent_points:
-                history_segment = nearest_segment(
-                    point["latitude"],
-                    point["longitude"],
-                    route
-                )
-                if history_segment["distance"] <= 4.0:
-                    matched += 1
-                    if previous_index is not None and abs(history_segment["index"] - previous_index) > 3:
-                        jumps += 1
-                    previous_index = history_segment["index"]
+                best_index = None
+                best_distance = None
 
-            history_ratio = matched / len(recent_points)
-            score += (1 - history_ratio) * 10 + jumps * 2
-            if history_ratio < 0.25:
+                for candidate_index in range(len(route_points) - 1):
+                    candidate_segment = nearest_segment(
+                        point["latitude"],
+                        point["longitude"],
+                        {"points": route_points[candidate_index:candidate_index + 2]},
+                    )
+
+                    if (
+                        best_distance is None
+                        or candidate_segment["distance"] < best_distance
+                    ):
+                        best_distance = candidate_segment["distance"]
+                        best_index = candidate_index
+
+                if best_index is not None and best_distance <= 5.0:
+                    history_indices.append(best_index)
+
+        latest_history_index = history_indices[-1] if history_indices else None
+        forward_steps = 0
+        backward_steps = 0
+
+        for previous_index, current_index in zip(history_indices, history_indices[1:]):
+            delta = current_index - previous_index
+            if delta > 0:
+                forward_steps += delta
+            elif delta < 0:
+                backward_steps += abs(delta)
+
+        for segment_index in range(len(route_points) - 1):
+            segment = nearest_segment(
+                latitude,
+                longitude,
+                {"points": route_points[segment_index:segment_index + 2]},
+            )
+
+            if not segment or segment["distance"] > 4.0:
                 continue
 
-        if previous_bearing is not None:
-            turn_change = calculate_bearing_difference(
-                previous_bearing,
-                target_bearing
-            )
-            score += min(turn_change, 90) / 20
+            segment["index"] = segment_index
+            segment["from"] = route_points[segment_index]
+            segment["to"] = route_points[segment_index + 1]
 
-        candidates.append(
-            (score, route, segment, difference)
-        )
+            segment_bearing = route_bearings[segment_index]
+            difference = calculate_bearing_difference(
+                bearing,
+                segment_bearing
+            )
+
+            score = segment["distance"] * 12 + difference / 5
+
+            if latest_history_index is not None:
+                score += min(12.0, abs(segment_index - latest_history_index) * 1.5)
+
+            if backward_steps:
+                score += min(12.0, backward_steps * 2.0)
+
+            if forward_steps and segment_index >= (latest_history_index or 0):
+                score -= min(4.0, forward_steps * 0.15)
+
+            if previous_bearing is not None:
+                turn_change = calculate_bearing_difference(
+                    previous_bearing,
+                    segment_bearing
+                )
+                score += min(turn_change, 90) / 25
+
+            candidates.append(
+                (score, route, segment, difference)
+            )
 
     if not candidates:
         return None
@@ -347,18 +433,26 @@ def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=
     candidates.sort(key=lambda item: item[0])
     best_score, best_route, segment, difference = candidates[0]
 
-    if difference > 70 or segment["distance"] > 2.0:
+    if difference > 90 or segment["distance"] > 4.0:
         return None
 
-    confidence = "High" if difference <= 30 and segment["distance"] <= 0.8 else "Medium"
+    if difference <= 30 and segment["distance"] <= 1.0:
+        confidence = "High"
+    elif difference <= 55 and segment["distance"] <= 2.0:
+        confidence = "Medium"
+    else:
+        confidence = "Low"
 
     return {
-        "route_id": "R1" if best_route["id"].startswith("N-R01") else best_route["id"],
+        "route_id": "R1" if best_route["id"].startswith("N-R01") else (
+            "GR01" if best_route["id"].startswith("GR01") else best_route["id"]
+        ),
         "likely_towards": segment["to"],
         "route": best_route["name"],
         "route_confidence": confidence,
         "route_distance_km": round(segment["distance"], 2)
     }
+
 
 def _infer_nearest_destination(latitude, longitude, bearing, history_points=None):
     candidates = []
@@ -371,7 +465,7 @@ def _infer_nearest_destination(latitude, longitude, bearing, history_points=None
             target_longitude
         )
 
-        if distance_km < 0.25 or distance_km > 20.0:
+        if distance_km < 0.20 or distance_km > 15.0:
             continue
 
         target_bearing = calculate_bearing(
@@ -386,23 +480,16 @@ def _infer_nearest_destination(latitude, longitude, bearing, history_points=None
             target_bearing
         )
 
-        if difference > 85:
+        if difference > 75:
             continue
 
-        score = distance_km * (1.0 + difference / 80.0)
+        score = distance_km + (difference / 20.0)
 
         if history_points:
-            recent_points = list(history_points)[-10:]
-            forward_matches = 0
-            checked = 0
+            recent_points = list(history_points)[-6:]
+            aligned = 0
 
             for point in recent_points:
-                point_bearing = calculate_bearing(
-                    latitude,
-                    longitude,
-                    point["latitude"],
-                    point["longitude"]
-                )
                 point_distance = calculate_distance(
                     latitude,
                     longitude,
@@ -410,15 +497,23 @@ def _infer_nearest_destination(latitude, longitude, bearing, history_points=None
                     point["longitude"]
                 )
 
-                if point_distance < 0.25:
+                if point_distance < 0.20:
                     continue
 
-                checked += 1
-                if calculate_bearing_difference(point_bearing, target_bearing) <= 55:
-                    forward_matches += 1
+                historical_bearing = calculate_bearing(
+                    latitude,
+                    longitude,
+                    point["latitude"],
+                    point["longitude"]
+                )
 
-            if checked:
-                score += (1.0 - (forward_matches / checked)) * 3.0
+                if calculate_bearing_difference(
+                    historical_bearing,
+                    target_bearing
+                ) <= 60:
+                    aligned += 1
+
+            score -= min(1.5, aligned * 0.25)
 
         candidates.append(
             (score, name, distance_km, difference)
@@ -432,7 +527,7 @@ def _infer_nearest_destination(latitude, longitude, bearing, history_points=None
 
     if difference <= 30 and distance_km <= 8:
         confidence = "High"
-    elif difference <= 55 and distance_km <= 12:
+    elif difference <= 50 and distance_km <= 12:
         confidence = "Medium"
     else:
         confidence = "Low"
@@ -501,12 +596,20 @@ def update_bus_history(bus):
             "history_minutes": round(history_minutes, 1)
         }
 
-    bearing = calculate_bearing(
-        first["latitude"],
-        first["longitude"],
-        last["latitude"],
-        last["longitude"]
-    )
+    bearing = _history_movement_bearing(history)
+
+    if bearing is None:
+        return {
+            "direction": None,
+            "heading": None,
+            "likely_towards": None,
+            "route": None,
+            "route_id": None,
+            "route_confidence": None,
+            "route_distance_km": None,
+            "movement_km": round(movement_km, 2),
+            "history_minutes": round(history_minutes, 1)
+        }
 
     previous_bearing = None
 
