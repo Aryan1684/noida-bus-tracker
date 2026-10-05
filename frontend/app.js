@@ -33,11 +33,22 @@ function getBusRoute(busId) {
 }
 
 function isBusMoving(bus) {
-    const movement = Number(bus && bus.movement_km);
+    const status = String(bus && bus.vehicle_status || "").toLowerCase();
     const speed = Number(bus && bus.speed);
+    const movement = Number(bus && bus.movement_km);
+
+    if (status === "stationary" || status === "no_signal") {
+        return false;
+    }
+
+    if (Number.isFinite(speed) && speed >= 5) {
+        return true;
+    }
+
     return (
-        (Number.isFinite(movement) && movement >= 0.08) ||
-        (Number.isFinite(speed) && speed >= 5 && String(bus.vehicle_status || "").toLowerCase() === "live")
+        status === "live" &&
+        Number.isFinite(movement) &&
+        movement >= 0.08
     );
 }
 
