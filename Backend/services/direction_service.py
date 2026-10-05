@@ -308,7 +308,7 @@ def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=
         score = segment["distance"] * 10 + difference / 6
 
         if history_points:
-            recent_points = list(history_points)[-5:]
+            recent_points = list(history_points)[-10:]
             matched = 0
             jumps = 0
             previous_index = None
@@ -319,15 +319,15 @@ def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=
                     point["longitude"],
                     route
                 )
-                if history_segment["distance"] <= 3.0:
+                if history_segment["distance"] <= 4.0:
                     matched += 1
-                    if previous_index is not None and abs(history_segment["index"] - previous_index) > 2:
+                    if previous_index is not None and abs(history_segment["index"] - previous_index) > 3:
                         jumps += 1
                     previous_index = history_segment["index"]
 
             history_ratio = matched / len(recent_points)
-            score += (1 - history_ratio) * 18 + jumps * 4
-            if history_ratio < 0.4:
+            score += (1 - history_ratio) * 10 + jumps * 2
+            if history_ratio < 0.25:
                 continue
 
         if previous_bearing is not None:
@@ -359,6 +359,92 @@ def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=
         "route_confidence": confidence,
         "route_distance_km": round(segment["distance"], 2)
     }
+
+def _infer_nearest_destination(latitude, longitude, bearing, history_points=None):
+    candidates = []
+
+    for name, (target_latitude, target_longitude) in LANDMARKS.items():
+        distance_km = calculate_distance(
+            latitude,
+            longitude,
+            target_latitude,
+            target_longitude
+        )
+
+        if distance_km < 0.25 or distance_km > 20.0:
+            continue
+
+        target_bearing = calculate_bearing(
+            latitude,
+            longitude,
+            target_latitude,
+            target_longitude
+        )
+
+        difference = calculate_bearing_difference(
+            bearing,
+            target_bearing
+        )
+
+        if difference > 85:
+            continue
+
+        score = distance_km * (1.0 + difference / 80.0)
+
+        if history_points:
+            recent_points = list(history_points)[-10:]
+            forward_matches = 0
+            checked = 0
+
+            for point in recent_points:
+                point_bearing = calculate_bearing(
+                    latitude,
+                    longitude,
+                    point["latitude"],
+                    point["longitude"]
+                )
+                point_distance = calculate_distance(
+                    latitude,
+                    longitude,
+                    point["latitude"],
+                    point["longitude"]
+                )
+
+                if point_distance < 0.25:
+                    continue
+
+                checked += 1
+                if calculate_bearing_difference(point_bearing, target_bearing) <= 55:
+                    forward_matches += 1
+
+            if checked:
+                score += (1.0 - (forward_matches / checked)) * 3.0
+
+        candidates.append(
+            (score, name, distance_km, difference)
+        )
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda item: item[0])
+    _, destination, distance_km, difference = candidates[0]
+
+    if difference <= 30 and distance_km <= 8:
+        confidence = "High"
+    elif difference <= 55 and distance_km <= 12:
+        confidence = "Medium"
+    else:
+        confidence = "Low"
+
+    return {
+        "likely_towards": destination,
+        "route": "Towards " + destination,
+        "route_id": None,
+        "route_confidence": confidence,
+        "route_distance_km": round(distance_km, 2)
+    }
+
 
 def update_bus_history(bus):
     bus_id = bus.get("bus_id")
@@ -457,5 +543,15 @@ def update_bus_history(bus):
 
     if prediction:
         result.update(prediction)
+
+    if not result.get("likely_towards"):
+        destination_prediction = _infer_nearest_destination(
+            last["latitude"],
+            last["longitude"],
+            bearing,
+            history
+        )
+        if destination_prediction:
+            result.update(destination_prediction)
 
     return result
