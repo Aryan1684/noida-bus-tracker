@@ -948,3 +948,119 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 @media(prefers-reduced-motion:reduce){
   .feature-modal-card{animation:none}
 }
+
+
+.map-legend{
+  position:absolute;
+  left:15px;
+  bottom:15px;
+  z-index:650;
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  padding:8px 10px;
+  border:1px solid rgba(223,227,232,.95);
+  border-radius:11px;
+  background:rgba(255,255,255,.94);
+  backdrop-filter:blur(8px);
+  box-shadow:0 8px 24px rgba(21,24,29,.08);
+}
+.map-legend span{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  font-size:9px;
+  line-height:1;
+  color:var(--muted);
+  font-weight:850;
+}
+.legend-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  display:inline-block;
+}
+.legend-live{background:var(--success)}
+.legend-stationary{background:#9aa3ad}
+.legend-location{background:#2563eb}
+@media(max-width:700px){
+  .workspace-heading{
+    display:none;
+  }
+  .tracker-shell{
+    display:flex;
+    flex-direction:column;
+    height:auto;
+    min-height:0;
+    border-radius:18px;
+  }
+  .map-panel{
+    order:-1;
+    height:min(58dvh,560px);
+    min-height:430px;
+    padding:10px;
+  }
+  .map-shell{
+    min-height:0;
+  }
+  .map-shell #map{
+    min-height:0;
+  }
+  .fleet-panel{
+    order:2;
+    border-right:0;
+    border-bottom:0;
+    padding:13px;
+    max-height:none;
+    overflow:visible;
+  }
+  .bus-list-scroll{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    flex:none!important;
+  }
+  .bus-list-scroll .bus-grid{
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+    flex:none!important;
+    overscroll-behavior:initial!important;
+  }
+  .map-legend{
+    left:10px;
+    right:10px;
+    bottom:10px;
+    justify-content:center;
+  }
+}
+@media(max-width:480px){
+  .map-panel{
+    height:58dvh;
+    min-height:390px;
+  }
+}
+@media(min-width:701px){
+  .search-wrap input{
+    font-size:13px;
+  }
+  .location-use-button,.small-button{
+    font-size:11px;
+  }
+  .bus-card-top h3{
+    font-size:14px;
+  }
+  .bus-direction strong{
+    font-size:12px;
+  }
+  .bus-direction small{
+    font-size:8px;
+  }
+  .bus-meta{
+    font-size:10px;
+  }
+  .bus-card .updated{
+    font-size:9px;
+  }
+}
