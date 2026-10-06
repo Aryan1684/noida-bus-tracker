@@ -1310,30 +1310,42 @@ class _HomeState extends State<Home> {
                   ),
                 ),
               ),
-              IconButton(
-                onPressed: () => setState(() => stops = !stops),
-                icon: Icon(
-                  stops
-                      ? Icons.visibility
-                      : Icons.location_on_outlined,
+              Tooltip(
+                message: stops ? 'Hide stops' : 'Show stops',
+                child: IconButton(
+                  onPressed: () => setState(() => stops = !stops),
+                  icon: Icon(
+                    stops
+                        ? Icons.visibility
+                        : Icons.location_on_outlined,
+                  ),
                 ),
               ),
-              IconButton(
-                onPressed: _location,
-                icon: const Icon(Icons.my_location),
+              Tooltip(
+                message: 'Use my location',
+                child: IconButton(
+                  onPressed: _location,
+                  icon: const Icon(Icons.my_location),
+                ),
               ),
-              IconButton(
-                onPressed: () => setState(() => movePin = !movePin),
-                icon: Icon(
-                  movePin
-                      ? Icons.pin_drop
-                      : Icons.edit_location_alt,
+              Tooltip(
+                message: movePin ? 'Finish choosing location' : 'Move location pin',
+                child: IconButton(
+                  onPressed: () => setState(() => movePin = !movePin),
+                  icon: Icon(
+                    movePin
+                        ? Icons.pin_drop
+                        : Icons.edit_location_alt,
+                  ),
                 ),
               ),
               if (trail.isNotEmpty)
-                IconButton(
-                  onPressed: () => setState(() => trail = []),
-                  icon: const Icon(Icons.clear),
+                Tooltip(
+                  message: 'Clear trail',
+                  child: IconButton(
+                    onPressed: () => setState(() => trail = []),
+                    icon: const Icon(Icons.clear),
+                  ),
                 ),
             ],
           ),
