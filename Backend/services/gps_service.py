@@ -134,11 +134,6 @@ def _process_live_buses(data):
             "vehicle_status": bus.get("vehicle_status")
         }
 
-        direction = update_bus_history(result)
-
-        if direction:
-            result.update(direction)
-
         buses.append(result)
 
     if not buses:
@@ -183,9 +178,8 @@ def refresh_noida_electric_buses():
             with _cache_lock:
                 _latest_processed_buses = [dict(bus) for bus in buses]
                 _latest_processed_at = now
-
-            _last_good_buses = buses
-            _last_good_at = now
+                _last_good_buses = [dict(bus) for bus in buses]
+                _last_good_at = now
 
         return buses
 
