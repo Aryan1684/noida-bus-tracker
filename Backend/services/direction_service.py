@@ -541,6 +541,14 @@ def _infer_nearest_destination(latitude, longitude, bearing, history_points=None
     }
 
 
+def _safe_speed(value):
+    try:
+        speed = float(value)
+        return speed if math.isfinite(speed) else 0.0
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def update_bus_history(bus):
     bus_id = bus.get("bus_id")
 
@@ -569,7 +577,8 @@ def update_bus_history(bus):
             "route_confidence": None,
             "route_distance_km": None,
             "movement_km": 0,
-            "history_minutes": 0
+            "history_minutes": 0,
+            "movement_status": "unknown"
         }
 
     first = history[0]
@@ -583,6 +592,22 @@ def update_bus_history(bus):
     )
 
     history_minutes = (last["time"] - first["time"]) / 60
+    current_speed = _safe_speed(bus.get("speed"))
+    current_status = str(bus.get("vehicle_status") or "").strip().lower()
+
+    if current_status == "stationary" or current_speed < 3:
+        return {
+            "direction": "Stationary",
+            "heading": None,
+            "likely_towards": None,
+            "route": None,
+            "route_id": None,
+            "route_confidence": None,
+            "route_distance_km": None,
+            "movement_km": round(movement_km, 2),
+            "history_minutes": round(history_minutes, 1),
+            "movement_status": "stationary"
+        }
 
     if movement_km < MIN_MOVEMENT_KM:
         return {
@@ -593,7 +618,8 @@ def update_bus_history(bus):
             "route_confidence": None,
             "route_distance_km": None,
             "movement_km": round(movement_km, 2),
-            "history_minutes": round(history_minutes, 1)
+            "history_minutes": round(history_minutes, 1),
+            "movement_status": "stationary"
         }
 
     bearing = _history_movement_bearing(history)
@@ -608,7 +634,8 @@ def update_bus_history(bus):
             "route_confidence": None,
             "route_distance_km": None,
             "movement_km": round(movement_km, 2),
-            "history_minutes": round(history_minutes, 1)
+            "history_minutes": round(history_minutes, 1),
+            "movement_status": "unknown"
         }
 
     previous_bearing = None
@@ -641,7 +668,8 @@ def update_bus_history(bus):
         "route_confidence": None,
         "route_distance_km": None,
         "movement_km": round(movement_km, 2),
-        "history_minutes": round(history_minutes, 1)
+        "history_minutes": round(history_minutes, 1),
+        "movement_status": "moving"
     }
 
     if prediction:
