@@ -1064,3 +1064,62 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     font-size:9px;
   }
 }
+
+.bus-card .status-stationary{
+  background:var(--surface2);
+  color:var(--muted);
+}
+.bus-card .status-offline{
+  background:#f3f4f6;
+  color:#667085;
+}
+.bus-card .status-live{
+  background:#edf8f1;
+  color:var(--success);
+}
+.feature-action-modal{
+  text-align:left;
+}
+.feature-action-modal h3{
+  padding-right:28px;
+}
+.feature-actions-menu{
+  display:grid;
+  gap:7px;
+  margin-top:16px;
+}
+.feature-actions-menu button{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  width:100%;
+  padding:12px 13px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--surface2);
+  color:var(--text);
+  text-align:left;
+}
+.feature-actions-menu button:hover{
+  background:var(--surface);
+}
+.feature-actions-menu span{
+  font-size:13px;
+  font-weight:900;
+}
+.feature-actions-menu small{
+  margin-top:3px;
+  color:var(--muted);
+  font-size:10px;
+}
+@media(max-width:700px){
+  .bus-card-top h3{
+    font-size:15px;
+  }
+  .bus-direction strong{
+    font-size:12px;
+  }
+  .bus-meta{
+    font-size:10px;
+  }
+}
