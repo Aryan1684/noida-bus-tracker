@@ -114,15 +114,93 @@
         return null;
     }
 
-    function currentSpeed(bus) {
-        var h=busHistory(bus.bus_id);
-        if(h.length>=2){
-            var a=h[0], b=h[h.length-1];
-            var mins=(b.time-a.time)/60000;
-            var km=distance(a.latitude,a.longitude,b.latitude,b.longitude);
-            if(mins>0 && km>0.03) return km/mins*60;
+    function historySpeed(bus){
+        var raw=Array.isArray(bus.prediction_history)?bus.prediction_history:busHistory(bus.bus_id);
+        var points=raw.map(function(point){
+            var time=typeof point.time==="number"?point.time:new Date(point.time).getTime();
+            return {
+                latitude:Number(point.latitude),
+                longitude:Number(point.longitude),
+                speed:Number(point.speed)||0,
+                time:time
+            };
+        }).filter(function(point){
+            return Number.isFinite(point.latitude)&&Number.isFinite(point.longitude)&&Number.isFinite(point.time);
+        }).slice(-10);
+
+        if(points.length<2)return Number(bus.speed)||0;
+
+        var totalKm=0;
+        var totalHours=0;
+
+        for(var i=1;i<points.length;i++){
+            var dtHours=(points[i].time-points[i-1].time)/3600000;
+            if(!Number.isFinite(dtHours)||dtHours<=0)continue;
+
+            var segmentKm=distance(
+                points[i-1].latitude,
+                points[i-1].longitude,
+                points[i].latitude,
+                points[i].longitude
+            );
+
+            if(segmentKm<=0.01)continue;
+
+            totalKm+=segmentKm;
+            totalHours+=dtHours;
         }
-        return Number(bus.speed)||0;
+
+        if(totalKm>0.03&&totalHours>0)return totalKm/totalHours;
+
+        var observed=points.map(function(point){return point.speed;}).filter(function(speed){return speed>=3;});
+        if(observed.length){
+            return observed.reduce(function(sum,speed){return sum+speed;},0)/observed.length;
+        }
+
+        return 0;
+    }
+
+    function currentSpeed(bus) {
+        return historySpeed(bus);
+    }
+
+    function isBusMovingFeature(bus){
+        var status=String(bus&&bus.vehicle_status||"").toLowerCase();
+        var movement=Number(bus&&bus.movement_km);
+        var speed=Number(bus&&bus.speed);
+
+        if(status==="stationary"||status==="no_signal")return false;
+        if(Number.isFinite(speed)&&speed>=5)return true;
+        return status==="live"&&Number.isFinite(movement)&&movement>=0.08;
+    }
+
+    function showFeaturePopup(title,body,success){
+        var existing=document.getElementById("featureModal");
+        if(existing)existing.remove();
+
+        var overlay=document.createElement("div");
+        overlay.id="featureModal";
+        overlay.className="feature-modal";
+        overlay.innerHTML=
+            "<div class='feature-modal-card' role='dialog' aria-modal='true'>"+
+            "<button class='feature-modal-close' type='button' aria-label='Close'>×</button>"+
+            "<div class='feature-modal-icon "+(success?"success":"")+"'>"+(success?"✓":"⌖")+"</div>"+
+            "<h3>"+title+"</h3>"+
+            "<div class='feature-modal-body'>"+body+"</div>"+
+            "<button class='feature-modal-ok' type='button'>Got it</button>"+
+            "</div>";
+
+        document.body.appendChild(overlay);
+
+        function remove(){
+            if(overlay.parentNode)overlay.parentNode.removeChild(overlay);
+        }
+
+        overlay.querySelector(".feature-modal-close").onclick=remove;
+        overlay.querySelector(".feature-modal-ok").onclick=remove;
+        overlay.addEventListener("click",function(event){
+            if(event.target===overlay)remove();
+        });
     }
 
     function dataQuality(bus) {
@@ -282,14 +360,38 @@
 
     function eta(bus){
         var target=typeof confirmedLocation!=="undefined"?confirmedLocation:null;
-        if(!target){alert("Select and confirm a location first.");return;}
+        if(!target){
+            showFeaturePopup("Select a destination","Select and confirm a location before calculating ETA.");
+            return;
+        }
+
+        if(!isBusMovingFeature(bus)){
+            showFeaturePopup(
+                "Bus is stationary",
+                "<strong>"+bus.bus_id+"</strong> is currently not moving.<br><small>ETA will be calculated once recent GPS data shows movement.</small>"
+            );
+            return;
+        }
 
         var km=distance(Number(bus.latitude),Number(bus.longitude),target.lat,target.lon);
-        var speed=currentSpeed(bus);
+        var speed=historySpeed(bus);
 
-        if(speed<3){alert("ETA unavailable while the bus is stationary or moving too slowly.");return;}
+        if(speed<3){
+            showFeaturePopup(
+                "ETA unavailable",
+                "The last 10 stored GPS points do not contain enough recent movement for a reliable ETA."
+            );
+            return;
+        }
+
+        var points=Array.isArray(bus.prediction_history)?bus.prediction_history:busHistory(bus.bus_id);
         var minutes=Math.max(1,Math.ceil(km/speed*60));
-        alert("Approx ETA: "+minutes+" min\\nDistance: "+km.toFixed(2)+" km\\nBased on recent/current GPS speed.");
+
+        showFeaturePopup(
+            "Estimated arrival",
+            "<strong>"+minutes+" min</strong><br>"+km.toFixed(2)+" km away<br><small>Average movement calculated from the latest "+Math.min(10,points.length)+" stored GPS points.</small>",
+            true
+        );
     }
 
     function follow(bus){
@@ -563,30 +665,40 @@
     }
 
     function enableAlert(){
-        if(!("Notification" in window)){alert("Notifications are not supported in this browser.");return;}
-        Notification.requestPermission().then(function(permission){
-            if(permission==="granted"){
-                localStorage.setItem(ALERT_KEY,"true");
-                alert("Nearby bus alerts enabled.");
-            }
-        });
+        var enabled=localStorage.getItem(ALERT_KEY)==="true";
+
+        if(enabled){
+            localStorage.removeItem(ALERT_KEY);
+            showFeaturePopup("Nearby alerts disabled","Nearby bus alerts are now off.",true);
+            return;
+        }
+
+        localStorage.setItem(ALERT_KEY,"true");
+        localStorage.removeItem("lastNoidaBusAlert");
+        showFeaturePopup(
+            "Nearby alerts enabled",
+            "An in-page popup will appear when a moving electric bus is within 0.5 km of your selected location.",
+            true
+        );
     }
 
     function checkAlert(){
         if(localStorage.getItem(ALERT_KEY)!=="true")return;
-        var bus=buses.find(function(item){return Number(item.distance_km)<=0.5;});
+
+        var bus=buses.find(function(item){
+            return Number(item.distance_km)<=0.5&&isBusMovingFeature(item);
+        });
         if(!bus)return;
 
         var last=Number(localStorage.getItem("lastNoidaBusAlert")||0);
         if(Date.now()-last<5*60*1000)return;
-        localStorage.setItem("lastNoidaBusAlert",String(Date.now()));
 
-        navigator.serviceWorker.getRegistration().then(function(reg){
-            if(reg)reg.showNotification("Nearby electric bus",{
-                body:bus.bus_id+" is "+bus.distance_km+" km away.",
-                icon:"/icon.svg"
-            });
-        });
+        localStorage.setItem("lastNoidaBusAlert",String(Date.now()));
+        showFeaturePopup(
+            "Nearby electric bus",
+            "<strong>"+bus.bus_id+"</strong> is <strong>"+Number(bus.distance_km).toFixed(2)+" km</strong> away and currently moving.<br><small>"+(bus.likely_towards?"Moving towards "+bus.likely_towards+" · ":"")+"Live GPS</small>",
+            true
+        );
     }
 
     function initPWA(){
