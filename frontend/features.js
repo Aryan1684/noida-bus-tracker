@@ -318,10 +318,7 @@
             actions.innerHTML=
                 "<button data-f='eta'>ETA</button>"+
                 "<button data-f='follow'>"+(followId===bus.bus_id?"Following":"Follow")+"</button>"+
-                "<button data-f='trail'>Trail</button>"+
-                "<button data-f='play'>Playback</button>"+
-                "<button data-f='share'>Share</button>"+
-                "<button data-f='report'>Report</button>";
+                "<button data-f='more'>More</button>";
 
             actions.addEventListener("pointerdown",function(event){
                 var btn=event.target.closest("button");
@@ -345,10 +342,7 @@
                 var type=btn.dataset.f;
                 if(type==="eta") eta(bus);
                 if(type==="follow") follow(bus);
-                if(type==="trail") showTrail(bus);
-                if(type==="play") playback(bus);
-                if(type==="share") share(bus);
-                if(type==="report") report(bus);
+                if(type==="more") showMoreActions(bus);
 
                 window.setTimeout(function(){btn.blur();},0);
             });
@@ -392,6 +386,46 @@
             "<strong>"+minutes+" min</strong><br>"+km.toFixed(2)+" km away<br><small>Average movement calculated from the latest "+Math.min(10,points.length)+" stored GPS points.</small>",
             true
         );
+    }
+
+    function showMoreActions(bus){
+        var existing=document.getElementById("featureActionsModal");
+        if(existing)existing.remove();
+
+        var overlay=document.createElement("div");
+        overlay.id="featureActionsModal";
+        overlay.className="feature-modal";
+        overlay.innerHTML=
+            "<div class='feature-modal-card feature-action-modal' role='dialog' aria-modal='true'>"+
+            "<button class='feature-modal-close' type='button' aria-label='Close'>×</button>"+
+            "<h3>Bus actions</h3>"+
+            "<div class='feature-actions-menu'>"+
+            "<button data-more='trail'><span>Trail</span><small>Show recent movement path</small></button>"+
+            "<button data-more='play'><span>Playback</span><small>Replay the stored GPS path</small></button>"+
+            "<button data-more='share'><span>Share</span><small>Share this bus</small></button>"+
+            "<button data-more='report'><span>Report</span><small>Report an issue</small></button>"+
+            "</div>"+
+            "</div>";
+
+        document.body.appendChild(overlay);
+
+        function remove(){
+            if(overlay.parentNode)overlay.parentNode.removeChild(overlay);
+        }
+
+        overlay.querySelector(".feature-modal-close").onclick=remove;
+        overlay.addEventListener("click",function(event){
+            if(event.target===overlay)remove();
+            var button=event.target.closest("[data-more]");
+            if(!button)return;
+            event.preventDefault();
+            var action=button.getAttribute("data-more");
+            remove();
+            if(action==="trail")showTrail(bus);
+            if(action==="play")playback(bus);
+            if(action==="share")share(bus);
+            if(action==="report")report(bus);
+        });
     }
 
     function follow(bus){
