@@ -856,3 +856,95 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 @keyframes appProgress{from{transform:translateX(-10%);width:48%}to{transform:translateX(60%);width:62%}}
 @media(prefers-reduced-motion:reduce){.app-orbit,.app-bus-icon,.app-spark,.app-progress-track span{animation:none!important}}
 @media(max-width:520px){.app-coming-soon-card{padding:22px 17px 17px;border-radius:20px}.app-coming-soon-visual{height:150px}.app-coming-soon-card h2{font-size:27px}.app-coming-soon-points{grid-template-columns:1fr}}
+
+
+.feature-modal{
+  position:fixed;
+  inset:0;
+  z-index:10000;
+  display:grid;
+  place-items:center;
+  padding:20px;
+  background:rgba(10,14,20,.55);
+  backdrop-filter:blur(8px);
+}
+.feature-modal-card{
+  position:relative;
+  width:min(420px,100%);
+  padding:28px 24px 22px;
+  border:1px solid var(--line);
+  border-radius:24px;
+  background:var(--surface);
+  color:var(--text);
+  box-shadow:0 28px 90px rgba(0,0,0,.28);
+  text-align:center;
+  animation:featureModalIn .22s ease-out;
+}
+.feature-modal-close{
+  position:absolute;
+  top:11px;
+  right:11px;
+  width:34px;
+  height:34px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--surface2);
+  color:var(--muted);
+  font-size:22px;
+  line-height:1;
+}
+.feature-modal-icon{
+  width:52px;
+  height:52px;
+  margin:0 auto 13px;
+  border-radius:16px;
+  display:grid;
+  place-items:center;
+  background:var(--surface2);
+  color:var(--text);
+  font-size:22px;
+  font-weight:900;
+}
+.feature-modal-icon.success{
+  background:var(--accentSoft);
+  color:var(--text);
+}
+.feature-modal-card h3{
+  margin:0;
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:-.4px;
+}
+.feature-modal-body{
+  margin-top:10px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.65;
+}
+.feature-modal-body strong{
+  color:var(--text);
+  font-size:15px;
+}
+.feature-modal-body small{
+  display:inline-block;
+  margin-top:5px;
+  color:var(--muted);
+  font-size:11px;
+}
+.feature-modal-ok{
+  width:100%;
+  height:44px;
+  margin-top:18px;
+  border:0;
+  border-radius:12px;
+  background:var(--primary);
+  color:var(--primaryText);
+  font-weight:900;
+}
+@keyframes featureModalIn{
+  from{opacity:0;transform:translateY(10px) scale(.97)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+@media(prefers-reduced-motion:reduce){
+  .feature-modal-card{animation:none}
+}
