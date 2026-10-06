@@ -908,6 +908,12 @@ function createBusCard(bus, rankIndex = 0) {
 
     const route = getBusRoute(bus.bus_id);
     const status = formatStatus(bus.vehicle_status);
+    const statusKey = String(bus.vehicle_status || "").toLowerCase();
+    const statusClass = statusKey === "stationary"
+        ? "stationary"
+        : statusKey === "no_signal"
+        ? "offline"
+        : "live";
     const movement = bus.movement_km !== undefined ? bus.movement_km : 0;
     const history = bus.history_minutes !== undefined ? bus.history_minutes : 0;
     const sourceLabel = bus.data_stale ? "Last available GPS" : "Live GPS";
@@ -931,7 +937,7 @@ function createBusCard(bus, rankIndex = 0) {
             "<span class='bus-meta'>⚡ " + (bus.speed ?? 0) + " km/h</span>" +
             "<span class='bus-meta'>↗ " + movement + " km / " + history + " min</span>" +
         "</div>" +
-        "<p class='status'>● " + escapeHtml(status) + "</p>" +
+        "<p class='status status-" + statusClass + "'>● " + escapeHtml(status) + "</p>" +
         "<p class='updated'>" + sourceLabel + (predictionLabel ? " · " + predictionLabel : "") + " · Tap for details</p>";
 
     card.setAttribute("role", "button");
