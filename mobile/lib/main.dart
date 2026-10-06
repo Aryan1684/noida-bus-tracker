@@ -53,21 +53,21 @@ class _StartupSplashState extends State<StartupSplash>
 
     intro = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2400),
+      duration: const Duration(milliseconds: 850),
     )..forward();
 
     travel = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1100),
     )..repeat(reverse: true);
 
-    Future.delayed(const Duration(milliseconds: 2950), () {
+    Future.delayed(const Duration(milliseconds: 1100), () {
       if (!mounted) return;
 
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => widget.child,
-          transitionDuration: const Duration(milliseconds: 650),
+          transitionDuration: const Duration(milliseconds: 320),
           transitionsBuilder: (_, animation, __, child) {
             final curved = CurvedAnimation(
               parent: animation,
@@ -1031,37 +1031,52 @@ class _HomeState extends State<Home> {
     ),
     body: RefreshIndicator(
       onRefresh: _load,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
-        children: [
-          _locationCard(),
-          const SizedBox(height: 12),
-          _searchCard(),
-          const SizedBox(height: 12),
-          _mapCard(),
-          const SizedBox(height: 14),
-          _header(),
-          if (error != null) _error(),
-          if (loading && buses.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(30),
-              child: Center(child: CircularProgressIndicator()),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 700;
+          final content = <Widget>[
+            if (compact) ...[
+              _mapCard(),
+              const SizedBox(height: 10),
+              _searchCard(),
+              const SizedBox(height: 10),
+              _locationCard(),
+            ] else ...[
+              _locationCard(),
+              const SizedBox(height: 12),
+              _searchCard(),
+              const SizedBox(height: 12),
+              _mapCard(),
+            ],
+            const SizedBox(height: 14),
+            _header(),
+            if (error != null) _error(),
+            if (loading && buses.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(30),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            if (!loading && buses.isEmpty && error == null) _empty(),
+            ...buses.map(_card),
+            const SizedBox(height: 18),
+            const Text(
+              'Independent project. Not a government website.\n'
+              'Live GPS data sourced from MARGDARSHI · UPSRTC.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF6B7280),
+                fontSize: 11,
+                height: 1.5,
+              ),
             ),
-          if (!loading && buses.isEmpty && error == null) _empty(),
-          ...buses.map(_card),
-          const SizedBox(height: 18),
-          const Text(
-            'Independent project. Not a government website.\n'
-            'Live GPS data sourced from MARGDARSHI · UPSRTC.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFF6B7280),
-              fontSize: 11,
-              height: 1.5,
-            ),
-          ),
-        ],
+          ];
+
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
+            children: content,
+          );
+        },
       ),
     ),
   );
@@ -1516,13 +1531,29 @@ class _HomeState extends State<Home> {
             Wrap(
               spacing:6,
               runSpacing:6,
+              crossAxisAlignment:WrapCrossAlignment.center,
               children:[
-                _chip('ETA',Icons.timer_outlined,()=>_eta(b)),
-                _chip(followed==id&&following?'Following':'Follow',Icons.center_focus_strong,()=>_follow(b)),
-                _chip('Trail',Icons.route_outlined,()=>_trail(b)),
-                _chip('Playback',Icons.play_arrow,()=>_play(b)),
+                _chip(followed==id&&following?'Following':'Track bus',Icons.center_focus_strong,()=>_follow(b)),
                 _chip('Share',Icons.share_outlined,()=>_share(b)),
-                _chip('Report',Icons.flag_outlined,()=>_report(b)),
+                PopupMenuButton<String>(
+                  tooltip:'More bus actions',
+                  onSelected:(value){
+                    if(value=='eta')_eta(b);
+                    if(value=='trail')_trail(b);
+                    if(value=='play')_play(b);
+                    if(value=='report')_report(b);
+                  },
+                  itemBuilder:(context)=>const [
+                    PopupMenuItem(value:'eta',child:Text('ETA')),
+                    PopupMenuItem(value:'trail',child:Text('View trail')),
+                    PopupMenuItem(value:'play',child:Text('Playback')),
+                    PopupMenuItem(value:'report',child:Text('Report issue')),
+                  ],
+                  child:const Padding(
+                    padding:EdgeInsets.symmetric(horizontal:13,vertical:9),
+                    child:Icon(Icons.more_horiz_rounded,size:20),
+                  ),
+                ),
               ],
             ),
           ],
