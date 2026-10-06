@@ -1393,6 +1393,8 @@ class _HomeState extends State<Home> {
   final dir=b['likely_towards'];
   final route=_routeForBus(b);
   final moved=_movedLastMinutes(id);
+  final status=(b['movement_status']??b['vehicle_status']??'unknown').toString().toLowerCase();
+  final isMoving=status=='moving'&&((speed??0)>=3);
   final isSelected=selected==id;
 
   return Card(
@@ -1473,8 +1475,12 @@ class _HomeState extends State<Home> {
                             style:const TextStyle(fontSize:12,color:Color(0xFF6B7280)),
                           ),
                           Text(
-                            (b['vehicle_status']??'Status unknown').toString(),
-                            style:const TextStyle(fontSize:12,color:Color(0xFF6B7280)),
+                            isMoving
+                                ? 'Live'
+                                : status=='stationary'
+                                    ? 'Stationary'
+                                    : 'Not moving',
+                            style:const TextStyle(fontSize:12,color:Color(0xFF6B7280),fontWeight:FontWeight.w700),
                           ),
                         ],
                       ),
@@ -1490,22 +1496,28 @@ class _HomeState extends State<Home> {
                 ),
               ],
             ),
-            if(dir is String&&dir.isNotEmpty)
-              Padding(
-                padding:const EdgeInsets.only(top:10),
-                child:Row(
-                  children:[
-                    const Icon(Icons.trending_flat,size:20),
-                    const SizedBox(width:7),
-                    Expanded(
-                      child:Text(
-                        'Moving towards '+dir,
-                        style:const TextStyle(fontWeight:FontWeight.w700),
-                      ),
+            Padding(
+              padding:const EdgeInsets.only(top:10),
+              child:Row(
+                children:[
+                  Icon(
+                    isMoving?Icons.navigation_rounded:Icons.pause_circle_outline_rounded,
+                    size:20,
+                  ),
+                  const SizedBox(width:7),
+                  Expanded(
+                    child:Text(
+                      isMoving
+                          ? 'Moving towards '+((dir is String&&dir.isNotEmpty)?dir:'destination')
+                          : status=='stationary'
+                              ? 'Stationary'
+                              : 'Not moving',
+                      style:const TextStyle(fontWeight:FontWeight.w700),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+            ),
             const SizedBox(height:10),
             Container(
               width:double.infinity,
