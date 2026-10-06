@@ -1,13 +1,7 @@
 import math
-import time
-from collections import defaultdict, deque
-
 from utils.distance import calculate_distance
 
-HISTORY_SECONDS = 600
 MIN_MOVEMENT_KM = 0.08
-
-bus_history = defaultdict(deque)
 
 LANDMARKS = {
     "Sector 90": (28.5350, 77.3890),
@@ -549,23 +543,13 @@ def _safe_speed(value):
         return 0.0
 
 
-def update_bus_history(bus):
+def update_bus_history(bus, history_points=None):
     bus_id = bus.get("bus_id")
 
     if not bus_id:
         return None
 
-    now = time.time()
-    history = bus_history[bus_id]
-
-    history.append({
-        "latitude": bus["latitude"],
-        "longitude": bus["longitude"],
-        "time": now
-    })
-
-    while history and now - history[0]["time"] > HISTORY_SECONDS:
-        history.popleft()
+    history = list(history_points or [])
 
     if len(history) < 2:
         return {

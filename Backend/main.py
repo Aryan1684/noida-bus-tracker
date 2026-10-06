@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from services.gps_service import get_noida_electric_buses
 from services.prediction_collector import collector_running, start_collector, stop_collector
 from utils.distance import calculate_distance
+from services.eta_service import calculate_eta
 from services.analytics_service import dashboard as get_analytics_dashboard, record_consented_location, record_event, verify_admin_token
 
 load_dotenv()
@@ -192,7 +193,7 @@ def admin_fleet(
     if not verify_admin_token(x_admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
 
-    buses = get_noida_electric_buses()
+    buses = get_processed_buses()
 
     total = len(buses)
     live = sum(1 for bus in buses if bus.get("vehicle_status") == "live")
@@ -231,9 +232,21 @@ def admin_fleet(
     }
 
 
+def get_processed_buses():
+    buses = get_noida_electric_buses()
+
+    if not buses:
+        raise HTTPException(
+            status_code=503,
+            detail="Live bus data is not ready yet"
+        )
+
+    return buses
+
+
 @app.get("/api/buses")
 def get_buses():
-    buses = get_noida_electric_buses()
+    buses = get_processed_buses()
 
     return {
         "count": len(buses),
@@ -247,23 +260,21 @@ def get_nearby_buses(
     lon: float = Query(...),
     radius: float = Query(5)
 ):
-    buses = get_noida_electric_buses()
+    buses = get_processed_buses()
 
     nearby_buses = []
 
     for bus in buses:
-        display_latitude = bus.get("display_latitude", bus["latitude"])
-        display_longitude = bus.get("display_longitude", bus["longitude"])
-
         distance = calculate_distance(
             lat,
             lon,
-            display_latitude,
-            display_longitude
+            bus["latitude"],
+            bus["longitude"]
         )
 
         if distance <= radius:
             bus["distance_km"] = round(distance, 2)
+            bus.update(calculate_eta(bus, lat, lon))
             nearby_buses.append(bus)
 
     nearby_buses.sort(key=lambda bus: bus["distance_km"])

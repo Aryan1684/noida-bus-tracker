@@ -157,6 +157,7 @@ def _prune_positions(connection, bus_ids):
 def record_positions(buses):
     rows = []
     fallback_now = time.time()
+    seen = set()
 
     for bus in buses:
         bus_id = str(bus.get("bus_id") or "").strip().upper()
@@ -172,6 +173,11 @@ def record_positions(buses):
         if event_time is None:
             event_time = fallback_now
 
+        key = (bus_id, source_timestamp, latitude, longitude)
+        if key in seen:
+            continue
+
+        seen.add(key)
         rows.append(
             (
                 bus_id,
@@ -511,18 +517,25 @@ def _analyze_single(bus, history, anomaly_model):
     return result
 
 
-def analyze_buses(buses):
-    record_positions(buses)
-
+def prepare_histories(buses):
     bus_ids = [
         str(bus.get("bus_id") or "").strip().upper()
         for bus in buses
         if bus.get("bus_id")
     ]
 
-    histories = load_histories(bus_ids)
-    anomaly_model = _build_anomaly_model(histories)
+    if not bus_ids:
+        return {}
 
+    record_positions(buses)
+    return load_histories(bus_ids)
+
+
+def analyze_buses(buses, histories=None):
+    if histories is None:
+        histories = prepare_histories(buses)
+
+    anomaly_model = _build_anomaly_model(histories)
     analysis = {}
 
     for bus in buses:

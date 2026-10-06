@@ -359,31 +359,35 @@
             return;
         }
 
-        if(!isBusMovingFeature(bus)){
+        var busId=escapeHtml(String(bus.bus_id||"Unknown bus"));
+        var status=String(bus.eta_status||"").toLowerCase();
+
+        if(status==="not_ahead"){
             showFeaturePopup(
-                "Bus is stationary",
-                "<strong>"+bus.bus_id+"</strong> is currently not moving.<br><small>ETA will be calculated once recent GPS data shows movement.</small>"
+                "Bus is moving away",
+                "<strong>"+busId+"</strong> is not currently heading toward the selected location."
             );
             return;
         }
 
-        var km=distance(Number(bus.latitude),Number(bus.longitude),target.lat,target.lon);
-        var speed=historySpeed(bus);
-
-        if(speed<3){
+        var minutes=Number(bus.eta_minutes);
+        if(!Number.isFinite(minutes)){
             showFeaturePopup(
                 "ETA unavailable",
-                "The last 10 stored GPS points do not contain enough recent movement for a reliable ETA."
+                "<strong>"+busId+"</strong> does not have enough recent movement data for a reliable ETA."
             );
             return;
         }
 
-        var points=Array.isArray(bus.prediction_history)?bus.prediction_history:busHistory(bus.bus_id);
-        var minutes=Math.max(1,Math.ceil(km/speed*60));
+        var km=Number(bus.distance_km);
+        var distanceText=Number.isFinite(km)?km.toFixed(2)+" km away":"Distance unavailable";
+        var source=String(bus.eta_source||"").toLowerCase()==="route_projection"
+            ?"route direction and recent GPS movement"
+            :"recent GPS movement";
 
         showFeaturePopup(
             "Estimated arrival",
-            "<strong>"+minutes+" min</strong><br>"+km.toFixed(2)+" km away<br><small>Average movement calculated from the latest "+Math.min(10,points.length)+" stored GPS points.</small>",
+            "<strong>"+minutes+" min</strong><br>"+distanceText+"<br><small>Backend ETA based on "+source+".</small>",
             true
         );
     }

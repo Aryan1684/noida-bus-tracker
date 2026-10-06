@@ -4,7 +4,7 @@ import time
 import requests
 
 from services.direction_service import update_bus_history
-from services.ml_prediction_service import analyze_buses
+from services.ml_prediction_service import analyze_buses, prepare_histories
 
 GPS_API_URL = "https://margdarshi.upsrtcvlt.com/php/getGpsLiveData.php"
 
@@ -144,7 +144,19 @@ def _process_live_buses(data):
     if not buses:
         return []
 
-    ml_analysis = analyze_buses(buses)
+    histories = prepare_histories(buses)
+
+    for result in buses:
+        bus_id = str(result.get("bus_id") or "").strip().upper()
+        direction = update_bus_history(
+            result,
+            histories.get(bus_id, []),
+        )
+
+        if direction:
+            result.update(direction)
+
+    ml_analysis = analyze_buses(buses, histories=histories)
 
     for result in buses:
         prediction = ml_analysis.get(
@@ -182,21 +194,14 @@ def refresh_noida_electric_buses():
 
 
 def get_noida_electric_buses(force_refresh=False):
-    global _last_good_buses, _last_good_at
+    with _cache_lock:
+        if (
+            _latest_processed_buses
+            and _latest_processed_at
+            and time.time() - _latest_processed_at <= PROCESSED_CACHE_SECONDS
+        ):
+            return [dict(bus) for bus in _latest_processed_buses]
 
-    if not force_refresh:
-        with _cache_lock:
-            if (
-                _latest_processed_buses
-                and _latest_processed_at
-                and time.time() - _latest_processed_at <= PROCESSED_CACHE_SECONDS
-            ):
-                return [dict(bus) for bus in _latest_processed_buses]
-
-    try:
-        return refresh_noida_electric_buses()
-
-    except Exception:
         if _last_good_buses and _last_good_at:
             age = time.time() - _last_good_at
 
@@ -209,4 +214,4 @@ def get_noida_electric_buses(force_refresh=False):
 
                 return cached
 
-        raise
+    return []
