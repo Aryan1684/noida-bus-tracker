@@ -889,14 +889,21 @@ function createBusCard(bus, rankIndex = 0) {
     card.dataset.moving = isBusMoving(bus) ? "true" : "false";
 
     const heading = Number.isFinite(Number(bus.heading)) ? Number(bus.heading) : 0;
+    const currentSpeed = Number(bus.speed);
+    const currentStatus = String(bus.vehicle_status || "").toLowerCase();
+    const isCurrentlyMoving = currentStatus !== "stationary" && currentStatus !== "no_signal" && Number.isFinite(currentSpeed) && currentSpeed >= 5;
     let directionHtml;
 
-    if (bus.likely_towards) {
+    if (isCurrentlyMoving && bus.likely_towards) {
         directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'>➤</span><div><small>MOVING TOWARDS</small><strong>" + escapeHtml(bus.likely_towards) + "</strong></div></div>";
-    } else if (bus.direction) {
+    } else if (isCurrentlyMoving && bus.direction) {
         directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'>➤</span><div><small>MOVING</small><strong>" + escapeHtml(bus.direction) + "</strong></div></div>";
+    } else if (currentStatus === "no_signal") {
+        directionHtml = "<div class='bus-direction'><span class='direction-wait'>◌</span><div><small>STATUS</small><strong>Not moving · No signal</strong></div></div>";
+    } else if (currentStatus === "stationary" || (Number.isFinite(currentSpeed) && currentSpeed < 5)) {
+        directionHtml = "<div class='bus-direction'><span class='direction-wait'>●</span><div><small>STATUS</small><strong>Stationary</strong></div></div>";
     } else {
-        directionHtml = "<div class='bus-direction'><span class='direction-wait'>⏳</span><div><small>MOVEMENT</small><strong>Determining...</strong></div></div>";
+        directionHtml = "<div class='bus-direction'><span class='direction-wait'>◌</span><div><small>STATUS</small><strong>Not moving</strong></div></div>";
     }
 
     const route = getBusRoute(bus.bus_id);
@@ -1026,15 +1033,19 @@ function highlightBus(busId) {
 function createPopupContent(bus) {
     let directionText;
 
-    if (bus.likely_towards) {
-        directionText =
-            `Moving towards: ${bus.likely_towards}`;
+    const popupSpeed = Number(bus.speed);
+    const popupStatus = String(bus.vehicle_status || "").toLowerCase();
+
+    if (popupStatus === "stationary" || (Number.isFinite(popupSpeed) && popupSpeed < 5)) {
+        directionText = "Stationary";
+    } else if (popupStatus === "no_signal") {
+        directionText = "Not moving · No signal";
+    } else if (bus.likely_towards) {
+        directionText = `Moving towards: ${bus.likely_towards}`;
     } else if (bus.direction) {
-        directionText =
-            `Moving: ${bus.direction}`;
+        directionText = `Moving: ${bus.direction}`;
     } else {
-        directionText =
-            "Movement: Determining...";
+        directionText = "Not moving";
     }
 
     return `
