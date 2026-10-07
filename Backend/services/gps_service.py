@@ -9,7 +9,7 @@ import requests
 from services.direction_service import update_bus_history
 from services.ml_prediction_service import analyze_buses, load_latest_points, prepare_histories, record_ingestion_log, record_validation_audit
 from services.validation_service import validate_gps_batch
-from services.position_trust_service import match_position
+from services.position_trust_service import match_history, match_position
 
 GPS_API_URL = "https://margdarshi.upsrtcvlt.com/php/getGpsLiveData.php"
 
@@ -276,6 +276,7 @@ def _process_live_buses(data, upstream_latency_ms=None):
                 heading,
             )
         )
+        result["route_match_history"] = match_history(bus_id, history)
 
         if result.get("route_match_status") == "off_route":
             result["gps_route_anomaly"] = True
