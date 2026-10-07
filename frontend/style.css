@@ -1168,3 +1168,19 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .selected-trust{border:1px solid var(--line)}
 .results-section.is-refreshing .bus-grid,.results-section.is-refreshing .map-shell{opacity:.72}
 .results-section.is-refreshing .bus-card{pointer-events:none}
+
+.favorite-button{
+  margin-left:auto;
+  width:30px;
+  height:30px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:var(--surface);
+  color:var(--muted);
+  font:inherit;
+  font-size:17px;
+  line-height:1;
+  cursor:pointer;
+}
+.favorite-button.is-favorite{color:#E85D26;background:color-mix(in srgb,#E85D26 10%,var(--surface))}
+.results-section.is-refreshing .bus-grid,.results-section.is-refreshing .map-shell{opacity:.72}
