@@ -46,6 +46,22 @@ def _connect():
                 )
                 cursor.execute(
                     """
+                    CREATE TABLE IF NOT EXISTS gps_validation_log (
+                        id BIGSERIAL PRIMARY KEY,
+                        recorded_at TEXT NOT NULL,
+                        bus_id VARCHAR(80),
+                        upstream_id TEXT,
+                        status VARCHAR(20) NOT NULL,
+                        reason TEXT NOT NULL,
+                        event_timestamp TEXT,
+                        latitude DOUBLE PRECISION,
+                        longitude DOUBLE PRECISION,
+                        details TEXT
+                    )
+                    """
+                )
+                cursor.execute(
+                    """
                     CREATE TABLE IF NOT EXISTS ingestion_log (
                         id BIGSERIAL PRIMARY KEY,
                         recorded_at TEXT NOT NULL,
@@ -82,6 +98,22 @@ def _connect():
         )
         connection.execute(
             "CREATE INDEX IF NOT EXISTS idx_bus_positions_bus_time ON bus_positions(bus_id, event_time DESC)"
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS gps_validation_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recorded_at TEXT NOT NULL,
+                bus_id TEXT,
+                upstream_id TEXT,
+                status TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                event_timestamp TEXT,
+                latitude REAL,
+                longitude REAL,
+                details TEXT
+            )
+            """
         )
         connection.execute(
             """
