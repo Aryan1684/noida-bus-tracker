@@ -52,8 +52,8 @@ class ValidationServiceTests(unittest.TestCase):
         result = validate_gps_batch([
             point(),
             point(
-                latitude=28.520000,
-                longitude=77.410070,
+                latitude=28.514900,
+                longitude=77.410100,
                 timestamp="2026-10-07T10:00:04Z",
             ),
         ])
@@ -68,8 +68,8 @@ class ValidationServiceTests(unittest.TestCase):
         }
         result = validate_gps_batch(
             [point(
-                latitude=28.520000,
-                longitude=77.410070,
+                latitude=28.514900,
+                longitude=77.410100,
                 timestamp="2026-10-07T10:00:04Z",
             )],
             previous_points={"TEST001": previous},
