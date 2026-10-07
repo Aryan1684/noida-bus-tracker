@@ -154,47 +154,110 @@ def _prune_positions(connection, bus_ids):
             )
 
 
+def _latest_event_time(connection, bus_id):
+    if DATABASE_URL:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT event_time FROM bus_positions WHERE bus_id = %s ORDER BY event_time DESC, id DESC LIMIT 1",
+                (bus_id,),
+            )
+            row = cursor.fetchone()
+    else:
+        row = connection.execute(
+            "SELECT event_time FROM bus_positions WHERE bus_id = ? ORDER BY event_time DESC, id DESC LIMIT 1",
+            (bus_id,),
+        ).fetchone()
+
+    return float(row[0]) if row else None
+
+
+def _is_plausible_transition(connection, bus_id, event_time, latitude, longitude, speed):
+    latest_time = _latest_event_time(connection, bus_id)
+
+    if latest_time is not None and event_time <= latest_time:
+        return False
+
+    if latest_time is None:
+        return True
+
+    if DATABASE_URL:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT latitude, longitude, speed
+                FROM bus_positions
+                WHERE bus_id = %s
+                ORDER BY event_time DESC, id DESC
+                LIMIT 1
+                """,
+                (bus_id,),
+            )
+            row = cursor.fetchone()
+    else:
+        row = connection.execute(
+            """
+            SELECT latitude, longitude, speed
+            FROM bus_positions
+            WHERE bus_id = ?
+            ORDER BY event_time DESC, id DESC
+            LIMIT 1
+            """,
+            (bus_id,),
+        ).fetchone()
+
+    if not row:
+        return True
+
+    delta_seconds = event_time - latest_time
+    if delta_seconds <= 0:
+        return False
+
+    distance_km = calculate_distance(float(row[0]), float(row[1]), latitude, longitude)
+    implied_speed = distance_km / (delta_seconds / 3600.0)
+    reference_speed = max(float(row[2] or 0.0), float(speed or 0.0))
+
+    return not (
+        distance_km > 0.8
+        and implied_speed > max(130.0, reference_speed + 90.0)
+    )
+
+
 def record_positions(buses):
+    connection = _connect()
     rows = []
-    fallback_now = time.time()
     seen = set()
 
-    for bus in buses:
-        bus_id = str(bus.get("bus_id") or "").strip().upper()
-        latitude = _safe_float(bus.get("latitude"), math.nan)
-        longitude = _safe_float(bus.get("longitude"), math.nan)
-
-        if not bus_id or not math.isfinite(latitude) or not math.isfinite(longitude):
-            continue
-
-        source_timestamp = str(bus.get("timestamp") or "")
-        event_time = _parse_timestamp(source_timestamp)
-
-        if event_time is None:
-            event_time = fallback_now
-
-        key = (bus_id, source_timestamp, latitude, longitude)
-        if key in seen:
-            continue
-
-        seen.add(key)
-        rows.append(
-            (
-                bus_id,
-                source_timestamp,
-                event_time,
-                latitude,
-                longitude,
-                _safe_float(bus.get("speed"), 0.0),
-            )
-        )
-
-    if not rows:
-        return
-
-    connection = _connect()
-
     try:
+        for bus in buses:
+            bus_id = str(bus.get("bus_id") or "").strip().upper()
+            latitude = _safe_float(bus.get("latitude"), math.nan)
+            longitude = _safe_float(bus.get("longitude"), math.nan)
+
+            if not bus_id or not math.isfinite(latitude) or not math.isfinite(longitude):
+                continue
+
+            source_timestamp = str(bus.get("timestamp") or "").strip()
+            event_time = _parse_timestamp(source_timestamp)
+
+            if event_time is None:
+                continue
+
+            speed = _safe_float(bus.get("speed"), 0.0)
+            key = (bus_id, source_timestamp, latitude, longitude)
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+
+            if not _is_plausible_transition(connection, bus_id, event_time, latitude, longitude, speed):
+                continue
+
+            rows.append((bus_id, source_timestamp, event_time, latitude, longitude, speed))
+
+        if not rows:
+            return
+
         _insert_positions(connection, rows)
         _prune_positions(connection, sorted({row[0] for row in rows}))
         connection.commit()
@@ -461,10 +524,40 @@ def _analyze_single(bus, history, anomaly_model):
     gps_anomaly = bool(hard_teleport or invalid_region or fleet_outlier)
 
     prediction = _trajectory_prediction(history)
-    confidence = prediction["confidence"] if prediction else 0.0
+    prediction_confidence = prediction["confidence"] if prediction else 0.0
 
     prediction_applied = bool(
-        gps_anomaly and prediction and confidence >= 0.72
+        gps_anomaly and prediction and prediction_confidence >= 0.72
+    )
+
+    fix_age = bus.get("fix_age_seconds")
+    freshness_score = (
+        1.0 if fix_age is None else
+        1.0 if fix_age <= 30 else
+        0.85 if fix_age <= 90 else
+        0.65 if fix_age <= 180 else
+        0.35
+    )
+    continuity_score = min(1.0, len(history) / 5.0)
+    speed_score = 1.0 if bus.get("speed_valid", True) else 0.35
+    anomaly_component = 0.35 if gps_anomaly else 1.0
+    route_confidence = str(bus.get("route_confidence") or "").lower()
+    route_score = {"high": 1.0, "medium": 0.78, "low": 0.55}.get(
+        route_confidence,
+        0.45 if bus.get("route_id") else 0.6,
+    )
+    gps_confidence = max(0.0, min(1.0, (
+        0.40 * freshness_score
+        + 0.20 * continuity_score
+        + 0.15 * speed_score
+        + 0.15 * anomaly_component
+        + 0.10 * route_score
+    )))
+
+    position_type = (
+        "estimated" if prediction_applied
+        else "last_known" if bus.get("data_stale")
+        else "live"
     )
 
     result = {
@@ -480,8 +573,14 @@ def _analyze_single(bus, history, anomaly_model):
             else None
         ),
         "prediction_available": bool(prediction),
-        "prediction_confidence": confidence,
+        "prediction_confidence": prediction_confidence,
         "prediction_applied": prediction_applied,
+        "gps_confidence": round(gps_confidence, 2),
+        "position_confidence": round(gps_confidence, 2),
+        "gps_age_seconds": bus.get("fix_age_seconds"),
+        "position_type": position_type,
+        "validated_latitude": latitude,
+        "validated_longitude": longitude,
         "prediction_source": "ML_Ridge_Trajectory" if prediction else None,
         "predicted_latitude": prediction["predicted_1m"]["latitude"] if prediction else None,
         "predicted_longitude": prediction["predicted_1m"]["longitude"] if prediction else None,
@@ -489,6 +588,7 @@ def _analyze_single(bus, history, anomaly_model):
         "predicted_5m": prediction["predicted_5m"] if prediction else None,
         "prediction_residual_km": prediction["residual_km"] if prediction else None,
         "prediction_history_points": prediction["history_points"] if prediction else len(history),
+        "history_validation": "ordered_deduplicated_plausible",
         "prediction_history_minutes": prediction["history_span_minutes"] if prediction else 0,
         "implied_speed_kmh": round(implied_speed, 1) if implied_speed is not None else None,
         "gps_history_points": len(history),
