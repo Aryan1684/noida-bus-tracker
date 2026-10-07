@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from services.gps_service import get_noida_electric_buses
+from services.gps_service import get_noida_electric_buses, refresh_noida_electric_buses
 from services.prediction_collector import collector_running, start_collector, stop_collector
 from utils.distance import calculate_distance
 from services.eta_service import calculate_eta
@@ -243,13 +243,22 @@ def admin_ingestion(
 def get_processed_buses():
     buses = get_noida_electric_buses()
 
-    if not buses:
-        raise HTTPException(
-            status_code=503,
-            detail="Live bus data is not ready yet"
-        )
+    if buses:
+        return buses
 
-    return buses
+    try:
+        buses = refresh_noida_electric_buses()
+    except Exception as error:
+        print(f"On-demand GPS refresh failed: {error}")
+        buses = get_noida_electric_buses()
+
+    if buses:
+        return buses
+
+    raise HTTPException(
+        status_code=503,
+        detail="Live bus data is temporarily unavailable"
+    )
 
 
 @app.get("/api/buses")
