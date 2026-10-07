@@ -26,7 +26,10 @@ _ingestion_stats = {
     "last_cycle_at": None,
     "last_upstream_latency_ms": None,
     "last_source_health": "unknown",
+    "last_avg_gps_age_seconds": None,
+    "last_buses_disappeared": [],
 }
+_previous_seen_bus_ids = set()
 MAX_CACHE_SECONDS = 900
 PROCESSED_CACHE_SECONDS = max(120, int(int(os.getenv("PREDICTION_COLLECT_INTERVAL_SECONDS", "60")) * 2.5))
 
@@ -159,7 +162,22 @@ def _process_live_buses(data):
         _ingestion_stats["buses_received"] += validation["stats"]["received"]
         _ingestion_stats["buses_accepted"] += validation["stats"]["accepted"]
         _ingestion_stats["buses_rejected"] += validation["stats"]["rejected"]
+        accepted_ids = {item["bus_id"] for item in validation["accepted"]}
+        disappeared = sorted(_previous_seen_bus_ids - accepted_ids)
+        _previous_seen_bus_ids.clear()
+        _previous_seen_bus_ids.update(accepted_ids)
+
+        ages = [
+            int(_fix_age_seconds(item.get("timestamp"), now))
+            for item in validation["accepted"]
+            if _fix_age_seconds(item.get("timestamp"), now) is not None
+        ]
+
         _ingestion_stats["last_cycle_at"] = datetime.now(timezone.utc).isoformat()
+        _ingestion_stats["last_avg_gps_age_seconds"] = (
+            round(sum(ages) / len(ages), 1) if ages else None
+        )
+        _ingestion_stats["last_buses_disappeared"] = disappeared
         for reason, count in validation["stats"]["reject_reasons"].items():
             _ingestion_stats["reject_reasons"][reason] = (
                 _ingestion_stats["reject_reasons"].get(reason, 0) + count
@@ -217,6 +235,16 @@ def _process_live_buses(data):
             result.update(prediction)
 
     return buses
+
+
+def get_ingestion_stats():
+    with _cache_lock:
+        return {
+            **_ingestion_stats,
+            "reject_reasons": dict(_ingestion_stats["reject_reasons"]),
+            "last_buses_disappeared": list(_ingestion_stats["last_buses_disappeared"]),
+        }
+
 
 
 def refresh_noida_electric_buses():
