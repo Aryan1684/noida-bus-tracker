@@ -44,6 +44,20 @@ def _connect():
                 cursor.execute(
                     "CREATE INDEX IF NOT EXISTS idx_bus_positions_bus_time ON bus_positions(bus_id, event_time DESC)"
                 )
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS ingestion_log (
+                        id BIGSERIAL PRIMARY KEY,
+                        recorded_at TEXT NOT NULL,
+                        buses_received INTEGER NOT NULL,
+                        buses_accepted INTEGER NOT NULL,
+                        buses_rejected INTEGER NOT NULL,
+                        avg_gps_age_seconds DOUBLE PRECISION,
+                        upstream_latency_ms DOUBLE PRECISION,
+                        anomalies_detected INTEGER NOT NULL DEFAULT 0
+                    )
+                    """
+                )
             connection.commit()
             _initialized = True
 
@@ -68,6 +82,20 @@ def _connect():
         )
         connection.execute(
             "CREATE INDEX IF NOT EXISTS idx_bus_positions_bus_time ON bus_positions(bus_id, event_time DESC)"
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ingestion_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recorded_at TEXT NOT NULL,
+                buses_received INTEGER NOT NULL,
+                buses_accepted INTEGER NOT NULL,
+                buses_rejected INTEGER NOT NULL,
+                avg_gps_age_seconds REAL,
+                upstream_latency_ms REAL,
+                anomalies_detected INTEGER NOT NULL DEFAULT 0
+            )
+            """
         )
         connection.commit()
         _initialized = True
@@ -117,6 +145,54 @@ def _insert_positions(connection, rows):
             """,
             rows,
         )
+
+
+def record_ingestion_log(
+    recorded_at,
+    buses_received,
+    buses_accepted,
+    buses_rejected,
+    avg_gps_age_seconds,
+    upstream_latency_ms,
+    anomalies_detected,
+):
+    connection = _connect()
+    try:
+        values = (
+            recorded_at,
+            int(buses_received),
+            int(buses_accepted),
+            int(buses_rejected),
+            avg_gps_age_seconds,
+            upstream_latency_ms,
+            int(anomalies_detected),
+        )
+
+        if DATABASE_URL:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO ingestion_log
+                    (recorded_at, buses_received, buses_accepted, buses_rejected,
+                     avg_gps_age_seconds, upstream_latency_ms, anomalies_detected)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    values,
+                )
+        else:
+            connection.execute(
+                """
+                INSERT INTO ingestion_log
+                (recorded_at, buses_received, buses_accepted, buses_rejected,
+                 avg_gps_age_seconds, upstream_latency_ms, anomalies_detected)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                values,
+            )
+
+        connection.commit()
+    finally:
+        connection.close()
 
 
 def _prune_positions(connection, bus_ids):
