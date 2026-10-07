@@ -579,10 +579,12 @@ def update_bus_history(bus, history_points=None):
     current_speed = _safe_speed(bus.get("speed"))
     current_status = str(bus.get("vehicle_status") or "").strip().lower()
 
+    bearing = _history_movement_bearing(history)
+
     if current_status == "stationary" or current_speed < 3:
         return {
-            "direction": "Stationary",
-            "heading": None,
+            "direction": get_direction_name(bearing) if bearing is not None else "Stationary",
+            "heading": round(bearing, 1) if bearing is not None else None,
             "likely_towards": None,
             "route": None,
             "route_id": None,
@@ -605,8 +607,6 @@ def update_bus_history(bus, history_points=None):
             "history_minutes": round(history_minutes, 1),
             "movement_status": "stationary"
         }
-
-    bearing = _history_movement_bearing(history)
 
     if bearing is None:
         return {
