@@ -30,6 +30,8 @@ _ingestion_stats = {
     "last_buses_disappeared": [],
 }
 _previous_seen_bus_ids = set()
+_identity_last_seen = {}
+_identity_warnings = []
 MAX_CACHE_SECONDS = 900
 PROCESSED_CACHE_SECONDS = max(120, int(int(os.getenv("PREDICTION_COLLECT_INTERVAL_SECONDS", "60")) * 2.5))
 
@@ -178,6 +180,35 @@ def _process_live_buses(data):
             round(sum(ages) / len(ages), 1) if ages else None
         )
         _ingestion_stats["last_buses_disappeared"] = disappeared
+        current_time = time.time()
+        for item in validation["accepted"]:
+            bus_id = item["bus_id"]
+            previous_identity = _identity_last_seen.get(bus_id)
+            if previous_identity:
+                gap_seconds = current_time - previous_identity["seen_at"]
+                distance_km = calculate_distance(
+                    previous_identity["latitude"],
+                    previous_identity["longitude"],
+                    item["latitude"],
+                    item["longitude"],
+                )
+                if gap_seconds > 4 * 3600 and distance_km > 15:
+                    _identity_warnings.append({
+                        "bus_id": bus_id,
+                        "upstream_id": item["upstream_id"],
+                        "gap_hours": round(gap_seconds / 3600, 1),
+                        "distance_km": round(distance_km, 2),
+                        "warning": "identity_reappeared_with_discontinuity",
+                    })
+                    del _identity_warnings[:-50]
+
+            _identity_last_seen[bus_id] = {
+                "seen_at": current_time,
+                "latitude": item["latitude"],
+                "longitude": item["longitude"],
+                "upstream_id": item["upstream_id"],
+            }
+
         for reason, count in validation["stats"]["reject_reasons"].items():
             _ingestion_stats["reject_reasons"][reason] = (
                 _ingestion_stats["reject_reasons"].get(reason, 0) + count
@@ -243,6 +274,7 @@ def get_ingestion_stats():
             **_ingestion_stats,
             "reject_reasons": dict(_ingestion_stats["reject_reasons"]),
             "last_buses_disappeared": list(_ingestion_stats["last_buses_disappeared"]),
+            "identity_warnings": list(_identity_warnings[-50:]),
         }
 
 
