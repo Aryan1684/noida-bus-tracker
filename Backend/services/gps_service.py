@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import requests
 
 from services.direction_service import update_bus_history
-from services.ml_prediction_service import analyze_buses, prepare_histories
+from services.ml_prediction_service import analyze_buses, prepare_histories, record_ingestion_log
 from services.validation_service import validate_gps_batch
 
 GPS_API_URL = "https://margdarshi.upsrtcvlt.com/php/getGpsLiveData.php"
@@ -215,6 +215,16 @@ def _process_live_buses(data):
             )
 
     buses = validation["accepted"]
+
+    record_ingestion_log(
+        recorded_at=_ingestion_stats["last_cycle_at"],
+        buses_received=validation["stats"]["received"],
+        buses_accepted=validation["stats"]["accepted"],
+        buses_rejected=validation["stats"]["rejected"],
+        avg_gps_age_seconds=_ingestion_stats["last_avg_gps_age_seconds"],
+        upstream_latency_ms=_ingestion_stats["last_upstream_latency_ms"],
+        anomalies_detected=len(validation["rejected"]),
+    )
 
     if not buses:
         return []
