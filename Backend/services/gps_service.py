@@ -34,7 +34,7 @@ _ingestion_stats = {
 _previous_seen_bus_ids = set()
 _identity_last_seen = {}
 _identity_warnings = []
-MAX_CACHE_SECONDS = 900
+MAX_CACHE_SECONDS = 3600
 PROCESSED_CACHE_SECONDS = max(120, int(int(os.getenv("PREDICTION_COLLECT_INTERVAL_SECONDS", "60")) * 2.5))
 
 NOIDA_POLYGON = [
@@ -164,9 +164,19 @@ def _process_live_buses(data, upstream_latency_ms=None):
         for item in data
         if item.get("bus_id")
     ]
-    previous_points = load_latest_points(raw_ids)
+    try:
+        previous_points = load_latest_points(raw_ids)
+    except Exception as error:
+        print(f"GPS history read failed; continuing without history: {error}")
+        previous_points = {}
+
     validation = validate_gps_batch(data, previous_points=previous_points)
-    record_validation_audit(validation)
+
+    try:
+        record_validation_audit(validation)
+    except Exception as error:
+        print(f"GPS audit write failed; continuing: {error}")
+
     now = time.time()
 
     with _cache_lock:
@@ -226,15 +236,18 @@ def _process_live_buses(data, upstream_latency_ms=None):
 
     buses = validation["accepted"]
 
-    record_ingestion_log(
-        recorded_at=_ingestion_stats["last_cycle_at"],
-        buses_received=validation["stats"]["received"],
-        buses_accepted=validation["stats"]["accepted"],
-        buses_rejected=validation["stats"]["rejected"],
-        avg_gps_age_seconds=_ingestion_stats["last_avg_gps_age_seconds"],
-        upstream_latency_ms=upstream_latency_ms,
-        anomalies_detected=len(validation["rejected"]),
-    )
+    try:
+        record_ingestion_log(
+            recorded_at=_ingestion_stats["last_cycle_at"],
+            buses_received=validation["stats"]["received"],
+            buses_accepted=validation["stats"]["accepted"],
+            buses_rejected=validation["stats"]["rejected"],
+            avg_gps_age_seconds=_ingestion_stats["last_avg_gps_age_seconds"],
+            upstream_latency_ms=upstream_latency_ms,
+            anomalies_detected=len(validation["rejected"]),
+        )
+    except Exception as error:
+        print(f"Ingestion log write failed; continuing: {error}")
 
     if not buses:
         return []
@@ -252,7 +265,11 @@ def _process_live_buses(data, upstream_latency_ms=None):
             else "stale"
         )
 
-    histories = prepare_histories(buses)
+    try:
+        histories = prepare_histories(buses)
+    except Exception as error:
+        print(f"GPS history processing failed; continuing without history: {error}")
+        histories = {}
 
     for result in buses:
         bus_id = str(result.get("bus_id") or "").strip().upper()
@@ -292,7 +309,11 @@ def _process_live_buses(data, upstream_latency_ms=None):
             result["canonical_latitude"] = result["latitude"]
             result["canonical_longitude"] = result["longitude"]
 
-    ml_analysis = analyze_buses(buses, histories=histories)
+    try:
+        ml_analysis = analyze_buses(buses, histories=histories)
+    except Exception as error:
+        print(f"ML analysis failed; continuing with live GPS data: {error}")
+        ml_analysis = {}
 
     for result in buses:
         prediction = ml_analysis.get(
