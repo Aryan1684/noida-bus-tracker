@@ -319,7 +319,7 @@ def search_location(
         "autocomplete": "true",
         "limit": 5,
         "proximity": "77.3910,28.5355",
-        "bbox": "77.20,28.35,77.65,28.80"
+        "bbox": "77.20,28.10,77.75,28.80"
     }
 
     try:
@@ -341,7 +341,7 @@ def search_location(
             if len(coordinates) < 2:
                 continue
 
-            if not (28.35 <= coordinates[1] <= 28.80 and 77.20 <= coordinates[0] <= 77.65):
+            if not (28.10 <= coordinates[1] <= 28.80 and 77.20 <= coordinates[0] <= 77.75):
                 continue
 
             properties = feature.get("properties", {})
