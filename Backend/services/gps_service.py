@@ -7,8 +7,9 @@ from datetime import datetime, timezone
 import requests
 
 from services.direction_service import update_bus_history
-from services.ml_prediction_service import analyze_buses, prepare_histories, record_ingestion_log
+from services.ml_prediction_service import analyze_buses, load_latest_points, prepare_histories, record_ingestion_log
 from services.validation_service import validate_gps_batch
+from services.position_trust_service import match_position
 
 GPS_API_URL = "https://margdarshi.upsrtcvlt.com/php/getGpsLiveData.php"
 
@@ -156,8 +157,14 @@ def _fetch_live_data():
     raise RuntimeError(f"MARGDARSHI live GPS request failed: {last_error}")
 
 
-def _process_live_buses(data):
-    validation = validate_gps_batch(data)
+def _process_live_buses(data, upstream_latency_ms=None):
+    raw_ids = [
+        str(item.get("bus_id") or "").strip().upper()
+        for item in data
+        if item.get("bus_id")
+    ]
+    previous_points = load_latest_points(raw_ids)
+    validation = validate_gps_batch(data, previous_points=previous_points)
 
     with _cache_lock:
         _ingestion_stats["cycles"] += 1
@@ -222,7 +229,7 @@ def _process_live_buses(data):
         buses_accepted=validation["stats"]["accepted"],
         buses_rejected=validation["stats"]["rejected"],
         avg_gps_age_seconds=_ingestion_stats["last_avg_gps_age_seconds"],
-        upstream_latency_ms=_ingestion_stats["last_upstream_latency_ms"],
+        upstream_latency_ms=upstream_latency_ms,
         anomalies_detected=len(validation["rejected"]),
     )
 
@@ -254,16 +261,34 @@ def _process_live_buses(data):
         if direction:
             result.update(direction)
 
+        heading = result.get("heading")
+        try:
+            heading = float(heading) if heading is not None else None
+        except (TypeError, ValueError):
+            heading = None
+
+        result.update(
+            match_position(
+                bus_id,
+                result["latitude"],
+                result["longitude"],
+                heading,
+            )
+        )
+
+        if result.get("route_match_status") == "off_route":
+            result["gps_route_anomaly"] = True
+
         if history:
             result["validated_latitude"] = history[-1]["latitude"]
             result["validated_longitude"] = history[-1]["longitude"]
             result["canonical_latitude"] = history[-1]["latitude"]
             result["canonical_longitude"] = history[-1]["longitude"]
         else:
-            result["validated_latitude"] = latitude
-            result["validated_longitude"] = longitude
-            result["canonical_latitude"] = latitude
-            result["canonical_longitude"] = longitude
+            result["validated_latitude"] = result["latitude"]
+            result["validated_longitude"] = result["longitude"]
+            result["canonical_latitude"] = result["latitude"]
+            result["canonical_longitude"] = result["longitude"]
 
     ml_analysis = analyze_buses(buses, histories=histories)
 
@@ -298,7 +323,7 @@ def refresh_noida_electric_buses():
     try:
         data = _fetch_live_data()
         upstream_latency_ms = round((time.perf_counter() - started_at) * 1000, 1)
-        buses = _process_live_buses(data)
+        buses = _process_live_buses(data, upstream_latency_ms=upstream_latency_ms)
 
         with _cache_lock:
             _ingestion_stats["last_upstream_latency_ms"] = upstream_latency_ms
