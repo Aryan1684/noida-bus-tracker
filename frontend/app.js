@@ -991,6 +991,7 @@ function createBusCard(bus, rankIndex = 0) {
     const confidenceLabel = bus.confidence_label
         ? " · " + escapeHtml(bus.confidence_label)
         : "";
+    const etaLabel = bus.eta_label || "ETA unavailable";
     const ageSeconds = Number(bus.gps_age_seconds);
     const ageLabel = Number.isFinite(ageSeconds)
         ? ageSeconds < 60
@@ -1019,7 +1020,8 @@ function createBusCard(bus, rankIndex = 0) {
             "<span class='bus-meta'>↗ " + movement + " km / " + history + " min</span>" +
         "</div>" +
         "<p class='status status-" + statusClass + "'>● " + escapeHtml(status) + "</p>" +
-        "<p class='updated'>" + ageLabel + " · " + sourceLabel + confidenceLabel + (predictionLabel ? " · " + predictionLabel : "") + " · Tap for details</p>";
+        "<p class='updated'>" + escapeHtml(ageLabel) + " · " + sourceLabel + confidenceLabel + " · " + escapeHtml(etaLabel) + (predictionLabel ? " · " + predictionLabel : "") + "</p>" +
+        "<div class='trust-summary'><span>" + escapeHtml(bus.position_type || "unknown") + "</span><span>" + (Number.isFinite(Number(bus.route_match_distance_m)) ? "Route " + Math.round(Number(bus.route_match_distance_m)) + "m" : "Route match unavailable") + "</span></div>";
 
     card.setAttribute("role", "button");
     card.setAttribute("tabindex", "0");
@@ -2983,12 +2985,16 @@ function updateSelectedBusPanel(bus) {
     const distanceNode = document.getElementById("selectedBusDistance");
     const speedNode = document.getElementById("selectedBusSpeed");
     const movementNode = document.getElementById("selectedBusMovement");
+    const confidenceNode = document.getElementById("selectedBusConfidence");
+    const ageNode = document.getElementById("selectedBusAge");
+    const routeMatchNode = document.getElementById("selectedBusRouteMatch");
+    const reasonsNode = document.getElementById("selectedBusConfidenceReasons");
     const followButton = document.getElementById("selectedFollowBtn");
 
     if (idNode) idNode.textContent = bus.bus_id || "Unknown Bus";
     if (routeNode) {
         const route = getBusRoute(bus.bus_id);
-        routeNode.textContent = route ? route : "";
+        routeNode.textContent = route || "";
         routeNode.classList.toggle("hidden", !route);
     }
     if (statusNode) statusNode.textContent = bus.data_stale ? "LAST AVAILABLE" : "LIVE";
@@ -2997,34 +3003,47 @@ function updateSelectedBusPanel(bus) {
     if (distanceNode) distanceNode.textContent = (bus.distance_km ?? "—") + " km away";
     if (speedNode) speedNode.textContent = (bus.speed ?? 0) + " km/h";
     if (movementNode) movementNode.textContent = (bus.movement_km ?? 0) + " km / " + (bus.history_minutes ?? 0) + " min";
-
-    const confidenceNode = document.getElementById("selectedBusConfidence");
-    const ageNode = document.getElementById("selectedBusAge");
-    const routeMatchNode = document.getElementById("selectedBusRouteMatch");
-    const reasonsNode = document.getElementById("selectedBusConfidenceReasons");
     if (confidenceNode) confidenceNode.textContent = bus.confidence_label || "Confidence unavailable";
+
+    const age = Number(bus.gps_age_seconds);
     if (ageNode) {
-        const age = Number(bus.gps_age_seconds);
         ageNode.textContent = Number.isFinite(age)
-            ? "Updated " + Math.max(0, Math.round(age)) + "s ago"
+            ? age < 5 ? "Just now" : "Updated " + Math.round(age) + "s ago"
             : "GPS age unavailable";
     }
+
     if (routeMatchNode) {
         const distance = Number(bus.route_match_distance_m);
         const progress = Number(bus.route_progress);
-        routeMatchNode.textContent =
-            Number.isFinite(distance)
-                ? "Route match " + Math.round(distance) + "m · " +
-                    (Number.isFinite(progress) ? Math.round(progress * 100) + "% route progress" : "progress unavailable")
-                : "Route match unavailable";
+        routeMatchNode.textContent = Number.isFinite(distance)
+            ? "Route match " + Math.round(distance) + "m · " +
+                (Number.isFinite(progress) ? Math.round(progress * 100) + "% route progress" : "progress unavailable")
+            : "Route match unavailable";
     }
+
+    const nextStopsNode = document.getElementById("selectedBusNextStops");
+    if (nextStopsNode) {
+        const stops = Array.isArray(bus.next_stops) ? bus.next_stops.slice(0, 3) : [];
+        nextStopsNode.textContent = stops.length ? "Next stops: " + stops.join(" → ") : "Next stops unavailable";
+    }
+
+    const etaNode = document.getElementById("selectedBusEta");
+    if (etaNode) {
+        etaNode.textContent = bus.eta_label || (
+            Number.isFinite(Number(bus.eta_minutes))
+                ? "ETA: " + Math.max(1, Number(bus.eta_minutes)) + " min"
+                : "ETA unavailable"
+        );
+    }
+
     if (reasonsNode) {
         const reasons = Array.isArray(bus.confidence_reasons) ? bus.confidence_reasons : [];
         reasonsNode.textContent = reasons.length
             ? reasons.map(reason => String(reason.rule || "").replaceAll("_", " ")).join(" · ")
             : "No confidence diagnostics";
-    if (followButton) followButton.textContent = "Follow bus";
+    }
 
+    if (followButton) followButton.textContent = "Follow bus";
     panel.classList.remove("hidden");
 }
 
