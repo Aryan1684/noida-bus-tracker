@@ -167,6 +167,7 @@ def _process_live_buses(data, upstream_latency_ms=None):
     previous_points = load_latest_points(raw_ids)
     validation = validate_gps_batch(data, previous_points=previous_points)
     record_validation_audit(validation)
+    now = time.time()
 
     with _cache_lock:
         _ingestion_stats["cycles"] += 1
@@ -237,8 +238,6 @@ def _process_live_buses(data, upstream_latency_ms=None):
 
     if not buses:
         return []
-
-    now = time.time()
 
     for result in buses:
         fix_age = _fix_age_seconds(result.get("timestamp"), now)
