@@ -1,4 +1,4 @@
-let map;
+llet map;
 let locationMarker;
 let userLocation = null;
 let confirmedLocation = null;
