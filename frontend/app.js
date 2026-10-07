@@ -913,10 +913,11 @@ function updateOrCreateBusMarker(bus) {
 
 function createBusMarker(bus) {
     const position = getBusDisplayPosition(bus);
+    const confidenceClass = String(bus.position_confidence || "medium").toLowerCase();
     const icon = L.divIcon({
         className: "",
         html: `
-            <div class="bus-marker" id="marker-${bus.bus_id}" aria-label="Bus ${bus.bus_id}">
+            <div class="bus-marker confidence-${escapeHtml(confidenceClass)}" id="marker-${bus.bus_id}" aria-label="Bus ${bus.bus_id}">
                 <span class="bus-body">
                     <i class="bus-window"></i>
                     <b class="bus-wheel wheel-left"></b>
@@ -982,9 +983,8 @@ function createBusCard(bus, rankIndex = 0) {
         : "live";
     const movement = bus.movement_km !== undefined ? bus.movement_km : 0;
     const history = bus.history_minutes !== undefined ? bus.history_minutes : 0;
-    const gpsConfidence = Number(bus.gps_confidence);
-    const confidenceLabel = Number.isFinite(gpsConfidence)
-        ? " · " + Math.round(gpsConfidence * 100) + "% GPS confidence"
+    const confidenceLabel = bus.confidence_label
+        ? " · " + escapeHtml(bus.confidence_label)
         : "";
     const ageSeconds = Number(bus.gps_age_seconds);
     const ageLabel = Number.isFinite(ageSeconds)
@@ -1132,7 +1132,7 @@ function createPopupContent(bus) {
 
     return `
         <strong>
-            ${bus.bus_id || "Unknown Bus"}
+            ${escapeHtml(bus.bus_id || "Unknown Bus")}
         </strong>
 
         <br><br>
@@ -1168,8 +1168,16 @@ function createPopupContent(bus) {
             ${bus.prediction_applied ? "AI-estimated display position" : "Live GPS position"}
         </strong>
 
-        ${bus.prediction_available ? "<br><br>AI forecast: " + Math.round(Number(bus.prediction_confidence || 0) * 100) + "% confidence" : ""}
-
+        <br><br>
+        <strong>${escapeHtml(bus.confidence_label || "Confidence unavailable")}</strong>
+        ${Number.isFinite(Number(bus.gps_age_seconds)) ? "<br>GPS age: " + Math.round(Number(bus.gps_age_seconds)) + "s" : ""}
+        ${Array.isArray(bus.confidence_reasons) && bus.confidence_reasons.length
+            ? "<br><br>Why: " + bus.confidence_reasons.map(reason =>
+                escapeHtml(String(reason.rule || "").replaceAll("_", " ")) +
+                " (" + escapeHtml(String(reason.effect || "")) + ")"
+            ).join(" · ")
+            : ""}
+        ${bus.prediction_available ? "<br><br>AI forecast available" : ""}
         ${bus.gps_anomaly ? "<br>GPS quality: anomaly detected" : ""}
     `;
 }
