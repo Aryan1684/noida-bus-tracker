@@ -176,3 +176,25 @@ def match_position(bus_id, latitude, longitude, heading=None):
         "route_segment_to": projection["to"],
         "route_segment_index": projection["segment_index"],
     }
+
+
+def match_history(bus_id, history):
+    matches = []
+
+    for point in list(history or [])[-10:]:
+        result = match_position(
+            bus_id,
+            float(point["latitude"]),
+            float(point["longitude"]),
+        )
+        matches.append({
+            "time": point.get("time"),
+            "latitude": point.get("latitude"),
+            "longitude": point.get("longitude"),
+            "route_match_status": result["route_match_status"],
+            "route_match_distance_m": result["route_match_distance_m"],
+            "route_progress": result["route_progress"],
+            "route_match_confidence": result["route_match_confidence"],
+        })
+
+    return matches
