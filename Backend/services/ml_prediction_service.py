@@ -924,3 +924,25 @@ def prepare_histories(buses):
     record_positions(buses)
     return load_histories(bus_ids)
 
+
+
+def analyze_buses(buses, histories=None):
+    if histories is None:
+        histories = prepare_histories(buses)
+
+    anomaly_model = _build_anomaly_model(histories)
+    analysis = {}
+
+    for bus in buses:
+        bus_id = str(bus.get("bus_id") or "").strip().upper()
+
+        if not bus_id:
+            continue
+
+        analysis[bus_id] = _analyze_single(
+            bus,
+            histories.get(bus_id, []),
+            anomaly_model,
+        )
+
+    return analysis
