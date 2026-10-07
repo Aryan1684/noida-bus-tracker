@@ -11,6 +11,7 @@ from services.prediction_collector import collector_running, start_collector, st
 from utils.distance import calculate_distance
 from services.eta_service import calculate_eta
 from services.analytics_service import dashboard as get_analytics_dashboard, record_consented_location, record_event, verify_admin_token
+from services.gps_service import get_ingestion_stats
 
 load_dotenv()
 
@@ -207,11 +208,11 @@ def admin_fleet(
     predictions = sum(1 for bus in buses if bus.get("prediction_available"))
     corrected = sum(1 for bus in buses if bus.get("prediction_applied"))
 
-    confidence_values = [
-        float(bus["prediction_confidence"])
-        for bus in buses
-        if bus.get("prediction_available") and bus.get("prediction_confidence") is not None
-    ]
+    confidence_counts = {
+        "high": sum(1 for bus in buses if bus.get("position_confidence") == "high"),
+        "medium": sum(1 for bus in buses if bus.get("position_confidence") == "medium"),
+        "low": sum(1 for bus in buses if bus.get("position_confidence") == "low"),
+    }
 
     return {
         "total": total,
@@ -222,15 +223,21 @@ def admin_fleet(
         "gps_anomalies": anomalies,
         "predictions_available": predictions,
         "predictions_applied": corrected,
-        "average_prediction_confidence": round(
-            sum(confidence_values) / len(confidence_values),
-            3,
-        ) if confidence_values else None,
+        "position_confidence_counts": confidence_counts,
         "buses": buses,
         "prediction_collector_running": collector_running(),
         "prediction_history_points_per_bus": 10,
     }
 
+
+@app.get("/api/admin/ingestion")
+def admin_ingestion(
+    x_admin_token: str | None = Header(default=None),
+):
+    if not verify_admin_token(x_admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+
+    return get_ingestion_stats()
 
 def get_processed_buses():
     buses = get_noida_electric_buses()
