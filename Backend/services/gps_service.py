@@ -168,11 +168,20 @@ def _process_live_buses(data):
         ):
             continue
 
+        raw_speed = bus.get("speed")
+        try:
+            parsed_speed = float(raw_speed)
+            speed_valid = math.isfinite(parsed_speed) and 0 <= parsed_speed <= 130
+        except (TypeError, ValueError):
+            parsed_speed = 0.0
+            speed_valid = False
+
         result = {
-            "bus_id": bus.get("bus_id"),
+            "bus_id": str(bus.get("bus_id") or "").strip().upper(),
             "latitude": latitude,
             "longitude": longitude,
-            "speed": bus.get("speed"),
+            "speed": round(parsed_speed, 1) if speed_valid else 0.0,
+            "speed_valid": speed_valid,
             "timestamp": bus.get("timestamp"),
             "vehicle_status": bus.get("vehicle_status")
         }
@@ -187,21 +196,36 @@ def _process_live_buses(data):
     for result in buses:
         fix_age = _fix_age_seconds(result.get("timestamp"), now)
         result["fix_age_seconds"] = fix_age
+        result["gps_age_seconds"] = fix_age
         result["data_stale"] = bool(
-            fix_age is not None and fix_age > 180
+            fix_age is None or fix_age > 180
+        )
+        result["source_health"] = (
+            "fresh" if fix_age is not None and fix_age <= 90
+            else "aging" if fix_age is not None and fix_age <= 180
+            else "stale"
         )
 
     histories = prepare_histories(buses)
 
     for result in buses:
         bus_id = str(result.get("bus_id") or "").strip().upper()
-        direction = update_bus_history(
-            result,
-            histories.get(bus_id, []),
-        )
+        history = histories.get(bus_id, [])
+        direction = update_bus_history(result, history)
 
         if direction:
             result.update(direction)
+
+        if history:
+            result["validated_latitude"] = history[-1]["latitude"]
+            result["validated_longitude"] = history[-1]["longitude"]
+            result["canonical_latitude"] = history[-1]["latitude"]
+            result["canonical_longitude"] = history[-1]["longitude"]
+        else:
+            result["validated_latitude"] = latitude
+            result["validated_longitude"] = longitude
+            result["canonical_latitude"] = latitude
+            result["canonical_longitude"] = longitude
 
     ml_analysis = analyze_buses(buses, histories=histories)
 
@@ -235,8 +259,8 @@ def refresh_noida_electric_buses():
 
         return buses
 
-    except Exception:
-        raise
+    except Exception as error:
+        raise RuntimeError(f"Noida bus refresh failed: {error}") from error
 
 
 def get_noida_electric_buses(force_refresh=False):
