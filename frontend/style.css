@@ -1143,3 +1143,22 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .bus-marker.confidence-high{
   opacity:1;
 }
+
+
+.selected-trust {
+    display: grid;
+    gap: 4px;
+    margin: 14px 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, .04);
+    font-size: .78rem;
+}
+
+.selected-trust strong {
+    font-size: .88rem;
+}
+
+.selected-trust span {
+    opacity: .78;
+}
