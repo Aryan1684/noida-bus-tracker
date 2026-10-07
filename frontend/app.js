@@ -12,6 +12,9 @@ let pinAdjustMode = false;
 let searchTimer = null;
 let searchController = null;
 let currentBuses = [];
+let routeCatalog = [];
+let selectedRouteLayer = null;
+let favoriteBusIds = new Set(JSON.parse(localStorage.getItem("noidaBusFavorites") || "[]"));
 
 const API_BASE_URL = "https://noida-bus-tracker.onrender.com";
 
@@ -113,6 +116,7 @@ document.addEventListener(
     "DOMContentLoaded",
     () => {
         initializeMap();
+        initializeRouteCatalog();
         initializeAppComingSoon();
         initializeWarningModal();
         initializeTradeFairNotice();
@@ -683,10 +687,13 @@ async function loadNearbyBuses(
         );
 
     if (!automaticRefresh) {
-        refreshButton.disabled =
-            true;
-
-        showLoadingState();
+        refreshButton.disabled = true;
+        if (!currentBuses.length) {
+            showLoadingState();
+        } else {
+            updateLocationMessage("Refreshing GPS data… current verified positions remain visible.");
+            document.querySelector(".results-section")?.classList.add("is-refreshing");
+        }
     }
 
     refreshButton.classList.add(
@@ -765,12 +772,9 @@ async function loadNearbyBuses(
     } finally {
         isLoading = false;
 
-        refreshButton.classList.remove(
-            "loading"
-        );
-
-        refreshButton.disabled =
-            !confirmedLocation;
+        refreshButton.classList.remove("loading");
+        document.querySelector(".results-section")?.classList.remove("is-refreshing");
+        refreshButton.disabled = !confirmedLocation;
     }
 }
 
@@ -992,6 +996,7 @@ function createBusCard(bus, rankIndex = 0) {
         ? " · " + escapeHtml(bus.confidence_label)
         : "";
     const etaLabel = bus.eta_label || "ETA unavailable";
+    const favorite = isFavoriteBus(bus.bus_id);
     const ageSeconds = Number(bus.gps_age_seconds);
     const ageLabel = Number.isFinite(ageSeconds)
         ? ageSeconds < 60
@@ -1011,6 +1016,7 @@ function createBusCard(bus, rankIndex = 0) {
         "<div class='bus-card-top'>" +
             "<h3>" + escapeHtml(bus.bus_id || "Unknown Bus") + "</h3>" +
             (route ? "<span class='route-badge'>" + escapeHtml(route) + "</span>" : "") +
+            "<button class='favorite-button" + (favorite ? " is-favorite" : "") + "' type='button' aria-label='" + (favorite ? "Remove favorite" : "Favorite bus") + "'>" + (favorite ? "★" : "☆") + "</button>" +
             "<span class='bus-rank'>#" + (rankIndex + 1) + "</span>" +
         "</div>" +
         directionHtml +
@@ -1033,6 +1039,14 @@ function createBusCard(bus, rankIndex = 0) {
         const marker = busMarkers.find(item => String(item.busId) === String(bus.bus_id));
         if (marker) marker.openPopup();
     };
+    const favoriteButton = card.querySelector(".favorite-button");
+    if (favoriteButton) {
+        favoriteButton.addEventListener("click", event => {
+            event.stopPropagation();
+            toggleFavoriteBus(bus.bus_id);
+        });
+    }
+
     card.addEventListener("click", openBus);
     card.addEventListener("keydown", event => {
         if (event.key === "Enter" || event.key === " ") {
@@ -1072,6 +1086,7 @@ function selectBus(busId) {
 
     const bus = currentBuses.find(item => String(item.bus_id) === String(busId));
     updateSelectedBusPanel(bus);
+    highlightSelectedRoute(bus);
 
     if (selectedCard) {
         selectedCard.scrollIntoView({behavior:"smooth",block:"nearest"});
@@ -1080,6 +1095,10 @@ function selectBus(busId) {
 
 function clearBusSelection() {
     selectedBusId = null;
+    if (selectedRouteLayer) {
+        map.removeLayer(selectedRouteLayer);
+        selectedRouteLayer = null;
+    }
 
     document.querySelectorAll(".bus-card.selected").forEach(card => {
         card.classList.remove("selected");
@@ -1187,6 +1206,46 @@ function createPopupContent(bus) {
         ${bus.prediction_available ? "<br><br>AI forecast available" : ""}
         ${bus.gps_anomaly ? "<br>GPS quality: anomaly detected" : ""}
     `;
+}
+
+async function initializeRouteCatalog() {
+    try {
+        const response = await fetch(API_BASE_URL + "/api/routes");
+        if (!response.ok) return;
+        const data = await response.json();
+        routeCatalog = Array.isArray(data.routes) ? data.routes : [];
+    } catch (error) {
+        routeCatalog = [];
+    }
+}
+
+function isFavoriteBus(busId) {
+    return favoriteBusIds.has(String(busId));
+}
+
+function toggleFavoriteBus(busId) {
+    const id = String(busId);
+    if (favoriteBusIds.has(id)) favoriteBusIds.delete(id);
+    else favoriteBusIds.add(id);
+    localStorage.setItem("noidaBusFavorites", JSON.stringify([...favoriteBusIds]));
+    displayBuses(currentBuses);
+}
+
+function highlightSelectedRoute(bus) {
+    if (selectedRouteLayer) {
+        map.removeLayer(selectedRouteLayer);
+        selectedRouteLayer = null;
+    }
+
+    if (!bus || !bus.route) return;
+
+    const route = routeCatalog.find(item => item.name === bus.route);
+    if (!route || !Array.isArray(route.points) || route.points.length < 2) return;
+
+    selectedRouteLayer = L.polyline(
+        route.points.map(point => [point.latitude, point.longitude]),
+        {color:"#E85D26", weight:5, opacity:.72, lineCap:"round", lineJoin:"round", interactive:false}
+    ).addTo(map);
 }
 
 function clearBusMarkers() {
