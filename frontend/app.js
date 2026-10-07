@@ -909,6 +909,11 @@ function updateOrCreateBusMarker(bus) {
     }
 
     existing.setPopupContent(createPopupContent(bus));
+    const markerNode = document.getElementById("marker-" + bus.bus_id);
+    if (markerNode) {
+        markerNode.classList.remove("confidence-high", "confidence-medium", "confidence-low");
+        markerNode.classList.add("confidence-" + String(bus.position_confidence || "medium").toLowerCase());
+    }
 }
 
 function createBusMarker(bus) {
@@ -1597,6 +1602,32 @@ function updateSelectedBusPanel(bus) {
     if (distanceNode) distanceNode.textContent = (bus.distance_km ?? "—") + " km away";
     if (speedNode) speedNode.textContent = (bus.speed ?? 0) + " km/h";
     if (movementNode) movementNode.textContent = (bus.movement_km ?? 0) + " km / " + (bus.history_minutes ?? 0) + " min";
+
+    const confidenceNode = document.getElementById("selectedBusConfidence");
+    const ageNode = document.getElementById("selectedBusAge");
+    const routeMatchNode = document.getElementById("selectedBusRouteMatch");
+    const reasonsNode = document.getElementById("selectedBusConfidenceReasons");
+    if (confidenceNode) confidenceNode.textContent = bus.confidence_label || "Confidence unavailable";
+    if (ageNode) {
+        const age = Number(bus.gps_age_seconds);
+        ageNode.textContent = Number.isFinite(age)
+            ? "Updated " + Math.max(0, Math.round(age)) + "s ago"
+            : "GPS age unavailable";
+    }
+    if (routeMatchNode) {
+        const distance = Number(bus.route_match_distance_m);
+        const progress = Number(bus.route_progress);
+        routeMatchNode.textContent =
+            Number.isFinite(distance)
+                ? "Route match " + Math.round(distance) + "m · " +
+                    (Number.isFinite(progress) ? Math.round(progress * 100) + "% route progress" : "progress unavailable")
+                : "Route match unavailable";
+    }
+    if (reasonsNode) {
+        const reasons = Array.isArray(bus.confidence_reasons) ? bus.confidence_reasons : [];
+        reasonsNode.textContent = reasons.length
+            ? reasons.map(reason => String(reason.rule || "").replaceAll("_", " ")).join(" · ")
+            : "No confidence diagnostics";
     if (followButton) followButton.textContent = "Follow bus";
 
     panel.classList.remove("hidden");
