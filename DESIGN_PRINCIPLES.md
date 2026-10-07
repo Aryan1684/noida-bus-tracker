@@ -26,12 +26,13 @@ Every position must either pass forward or be rejected with a machine-readable r
 6. Every bus position has a traceable pipeline state.
 7. Rejection reasons are retained long enough to distinguish upstream failures from pipeline failures.
 8. Upstream identity is recorded separately from internal identity so identity instability can be detected before an identity system is justified.
+9. Every ingestion cycle records source latency, received/accepted/rejected counts, GPS age, and anomaly counts.
 
 ## Milestones
 
 ### Milestone 1: Data Trust
 
-Done when deliberate corruption can be injected and the pipeline reports the exact stage and reason that rejected it.
+Done when deliberate corruption can be injected and the pipeline reports the exact stage and reason that rejected it, while each ingestion cycle is persisted in ingestion_log.
 
 ### Milestone 2: Position Trust
 
