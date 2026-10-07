@@ -5,6 +5,8 @@ let confirmedLocation = null;
 let busMarkers = [];
 let selectedBusId = null;
 let refreshInterval = null;
+const busMarkerAnimations = new Map();
+const BUS_MARKER_ANIMATION_MS = 4200;
 let isLoading = false;
 let pinAdjustMode = false;
 let searchTimer = null;
@@ -703,11 +705,6 @@ async function loadNearbyBuses(
             radius
         )}`;
 
-    console.log(
-        "Fetching buses:",
-        url
-    );
-
     try {
         const response =
             await fetch(url);
@@ -720,11 +717,6 @@ async function loadNearbyBuses(
 
         const data =
             await response.json();
-
-        console.log(
-            "Bus response:",
-            data
-        );
 
         displayBuses(
             data.buses || []
@@ -789,8 +781,6 @@ function displayBuses(buses) {
         resultsSection.classList.remove("is-empty");
     }
 
-    clearBusMarkers();
-
     const busList = document.getElementById("busList");
     const busCount = document.getElementById("busCount");
 
@@ -809,17 +799,33 @@ function displayBuses(buses) {
     currentBuses = buses.slice();
     busCount.textContent = buses.length + " buses";
     hideAllStates();
-    busList.innerHTML = "";
+    const existingCards = new Map(
+        Array.from(busList.querySelectorAll(".bus-card")).map(card => [
+            card.id,
+            card
+        ])
+    );
 
     if (!buses.length) {
+        clearBusMarkers();
+        busList.replaceChildren();
         showEmptyState();
         return;
     }
 
+    const nextIds = new Set();
+
     buses.forEach((bus, index) => {
         bus._rank = index + 1;
-        createBusMarker(bus);
+        nextIds.add(String(bus.bus_id));
+        updateOrCreateBusMarker(bus);
+        const existing = existingCards.get("bus-card-" + bus.bus_id);
+        if (existing) existing.remove();
         createBusCard(bus, index);
+    });
+
+    Array.from(existingCards.values()).forEach(card => {
+        if (!nextIds.has(String(card.dataset.busId || ""))) card.remove();
     });
 
     if (selectedBusId) highlightBus(selectedBusId);
@@ -844,6 +850,65 @@ function getBusDisplayPosition(bus) {
         latitude: Number(bus.latitude),
         longitude: Number(bus.longitude)
     };
+}
+
+function animateBusMarker(marker, targetPosition) {
+    const target = L.latLng(targetPosition.latitude, targetPosition.longitude);
+    const from = marker.getLatLng();
+    const distance = map.distance(from, target);
+
+    if (!Number.isFinite(distance) || distance < 2) {
+        marker.setLatLng(target);
+        return;
+    }
+
+    const state = busMarkerAnimations.get(marker.busId);
+    if (state?.frame) cancelAnimationFrame(state.frame);
+
+    const startedAt = performance.now();
+    const start = {lat: from.lat, lng: from.lng};
+
+    const tick = now => {
+        const progress = Math.min(1, (now - startedAt) / BUS_MARKER_ANIMATION_MS);
+        const eased = progress < 0.5
+            ? 2 * progress * progress
+            : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+        marker.setLatLng([
+            start.lat + (target.lat - start.lat) * eased,
+            start.lng + (target.lng - start.lng) * eased
+        ]);
+
+        if (progress < 1) {
+            const frame = requestAnimationFrame(tick);
+            busMarkerAnimations.set(marker.busId, {frame});
+        } else {
+            busMarkerAnimations.delete(marker.busId);
+        }
+    };
+
+    const frame = requestAnimationFrame(tick);
+    busMarkerAnimations.set(marker.busId, {frame});
+}
+
+function updateOrCreateBusMarker(bus) {
+    const existing = busMarkers.find(
+        item => String(item.busId) === String(bus.bus_id)
+    );
+
+    if (!existing) {
+        createBusMarker(bus);
+        return;
+    }
+
+    animateBusMarker(existing, getBusDisplayPosition(bus));
+
+    if (Number.isFinite(Number(bus.heading))) {
+        const body = document.getElementById("marker-" + bus.bus_id)?.querySelector(".bus-body");
+        if (body) body.style.transform = "rotate(" + Number(bus.heading) + "deg)";
+    }
+
+    existing.setPopupContent(createPopupContent(bus));
 }
 
 function createBusMarker(bus) {
@@ -885,6 +950,7 @@ function createBusCard(bus, rankIndex = 0) {
     card.className = "bus-card rank-" + Math.min(rankIndex + 1, 3);
     card.style.animationDelay = Math.min(rankIndex * 35, 400) + "ms";
     card.id = "bus-card-" + bus.bus_id;
+    card.dataset.busId = String(bus.bus_id || "");
     card.dataset.distance = Number.isFinite(Number(bus.distance_km)) ? String(Number(bus.distance_km)) : "9999";
     card.dataset.moving = isBusMoving(bus) ? "true" : "false";
 
@@ -916,6 +982,16 @@ function createBusCard(bus, rankIndex = 0) {
         : "live";
     const movement = bus.movement_km !== undefined ? bus.movement_km : 0;
     const history = bus.history_minutes !== undefined ? bus.history_minutes : 0;
+    const gpsConfidence = Number(bus.gps_confidence);
+    const confidenceLabel = Number.isFinite(gpsConfidence)
+        ? " · " + Math.round(gpsConfidence * 100) + "% GPS confidence"
+        : "";
+    const ageSeconds = Number(bus.gps_age_seconds);
+    const ageLabel = Number.isFinite(ageSeconds)
+        ? ageSeconds < 60
+            ? "Updated " + Math.max(0, Math.round(ageSeconds)) + "s ago"
+            : "Updated " + Math.round(ageSeconds / 60) + "m ago"
+        : "GPS age unavailable";
     const sourceLabel = bus.data_stale ? "Last available GPS" : "Live GPS";
     const predictionConfidence = Number(bus.prediction_confidence);
     const predictionLabel =
@@ -938,7 +1014,7 @@ function createBusCard(bus, rankIndex = 0) {
             "<span class='bus-meta'>↗ " + movement + " km / " + history + " min</span>" +
         "</div>" +
         "<p class='status status-" + statusClass + "'>● " + escapeHtml(status) + "</p>" +
-        "<p class='updated'>" + sourceLabel + (predictionLabel ? " · " + predictionLabel : "") + " · Tap for details</p>";
+        "<p class='updated'>" + ageLabel + " · " + sourceLabel + confidenceLabel + (predictionLabel ? " · " + predictionLabel : "") + " · Tap for details</p>";
 
     card.setAttribute("role", "button");
     card.setAttribute("tabindex", "0");
