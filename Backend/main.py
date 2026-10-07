@@ -341,6 +341,9 @@ def search_location(
             if len(coordinates) < 2:
                 continue
 
+            if not (28.35 <= coordinates[1] <= 28.80 and 77.20 <= coordinates[0] <= 77.65):
+                continue
+
             properties = feature.get("properties", {})
 
             name = properties.get("name", "")
