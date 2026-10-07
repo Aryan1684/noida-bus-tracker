@@ -654,7 +654,12 @@ def _analyze_single(bus, history, anomaly_model):
     )
 
     fix_age = bus.get("fix_age_seconds")
-    route_confidence = str(bus.get("route_confidence") or "").lower()
+    route_confidence = str(
+        bus.get("route_match_confidence")
+        or bus.get("route_confidence")
+        or ""
+    ).lower()
+    route_off_route = bus.get("route_match_status") == "off_route"
     moving = current_speed >= 3 and str(bus.get("vehicle_status") or "").lower() not in {
         "stationary",
         "no_signal",
@@ -677,6 +682,13 @@ def _analyze_single(bus, history, anomaly_model):
             "effect": "positive" if len(history) >= 5 else "degraded",
         },
     ]
+
+    if route_off_route:
+        confidence_reasons.append({
+            "rule": "route_match",
+            "value": bus.get("route_match_distance_m"),
+            "effect": "degraded",
+        })
 
     if gps_anomaly:
         confidence_reasons.append({
@@ -706,6 +718,7 @@ def _analyze_single(bus, history, anomaly_model):
         and bus.get("speed_valid", True)
         and route_confidence == "high"
         and not gps_anomaly
+        and not route_off_route
         and not prediction_applied
     ):
         position_confidence = "high"
@@ -751,6 +764,12 @@ def _analyze_single(bus, history, anomaly_model):
         "position_type": position_type,
         "validated_latitude": latitude,
         "validated_longitude": longitude,
+        "route_match_status": bus.get("route_match_status"),
+        "route_match_distance_m": bus.get("route_match_distance_m"),
+        "route_progress": bus.get("route_progress"),
+        "route_match_confidence": bus.get("route_match_confidence"),
+        "estimated_latitude": bus.get("map_matched_latitude", latitude),
+        "estimated_longitude": bus.get("map_matched_longitude", longitude),
         "prediction_source": "ML_Ridge_Trajectory" if prediction else None,
         "predicted_latitude": prediction["predicted_1m"]["latitude"] if prediction else None,
         "predicted_longitude": prediction["predicted_1m"]["longitude"] if prediction else None,
@@ -780,9 +799,15 @@ def _analyze_single(bus, history, anomaly_model):
     if prediction_applied:
         result["display_latitude"] = prediction["predicted_1m"]["latitude"]
         result["display_longitude"] = prediction["predicted_1m"]["longitude"]
+        result["display_position_type"] = "estimated"
+    elif bus.get("route_match_status") == "matched":
+        result["display_latitude"] = bus.get("map_matched_latitude", latitude)
+        result["display_longitude"] = bus.get("map_matched_longitude", longitude)
+        result["display_position_type"] = "estimated"
     else:
         result["display_latitude"] = latitude
         result["display_longitude"] = longitude
+        result["display_position_type"] = "live" if position_confidence == "high" else "last_known"
 
     return result
 
