@@ -57,15 +57,14 @@ def historical_speed_kmh(history):
             current_lon,
         )
 
-        if distance_km <= 0.01:
-            continue
+        if distance_km > 0.01:
+            implied_speed = distance_km / (delta_seconds / 3600.0)
 
-        implied_speed = distance_km / (delta_seconds / 3600.0)
+            if implied_speed > MAX_REASONABLE_SPEED_KMH:
+                continue
 
-        if implied_speed > MAX_REASONABLE_SPEED_KMH:
-            continue
+            total_km += distance_km
 
-        total_km += distance_km
         total_hours += delta_seconds / 3600.0
 
     if total_km > 0.03 and total_hours > 0:
@@ -161,7 +160,48 @@ def _route_distance_to_target(bus, latitude, longitude):
     if route_delta < -0.20:
         return None, "not_ahead"
 
+    history = bus.get("prediction_history") or []
+    direction_sign = _route_travel_direction(route, history)
+
+    if direction_sign is not None and route_delta * direction_sign < -0.20:
+        return None, "not_ahead"
+
+    if direction_sign is None and route_delta < -0.20:
+        return None, "not_ahead"
+
     return max(0.0, route_delta), "route_projection"
+
+
+def _route_travel_direction(route, history):
+    if not isinstance(history, list) or len(history) < 2:
+        return None
+
+    projections = []
+
+    for point in history[-6:]:
+        try:
+            projection = _route_projection(
+                route,
+                float(point["latitude"]),
+                float(point["longitude"]),
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+
+        if projection is None or projection["off_route_km"] > 3.0:
+            continue
+
+        projections.append(projection["along_km"])
+
+    if len(projections) < 2:
+        return None
+
+    delta = projections[-1] - projections[0]
+
+    if abs(delta) < 0.05:
+        return None
+
+    return 1 if delta > 0 else -1
 
 
 def calculate_eta(bus, latitude, longitude):

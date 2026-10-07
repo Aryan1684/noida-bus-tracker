@@ -258,7 +258,7 @@ def get_buses():
 def get_nearby_buses(
     lat: float = Query(...),
     lon: float = Query(...),
-    radius: float = Query(5)
+    radius: float = Query(5, gt=0, le=25)
 ):
     buses = get_processed_buses()
 
@@ -277,7 +277,14 @@ def get_nearby_buses(
             bus.update(calculate_eta(bus, lat, lon))
             nearby_buses.append(bus)
 
-    nearby_buses.sort(key=lambda bus: bus["distance_km"])
+    nearby_buses.sort(
+        key=lambda bus: (
+            0 if bus.get("eta_status") == "estimated" else
+            1 if bus.get("eta_status") == "unavailable" else 2,
+            bus.get("eta_minutes") if bus.get("eta_minutes") is not None else 9999,
+            bus["distance_km"],
+        )
+    )
 
     return {
         "count": len(nearby_buses),

@@ -1,5 +1,8 @@
+import math
+import os
 import threading
 import time
+from datetime import datetime, timezone
 
 import requests
 
@@ -14,7 +17,7 @@ _latest_processed_buses = []
 _latest_processed_at = None
 _cache_lock = threading.Lock()
 MAX_CACHE_SECONDS = 900
-PROCESSED_CACHE_SECONDS = 55
+PROCESSED_CACHE_SECONDS = max(120, int(int(os.getenv("PREDICTION_COLLECT_INTERVAL_SECONDS", "60")) * 2.5))
 
 NOIDA_POLYGON = [
     (28.69, 77.28),
@@ -71,6 +74,37 @@ def _in_noida_region(latitude, longitude):
     )
 
 
+def _parse_timestamp(value):
+    if not value:
+        return None
+
+    try:
+        parsed = datetime.fromisoformat(
+            str(value).strip().replace("Z", "+00:00")
+        )
+
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+
+        return parsed.timestamp()
+    except (TypeError, ValueError):
+        return None
+
+
+def _fix_age_seconds(timestamp, now=None):
+    event_time = _parse_timestamp(timestamp)
+
+    if event_time is None:
+        return None
+
+    age = (time.time() if now is None else now) - event_time
+
+    if not math.isfinite(age):
+        return None
+
+    return max(0, int(age))
+
+
 def _fetch_live_data():
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
@@ -125,6 +159,15 @@ def _process_live_buses(data):
         except (ValueError, TypeError):
             continue
 
+        if not (
+            math.isfinite(latitude)
+            and math.isfinite(longitude)
+            and -90 <= latitude <= 90
+            and -180 <= longitude <= 180
+            and _in_noida_region(latitude, longitude)
+        ):
+            continue
+
         result = {
             "bus_id": bus.get("bus_id"),
             "latitude": latitude,
@@ -138,6 +181,15 @@ def _process_live_buses(data):
 
     if not buses:
         return []
+
+    now = time.time()
+
+    for result in buses:
+        fix_age = _fix_age_seconds(result.get("timestamp"), now)
+        result["fix_age_seconds"] = fix_age
+        result["data_stale"] = bool(
+            fix_age is not None and fix_age > 180
+        )
 
     histories = prepare_histories(buses)
 
@@ -203,8 +255,17 @@ def get_noida_electric_buses(force_refresh=False):
                 cached = [dict(bus) for bus in _last_good_buses]
 
                 for bus in cached:
-                    bus["data_stale"] = True
                     bus["cache_age_seconds"] = int(age)
+
+                    fix_age = bus.get("fix_age_seconds")
+                    bus["data_stale"] = bool(
+                        bus.get("data_stale")
+                        or (
+                            fix_age is not None
+                            and fix_age > 180
+                        )
+                        or age > PROCESSED_CACHE_SECONDS
+                    )
 
                 return cached
 
