@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import requests
 
 from services.direction_service import update_bus_history
-from services.ml_prediction_service import analyze_buses, load_latest_points, prepare_histories, record_ingestion_log
+from services.ml_prediction_service import analyze_buses, load_latest_points, prepare_histories, record_ingestion_log, record_validation_audit
 from services.validation_service import validate_gps_batch
 from services.position_trust_service import match_position
 
@@ -165,6 +165,7 @@ def _process_live_buses(data, upstream_latency_ms=None):
     ]
     previous_points = load_latest_points(raw_ids)
     validation = validate_gps_batch(data, previous_points=previous_points)
+    record_validation_audit(validation)
 
     with _cache_lock:
         _ingestion_stats["cycles"] += 1
