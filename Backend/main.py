@@ -337,10 +337,37 @@ def search_location(
     q: str = Query(..., min_length=2)
 ):
     if not MAPTILER_API_KEY:
-        raise HTTPException(
-            status_code=500,
-            detail="MAPTILER_API_KEY is missing"
-        )
+        try:
+            response = requests.get(
+                "https://nominatim.openstreetmap.org/search",
+                params={
+                    "format": "jsonv2",
+                    "q": q,
+                    "countrycodes": "in",
+                    "limit": 5,
+                    "addressdetails": 1,
+                },
+                headers={
+                    "User-Agent": "NoidaBusTracker/1.0 (independent project)",
+                    "Accept": "application/json",
+                },
+                timeout=8,
+            )
+            response.raise_for_status()
+            results = []
+            for item in response.json():
+                latitude = float(item["lat"])
+                longitude = float(item["lon"])
+                if not (28.10 <= latitude <= 28.80 and 77.20 <= longitude <= 77.75):
+                    continue
+                results.append({
+                    "name": item.get("display_name", q),
+                    "latitude": latitude,
+                    "longitude": longitude,
+                })
+            return {"count": len(results), "results": results}
+        except (requests.RequestException, ValueError, KeyError, TypeError) as error:
+            raise HTTPException(status_code=502, detail=f"Location search failed: {error}")
 
     url = f"https://api.maptiler.com/geocoding/{requests.utils.quote(q)}.json"
 
