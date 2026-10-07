@@ -175,6 +175,8 @@ def match_position(bus_id, latitude, longitude, heading=None):
         "route_segment_from": projection["from"],
         "route_segment_to": projection["to"],
         "route_segment_index": projection["segment_index"],
+        "next_stop": projection["to"],
+        "next_stops": route.get("points", [])[projection["segment_index"] + 1:projection["segment_index"] + 4],
     }
 
 
