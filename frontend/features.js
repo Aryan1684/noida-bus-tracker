@@ -745,12 +745,11 @@
         manifest.href="manifest.json";
         document.head.appendChild(manifest);
 
-        if("serviceWorker" in navigator){
+        if("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")){
             navigator.serviceWorker.register("sw.js").catch(function(e){console.error(e);});
         }
 
         window.addEventListener("beforeinstallprompt",function(event){
-            event.preventDefault();
             installPrompt=event;
             var button=document.getElementById("featureInstall");
             if(button)button.hidden=false;
