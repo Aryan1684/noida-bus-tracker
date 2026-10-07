@@ -10,6 +10,7 @@ from sklearn.linear_model import Ridge
 from utils.distance import calculate_distance
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+ALLOW_SQLITE_DEV = os.getenv("ALLOW_SQLITE_DEV", "").strip().lower() in {"1", "true", "yes"}
 SQLITE_PATH = os.getenv("PREDICTION_DB_PATH", "/tmp/noidabus_prediction_history.sqlite3")
 MAX_HISTORY = 10
 MODEL_HISTORY = 10
@@ -19,6 +20,11 @@ _initialized = False
 
 def _connect():
     global _initialized
+
+    if not DATABASE_URL and not ALLOW_SQLITE_DEV:
+        raise RuntimeError(
+            "DATABASE_URL is required. Set ALLOW_SQLITE_DEV=1 only for explicit local SQLite development."
+        )
 
     if DATABASE_URL:
         import psycopg
