@@ -1132,3 +1132,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .bus-marker{
   will-change:transform;
 }
+
+.bus-marker.confidence-medium{
+  border-style:dashed;
+}
+.bus-marker.confidence-low{
+  opacity:.58;
+  filter:grayscale(.45);
+}
+.bus-marker.confidence-high{
+  opacity:1;
+}
