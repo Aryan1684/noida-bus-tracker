@@ -59,6 +59,19 @@ class ValidationServiceTests(unittest.TestCase):
         ])
         self.assertEqual(result["stats"]["reject_reasons"]["impossible_jump"], 1)
 
+    def test_previous_point_rejects_out_of_order_across_cycles(self):
+        previous = {
+            "latitude": BASE["latitude"],
+            "longitude": BASE["longitude"],
+            "event_time": 1791367200.0,
+            "timestamp": BASE["timestamp"],
+        }
+        result = validate_gps_batch(
+            [point(timestamp="2026-10-07T09:59:59Z")],
+            previous_points={"TEST001": previous},
+        )
+        self.assertEqual(result["stats"]["reject_reasons"]["out_of_order"], 1)
+
     def test_previous_point_is_used_for_jump_validation(self):
         previous = {
             "latitude": BASE["latitude"],
