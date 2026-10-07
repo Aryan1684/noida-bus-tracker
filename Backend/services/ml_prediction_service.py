@@ -298,6 +298,53 @@ def _is_plausible_transition(connection, bus_id, event_time, latitude, longitude
     )
 
 
+def load_latest_points(bus_ids):
+    connection = _connect()
+    points = {}
+
+    try:
+        for bus_id in bus_ids:
+            normalized_id = str(bus_id).strip().upper()
+
+            if DATABASE_URL:
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT source_timestamp, event_time, latitude, longitude, speed
+                        FROM bus_positions
+                        WHERE bus_id = %s
+                        ORDER BY event_time DESC, id DESC
+                        LIMIT 1
+                        """,
+                        (normalized_id,),
+                    )
+                    row = cursor.fetchone()
+            else:
+                row = connection.execute(
+                    """
+                    SELECT source_timestamp, event_time, latitude, longitude, speed
+                    FROM bus_positions
+                    WHERE bus_id = ?
+                    ORDER BY event_time DESC, id DESC
+                    LIMIT 1
+                    """,
+                    (normalized_id,),
+                ).fetchone()
+
+            if row:
+                points[normalized_id] = {
+                    "timestamp": row[0],
+                    "event_time": float(row[1]),
+                    "latitude": float(row[2]),
+                    "longitude": float(row[3]),
+                    "speed": float(row[4] or 0.0),
+                }
+    finally:
+        connection.close()
+
+    return points
+
+
 def record_positions(buses):
     connection = _connect()
     rows = []
@@ -753,24 +800,3 @@ def prepare_histories(buses):
     record_positions(buses)
     return load_histories(bus_ids)
 
-
-def analyze_buses(buses, histories=None):
-    if histories is None:
-        histories = prepare_histories(buses)
-
-    anomaly_model = _build_anomaly_model(histories)
-    analysis = {}
-
-    for bus in buses:
-        bus_id = str(bus.get("bus_id") or "").strip().upper()
-
-        if not bus_id:
-            continue
-
-        analysis[bus_id] = _analyze_single(
-            bus,
-            histories.get(bus_id, []),
-            anomaly_model,
-        )
-
-    return analysis
