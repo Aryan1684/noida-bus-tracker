@@ -8,6 +8,7 @@ import requests
 
 from services.direction_service import update_bus_history
 from services.ml_prediction_service import analyze_buses, prepare_histories
+from services.validation_service import validate_gps_batch
 
 GPS_API_URL = "https://margdarshi.upsrtcvlt.com/php/getGpsLiveData.php"
 
@@ -16,6 +17,16 @@ _last_good_at = None
 _latest_processed_buses = []
 _latest_processed_at = None
 _cache_lock = threading.Lock()
+_ingestion_stats = {
+    "cycles": 0,
+    "buses_received": 0,
+    "buses_accepted": 0,
+    "buses_rejected": 0,
+    "reject_reasons": {},
+    "last_cycle_at": None,
+    "last_upstream_latency_ms": None,
+    "last_source_health": "unknown",
+}
 MAX_CACHE_SECONDS = 900
 PROCESSED_CACHE_SECONDS = max(120, int(int(os.getenv("PREDICTION_COLLECT_INTERVAL_SECONDS", "60")) * 2.5))
 
@@ -141,52 +152,20 @@ def _fetch_live_data():
 
 
 def _process_live_buses(data):
-    buses = []
+    validation = validate_gps_batch(data)
 
-    for bus in data:
-        if bus.get("depot_name") != "NOIDA ELECTRIC":
-            continue
+    with _cache_lock:
+        _ingestion_stats["cycles"] += 1
+        _ingestion_stats["buses_received"] += validation["stats"]["received"]
+        _ingestion_stats["buses_accepted"] += validation["stats"]["accepted"]
+        _ingestion_stats["buses_rejected"] += validation["stats"]["rejected"]
+        _ingestion_stats["last_cycle_at"] = datetime.now(timezone.utc).isoformat()
+        for reason, count in validation["stats"]["reject_reasons"].items():
+            _ingestion_stats["reject_reasons"][reason] = (
+                _ingestion_stats["reject_reasons"].get(reason, 0) + count
+            )
 
-        latitude = bus.get("latitude")
-        longitude = bus.get("longitude")
-
-        if latitude is None or longitude is None:
-            continue
-
-        try:
-            latitude = float(latitude)
-            longitude = float(longitude)
-        except (ValueError, TypeError):
-            continue
-
-        if not (
-            math.isfinite(latitude)
-            and math.isfinite(longitude)
-            and -90 <= latitude <= 90
-            and -180 <= longitude <= 180
-            and _in_noida_region(latitude, longitude)
-        ):
-            continue
-
-        raw_speed = bus.get("speed")
-        try:
-            parsed_speed = float(raw_speed)
-            speed_valid = math.isfinite(parsed_speed) and 0 <= parsed_speed <= 130
-        except (TypeError, ValueError):
-            parsed_speed = 0.0
-            speed_valid = False
-
-        result = {
-            "bus_id": str(bus.get("bus_id") or "").strip().upper(),
-            "latitude": latitude,
-            "longitude": longitude,
-            "speed": round(parsed_speed, 1) if speed_valid else 0.0,
-            "speed_valid": speed_valid,
-            "timestamp": bus.get("timestamp"),
-            "vehicle_status": bus.get("vehicle_status")
-        }
-
-        buses.append(result)
+    buses = validation["accepted"]
 
     if not buses:
         return []
@@ -244,9 +223,18 @@ def refresh_noida_electric_buses():
     global _last_good_buses, _last_good_at
     global _latest_processed_buses, _latest_processed_at
 
+    started_at = time.perf_counter()
+
     try:
         data = _fetch_live_data()
+        upstream_latency_ms = round((time.perf_counter() - started_at) * 1000, 1)
         buses = _process_live_buses(data)
+
+        with _cache_lock:
+            _ingestion_stats["last_upstream_latency_ms"] = upstream_latency_ms
+            _ingestion_stats["last_source_health"] = (
+                "healthy" if buses else "empty_after_validation"
+            )
 
         if buses:
             now = time.time()
