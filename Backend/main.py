@@ -10,6 +10,7 @@ from services.gps_service import get_noida_electric_buses
 from services.prediction_collector import collector_running, start_collector, stop_collector
 from utils.distance import calculate_distance
 from services.eta_service import calculate_eta
+from services.direction_service import ROUTES, LANDMARKS
 from services.analytics_service import dashboard as get_analytics_dashboard, record_consented_location, record_event, verify_admin_token
 from services.gps_service import get_ingestion_stats
 
@@ -281,7 +282,24 @@ def get_nearby_buses(
 
         if distance <= radius:
             bus["distance_km"] = round(distance, 2)
-            bus.update(calculate_eta(bus, lat, lon))
+            eta = calculate_eta(bus, lat, lon)
+            bus.update(eta)
+            eta_minutes = eta.get("eta_minutes")
+            confidence = str(bus.get("position_confidence") or "medium").lower()
+            if eta_minutes is not None:
+                if confidence == "high":
+                    eta_min, eta_max = max(1, eta_minutes - 1), eta_minutes + 1
+                elif confidence == "medium":
+                    eta_min, eta_max = max(1, eta_minutes - 1), eta_minutes + 2
+                else:
+                    eta_min, eta_max = eta_minutes, eta_minutes + 3
+                bus["eta_min"] = eta_min
+                bus["eta_max"] = eta_max
+                bus["eta_label"] = f"{eta_min}–{eta_max} min"
+            else:
+                bus["eta_min"] = None
+                bus["eta_max"] = None
+                bus["eta_label"] = "ETA unavailable"
             nearby_buses.append(bus)
 
     nearby_buses.sort(
@@ -298,6 +316,20 @@ def get_nearby_buses(
         "radius_km": radius,
         "buses": nearby_buses
     }
+
+
+@app.get("/api/routes")
+def get_routes():
+    routes = []
+    for route in ROUTES:
+        points = []
+        for name in route.get("points", []):
+            coordinate = LANDMARKS.get(name)
+            if coordinate:
+                points.append({"name": name, "latitude": coordinate[0], "longitude": coordinate[1]})
+        if len(points) >= 2:
+            routes.append({"id": route.get("id"), "name": route.get("name"), "points": points})
+    return {"routes": routes}
 
 
 @app.get("/api/search-location")
