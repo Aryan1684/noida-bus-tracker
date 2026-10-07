@@ -1162,3 +1162,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .selected-trust span {
     opacity: .78;
 }
+
+.trust-summary{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+.trust-summary span{font-size:8px;font-weight:800;padding:4px 7px;border-radius:999px;background:var(--surface2);color:var(--muted)}
+.selected-trust{border:1px solid var(--line)}
+.results-section.is-refreshing .bus-grid,.results-section.is-refreshing .map-shell{opacity:.72}
+.results-section.is-refreshing .bus-card{pointer-events:none}
