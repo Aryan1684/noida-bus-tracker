@@ -531,34 +531,79 @@ def _analyze_single(bus, history, anomaly_model):
     )
 
     fix_age = bus.get("fix_age_seconds")
-    freshness_score = (
-        1.0 if fix_age is None else
-        1.0 if fix_age <= 30 else
-        0.85 if fix_age <= 90 else
-        0.65 if fix_age <= 180 else
-        0.35
-    )
-    continuity_score = min(1.0, len(history) / 5.0)
-    speed_score = 1.0 if bus.get("speed_valid", True) else 0.35
-    anomaly_component = 0.35 if gps_anomaly else 1.0
     route_confidence = str(bus.get("route_confidence") or "").lower()
-    route_score = {"high": 1.0, "medium": 0.78, "low": 0.55}.get(
-        route_confidence,
-        0.45 if bus.get("route_id") else 0.6,
-    )
-    gps_confidence = max(0.0, min(1.0, (
-        0.40 * freshness_score
-        + 0.20 * continuity_score
-        + 0.15 * speed_score
-        + 0.15 * anomaly_component
-        + 0.10 * route_score
-    )))
+    moving = current_speed >= 3 and str(bus.get("vehicle_status") or "").lower() not in {
+        "stationary",
+        "no_signal",
+    }
 
-    position_type = (
-        "estimated" if prediction_applied
-        else "last_known" if bus.get("data_stale")
-        else "live"
-    )
+    confidence_reasons = [
+        {
+            "rule": "gps_age",
+            "value": fix_age,
+            "effect": "positive" if fix_age is not None and fix_age <= 30 else "degraded",
+        },
+        {
+            "rule": "route_match",
+            "value": route_confidence or None,
+            "effect": "positive" if route_confidence == "high" else "degraded",
+        },
+        {
+            "rule": "consecutive_valid_fixes",
+            "value": len(history),
+            "effect": "positive" if len(history) >= 5 else "degraded",
+        },
+    ]
+
+    if gps_anomaly:
+        confidence_reasons.append({
+            "rule": "gps_anomaly",
+            "value": bus.get("gps_anomaly_reason"),
+            "effect": "degraded",
+        })
+
+    if prediction_applied:
+        confidence_reasons.append({
+            "rule": "interpolation",
+            "effect": "downgrade",
+        })
+
+    if bus.get("speed_valid") is False:
+        confidence_reasons.append({
+            "rule": "speed_validity",
+            "value": bus.get("speed"),
+            "effect": "degraded",
+        })
+
+    if fix_age is None or fix_age > 180:
+        position_confidence = "low"
+        position_type = "last_known"
+    elif (
+        fix_age <= 30
+        and bus.get("speed_valid", True)
+        and route_confidence == "high"
+        and not gps_anomaly
+        and not prediction_applied
+    ):
+        position_confidence = "high"
+        position_type = "live"
+    else:
+        position_confidence = "medium"
+        position_type = "estimated" if prediction_applied or gps_anomaly else "live"
+
+    if position_confidence == "low":
+        user_confidence_label = "Last known"
+    elif position_confidence == "high":
+        user_confidence_label = "Live · High confidence"
+    else:
+        user_confidence_label = "Estimated · Medium confidence"
+
+    if not moving and position_confidence == "high":
+        confidence_reasons.append({
+            "rule": "movement_state",
+            "value": "stationary",
+            "effect": "informational",
+        })
 
     result = {
         "gps_anomaly": gps_anomaly,
@@ -575,8 +620,10 @@ def _analyze_single(bus, history, anomaly_model):
         "prediction_available": bool(prediction),
         "prediction_confidence": prediction_confidence,
         "prediction_applied": prediction_applied,
-        "gps_confidence": round(gps_confidence, 2),
-        "position_confidence": round(gps_confidence, 2),
+        "gps_confidence": position_confidence,
+        "position_confidence": position_confidence,
+        "confidence_reasons": confidence_reasons,
+        "confidence_label": user_confidence_label,
         "gps_age_seconds": bus.get("fix_age_seconds"),
         "position_type": position_type,
         "validated_latitude": latitude,
