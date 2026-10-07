@@ -1,4 +1,4 @@
-llet map;
+let map;
 let locationMarker;
 let userLocation = null;
 let confirmedLocation = null;
@@ -1456,7 +1456,7 @@ function initializePlaceSearch() {
 
 const LOCAL_PLACES = [];
 
-et map;
+
 let locationMarker;
 let userLocation = null;
 let confirmedLocation = null;
