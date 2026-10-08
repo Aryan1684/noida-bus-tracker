@@ -241,8 +241,8 @@
         box.id="advancedFeatures";
         box.innerHTML=
             "<div class='feature-toolbar'>"+
-            "<button id='featureAlert'>🔔 Nearby Alert</button>"+
-            "<button id='featureFav'>❤️ Favorites</button>"+
+            "<button id='featureAlert' type='button'><span class='feature-icon feature-bell' aria-hidden='true'></span><span>Nearby Alert</span></button>"+
+            "<button id='featureFav' type='button'><span class='feature-icon feature-bookmark' aria-hidden='true'></span><span>Favorites</span></button>"+
             "</div>"+
             "<div id='featureSummary' class='feature-summary'></div>";
 
