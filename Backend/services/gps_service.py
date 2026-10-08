@@ -251,23 +251,42 @@ def _fetch_live_data():
 
 
 def _process_live_buses(data, upstream_latency_ms=None):
+    electric_buses = [
+        item
+        for item in data
+        if str(item.get("depot_name") or "").strip().upper() == "NOIDA ELECTRIC"
+    ]
+
+    print(
+        f"GPS feed received {len(data)} raw records; "
+        f"{len(electric_buses)} match NOIDA ELECTRIC",
+        flush=True,
+    )
+
+    if not electric_buses:
+        return []
+
     raw_ids = [
         str(item.get("bus_id") or "").strip().upper()
-        for item in data
+        for item in electric_buses
         if item.get("bus_id")
     ]
+
     try:
         previous_points = load_latest_points(raw_ids)
     except Exception as error:
-        print(f"GPS history read failed; continuing without history: {error}")
+        print(f"GPS history read failed; continuing without history: {error}", flush=True)
         previous_points = {}
 
-    validation = validate_gps_batch(data, previous_points=previous_points)
+    validation = validate_gps_batch(
+        electric_buses,
+        previous_points=previous_points,
+    )
 
     try:
         record_validation_audit(validation)
     except Exception as error:
-        print(f"GPS audit write failed; continuing: {error}")
+        print(f"GPS audit write failed; continuing: {error}", flush=True)
 
     now = time.time()
 
@@ -339,7 +358,7 @@ def _process_live_buses(data, upstream_latency_ms=None):
             anomalies_detected=len(validation["rejected"]),
         )
     except Exception as error:
-        print(f"Ingestion log write failed; continuing: {error}")
+        print(f"Ingestion log write failed; continuing: {error}", flush=True)
 
     if not buses:
         return []
@@ -360,7 +379,7 @@ def _process_live_buses(data, upstream_latency_ms=None):
     try:
         histories = prepare_histories(buses)
     except Exception as error:
-        print(f"GPS history processing failed; continuing without history: {error}")
+        print(f"GPS history processing failed; continuing without history: {error}", flush=True)
         histories = {}
 
     for result in buses:
@@ -404,7 +423,7 @@ def _process_live_buses(data, upstream_latency_ms=None):
     try:
         ml_analysis = analyze_buses(buses, histories=histories)
     except Exception as error:
-        print(f"ML analysis failed; continuing with live GPS data: {error}")
+        print(f"ML analysis failed; continuing with live GPS data: {error}", flush=True)
         ml_analysis = {}
 
     for result in buses:
