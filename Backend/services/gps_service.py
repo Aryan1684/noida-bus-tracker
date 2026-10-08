@@ -283,6 +283,14 @@ def _process_live_buses(data, upstream_latency_ms=None):
         previous_points=previous_points,
     )
 
+    print(
+        f"GPS validation: received={validation['stats']['received']} "
+        f"accepted={validation['stats']['accepted']} "
+        f"rejected={validation['stats']['rejected']} "
+        f"reasons={validation['stats']['reject_reasons']}",
+        flush=True,
+    )
+
     try:
         record_validation_audit(validation)
     except Exception as error:
