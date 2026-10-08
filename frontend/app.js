@@ -1016,7 +1016,7 @@ function createBusCard(bus, rankIndex = 0) {
         "<div class='bus-card-top'>" +
             "<h3>" + escapeHtml(bus.bus_id || "Unknown Bus") + "</h3>" +
             (route ? "<span class='route-badge'>" + escapeHtml(route) + "</span>" : "") +
-            "<button class='favorite-button' type='button' aria-label='Favorites coming soon'><span class='favorite-icon' aria-hidden='true'><svg viewBox='0 0 24 24' focusable='false'><path d='M6 3.5h12a1 1 0 0 1 1 1v16l-7-4.4-7 4.4v-16a1 1 0 0 1 1-1-1Z'></path></svg></span></button>" +
+            "<button class='favorite-button' type='button' disabled aria-disabled='true' aria-label='Favorites coming soon'><span class='favorite-icon' aria-hidden='true'><svg viewBox='0 0 24 24' focusable='false'><path d='M6 3.5h12a1 1 0 0 1 1 1v16l-7-4.4-7 4.4v-16a1 1 0 0 1 1-1-1Z'></path></svg></span></button>" +
             "<span class='bus-rank'>#" + (rankIndex + 1) + "</span>" +
         "</div>" +
         directionHtml +
@@ -1039,15 +1039,6 @@ function createBusCard(bus, rankIndex = 0) {
         const marker = busMarkers.find(item => String(item.busId) === String(bus.bus_id));
         if (marker) marker.openPopup();
     };
-    const favoriteButton = card.querySelector(".favorite-button");
-    if (favoriteButton) {
-        favoriteButton.addEventListener("click", event => {
-            event.stopPropagation();
-            if (typeof window.showComingSoon === "function") {
-                window.showComingSoon("Favorites", "Favorites are currently under development. Bus saving and persistent favorites will be available soon.");
-            }
-        });
-    }
 
     card.addEventListener("click", openBus);
     card.addEventListener("keydown", event => {
