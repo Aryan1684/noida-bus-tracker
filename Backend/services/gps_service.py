@@ -5,6 +5,12 @@ import time
 from datetime import datetime, timezone
 
 import requests
+import socket
+import ssl
+from http.client import HTTPResponse
+from io import BytesIO
+
+import dns.resolver
 
 from services.direction_service import update_bus_history
 from services.ml_prediction_service import analyze_buses, load_latest_points, prepare_histories, record_ingestion_log, record_validation_audit
@@ -123,6 +129,91 @@ def _fix_age_seconds(timestamp, now=None):
     return max(0, int(age))
 
 
+def _post_with_dns_fallback(url, headers, timeout=(4, 8)):
+    parsed = __import__("urllib.parse", fromlist=["urlparse"]).urlparse(url)
+    host = parsed.hostname
+    port = parsed.port or 443
+    path = parsed.path or "/"
+    if parsed.query:
+        path = f"{path}?{parsed.query}"
+
+    try:
+        return requests.post(
+            url,
+            headers=headers,
+            timeout=timeout,
+        )
+    except requests.RequestException as first_error:
+        resolver = dns.resolver.Resolver(configure=False)
+        resolver.nameservers = ["1.1.1.1", "8.8.8.8"]
+        resolver.lifetime = 3
+
+        addresses = []
+        for record_type in ("A", "AAAA"):
+            try:
+                answers = resolver.resolve(host, record_type)
+                addresses.extend(str(answer) for answer in answers)
+            except Exception:
+                continue
+
+        if not addresses:
+            raise first_error
+
+        body = b""
+        request_headers = {
+            key: value
+            for key, value in headers.items()
+            if key.lower() not in {"content-length", "accept-encoding"}
+        }
+        request_headers["Host"] = host
+        request_headers["Accept-Encoding"] = "identity"
+        request_headers["Content-Length"] = str(len(body))
+
+        last_error = first_error
+
+        for address in addresses:
+            try:
+                family = socket.AF_INET6 if ":" in address else socket.AF_INET
+                raw_socket = socket.socket(family, socket.SOCK_STREAM)
+                raw_socket.settimeout(timeout[1])
+                raw_socket.connect((address, port))
+                context = ssl.create_default_context()
+                tls_socket = context.wrap_socket(raw_socket, server_hostname=host)
+
+                request_lines = [f"POST {path} HTTP/1.1"]
+                request_lines.extend(f"{key}: {value}" for key, value in request_headers.items())
+                request_data = ("\r\n".join(request_lines) + "\r\n\r\n").encode() + body
+                tls_socket.sendall(request_data)
+
+                response = HTTPResponse(tls_socket)
+                response.begin()
+                payload = response.read()
+
+                class ResponseAdapter:
+                    def __init__(self, status, reason, content):
+                        self.status_code = status
+                        self.ok = 200 <= status < 300
+                        self.content = content
+                        self.reason = reason
+
+                    def raise_for_status(self):
+                        if not self.ok:
+                            raise requests.HTTPError(
+                                f"{self.status_code} {self.reason}"
+                            )
+
+                    def json(self):
+                        import json
+                        return json.loads(self.content.decode("utf-8"))
+
+                tls_socket.close()
+                return ResponseAdapter(response.status, response.reason, payload)
+            except Exception as error:
+                last_error = error
+
+        raise last_error
+
+
 def _fetch_live_data():
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
@@ -135,7 +226,7 @@ def _fetch_live_data():
 
     for attempt in range(2):
         try:
-            response = requests.post(
+            response = _post_with_dns_fallback(
                 GPS_API_URL,
                 headers=headers,
                 timeout=(4, 8),
@@ -147,6 +238,7 @@ def _fetch_live_data():
             if not isinstance(data, list):
                 raise ValueError("MARGDARSHI returned an unexpected response")
 
+            print(f"MARGDARSHI returned {len(data)} raw buses", flush=True)
             return data
 
         except (requests.RequestException, ValueError) as error:
