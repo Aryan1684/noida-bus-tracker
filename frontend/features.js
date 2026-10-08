@@ -20,6 +20,7 @@
         s.textContent=
             "#advancedFeatures{margin:8px 0 16px;padding:0;border:0;background:transparent}"+
             ".feature-toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px}"+
+            ".feature-coming-soon{display:flex;flex-direction:column;gap:5px;align-items:stretch}.feature-coming-soon>span{font-size:8px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center}.feature-coming-soon button:disabled{opacity:.58;cursor:not-allowed;background:var(--surface2);color:var(--muted);border-color:var(--line);box-shadow:none}"+
             ".feature-toolbar button{min-height:42px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);padding:8px 10px;font-size:10px;font-weight:800}"+
             ".feature-toolbar button:hover{background:var(--text);color:var(--bg)}"+
             ".feature-icon{width:15px;height:15px;display:inline-block;position:relative;flex:0 0 15px}"+
@@ -256,12 +257,6 @@
 
         section.insertBefore(box,section.querySelector(".section-header"));
 
-        document.getElementById("featureAlert").onclick=function(){
-            window.showComingSoon("Nearby Alerts","Nearby bus alerts are currently under development. Automatic proximity notifications will be available soon.");
-        };
-        document.getElementById("featureFav").onclick=function(){
-            window.showComingSoon("Favorites","Favorites are currently under development. Saving and managing buses and locations will be available soon.");
-        };
     }
 
     function renderFavorites(){
