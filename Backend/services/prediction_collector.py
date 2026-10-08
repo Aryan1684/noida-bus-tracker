@@ -11,17 +11,22 @@ _thread = None
 
 
 def _run():
+    print("Prediction collector thread started", flush=True)
+
     while not _stop_event.is_set():
         started = time.time()
 
         try:
+            print("Prediction collector fetching live GPS", flush=True)
             buses = refresh_noida_electric_buses()
-            print(f"Prediction collector processed {len(buses)} buses")
+            print(f"Prediction collector processed {len(buses)} buses", flush=True)
         except Exception as error:
-            print(f"Prediction collector error: {error}")
+            print(f"Prediction collector error: {error}", flush=True)
 
         elapsed = time.time() - started
         _stop_event.wait(max(1, INTERVAL_SECONDS - elapsed))
+
+    print("Prediction collector thread stopped", flush=True)
 
 
 def start_collector():
