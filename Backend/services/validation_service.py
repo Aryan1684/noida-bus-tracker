@@ -7,13 +7,6 @@ MAX_SPEED_KMH = 90.0
 MAX_JUMP_DISTANCE_KM = 0.5
 MAX_JUMP_INTERVAL_SECONDS = 5.0
 
-NOIDA_BOUNDS = {
-    "min_latitude": 28.30,
-    "max_latitude": 28.70,
-    "min_longitude": 77.24,
-    "max_longitude": 77.64,
-}
-
 
 def _parse_timestamp(value):
     if not value:
@@ -76,6 +69,12 @@ def validate_gps_batch(raw_buses, previous_points=None):
             continue
         stages.append("identity_valid")
 
+        status = str(bus.get("vehicle_status") or "").strip().lower().replace(" ", "_").replace("-", "_")
+        if status == "no_signal":
+            rejected.append(_reject(bus, "no_signal"))
+            continue
+        stages.append("signal_available")
+
         timestamp = bus.get("timestamp")
         event_time = _parse_timestamp(timestamp)
         if event_time is None:
@@ -88,20 +87,6 @@ def validate_gps_batch(raw_buses, previous_points=None):
 
         if latitude is None or longitude is None:
             rejected.append(_reject(bus, "invalid_coordinates"))
-            continue
-
-        if not (
-            NOIDA_BOUNDS["min_latitude"] <= latitude <= NOIDA_BOUNDS["max_latitude"]
-            and NOIDA_BOUNDS["min_longitude"] <= longitude <= NOIDA_BOUNDS["max_longitude"]
-        ):
-            rejected.append(
-                _reject(
-                    bus,
-                    "outside_noida_bounds",
-                    latitude=latitude,
-                    longitude=longitude,
-                )
-            )
             continue
         stages.append("coordinates_valid")
 
