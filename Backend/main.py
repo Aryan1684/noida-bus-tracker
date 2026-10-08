@@ -263,7 +263,34 @@ def get_processed_buses():
 
 @app.get("/api/buses")
 def get_buses():
-    buses = get_processed_buses()
+    raw_buses = get_latest_raw_electric_buses()
+
+    if not raw_buses:
+        try:
+            refresh_noida_electric_buses()
+        except Exception as error:
+            print(f"On-demand GPS refresh failed: {error}", flush=True)
+        raw_buses = get_latest_raw_electric_buses()
+
+    processed_buses = {
+        str(bus.get("bus_id") or "").strip().upper(): bus
+        for bus in get_noida_electric_buses()
+    }
+
+    buses = []
+    for raw_bus in raw_buses:
+        bus_id = str(raw_bus.get("bus_id") or "").strip().upper()
+        processed = processed_buses.get(bus_id)
+
+        if processed:
+            bus = dict(raw_bus)
+            bus.update(processed)
+            bus["validation_status"] = "accepted"
+        else:
+            bus = dict(raw_bus)
+            bus["validation_status"] = "unvalidated"
+
+        buses.append(bus)
 
     return {
         "count": len(buses),
