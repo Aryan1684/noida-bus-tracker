@@ -133,12 +133,12 @@ def _fetch_live_data():
 
     last_error = None
 
-    for attempt in range(3):
+    for attempt in range(2):
         try:
             response = requests.post(
                 GPS_API_URL,
                 headers=headers,
-                timeout=(5, 15),
+                timeout=(4, 8),
             )
             response.raise_for_status()
 
@@ -152,8 +152,8 @@ def _fetch_live_data():
         except (requests.RequestException, ValueError) as error:
             last_error = error
 
-            if attempt < 2:
-                time.sleep(1.5 * (attempt + 1))
+            if attempt < 1:
+                time.sleep(1)
 
     raise RuntimeError(f"MARGDARSHI live GPS request failed: {last_error}")
 
