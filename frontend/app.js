@@ -996,7 +996,7 @@ function createBusCard(bus, rankIndex = 0) {
         ? " · " + escapeHtml(bus.confidence_label)
         : "";
     const etaLabel = bus.eta_label || "ETA unavailable";
-    const favorite = isFavoriteBus(bus.bus_id);
+    const favorite = false;
     const ageSeconds = Number(bus.gps_age_seconds);
     const ageLabel = Number.isFinite(ageSeconds)
         ? ageSeconds < 60
@@ -1016,13 +1016,13 @@ function createBusCard(bus, rankIndex = 0) {
         "<div class='bus-card-top'>" +
             "<h3>" + escapeHtml(bus.bus_id || "Unknown Bus") + "</h3>" +
             (route ? "<span class='route-badge'>" + escapeHtml(route) + "</span>" : "") +
-            "<button class='favorite-button" + (favorite ? " is-favorite" : "") + "' type='button' aria-label='" + (favorite ? "Remove favorite" : "Favorite bus") + "'>" + (favorite ? "★" : "☆") + "</button>" +
+            "<button class='favorite-button' type='button' aria-label='Favorites coming soon'><span class='favorite-icon' aria-hidden='true'><svg viewBox='0 0 24 24' focusable='false'><path d='M6 3.5h12a1 1 0 0 1 1 1v16l-7-4.4-7 4.4v-16a1 1 0 0 1 1-1-1Z'></path></svg></span></button>" +
             "<span class='bus-rank'>#" + (rankIndex + 1) + "</span>" +
         "</div>" +
         directionHtml +
         "<div class='bus-meta-row'>" +
             "<span class='bus-meta'>⌖ " + (bus.distance_km ?? "—") + " km</span>" +
-            "<span class='bus-meta'>⚡ " + (bus.speed ?? 0) + " km/h</span>" +
+            "<span class='bus-meta'>Speed " + (bus.speed ?? 0) + " km/h</span>" +
             "<span class='bus-meta'>↗ " + movement + " km / " + history + " min</span>" +
         "</div>" +
         "<p class='status status-" + statusClass + "'>● " + escapeHtml(status) + "</p>" +
@@ -1043,7 +1043,9 @@ function createBusCard(bus, rankIndex = 0) {
     if (favoriteButton) {
         favoriteButton.addEventListener("click", event => {
             event.stopPropagation();
-            toggleFavoriteBus(bus.bus_id);
+            if (typeof window.showComingSoon === "function") {
+                window.showComingSoon("Favorites", "Favorites are currently under development. Bus saving and persistent favorites will be available soon.");
+            }
         });
     }
 
