@@ -246,15 +246,6 @@ def get_processed_buses():
     if buses:
         return buses
 
-    try:
-        buses = refresh_noida_electric_buses()
-    except Exception as error:
-        print(f"On-demand GPS refresh failed: {error}")
-        buses = get_noida_electric_buses()
-
-    if buses:
-        return buses
-
     raise HTTPException(
         status_code=503,
         detail="Live bus data is temporarily unavailable"
