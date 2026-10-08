@@ -386,8 +386,8 @@ function setLocationButtonState(buttonId, state, message) {
     if (state === "success") {
         button.classList.add("location-success");
         button._locationStateTimer = window.setTimeout(() => {
-            if (label) label.textContent = "✓ Location found";
-            else button.textContent = "✓ Location found";
+            if (label) label.textContent = "Location found";
+            else button.textContent = "Location found";
         }, 1450);
         return;
     }
@@ -971,15 +971,15 @@ function createBusCard(bus, rankIndex = 0) {
     let directionHtml;
 
     if (isCurrentlyMoving && bus.likely_towards) {
-        directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'>➤</span><div><small>MOVING TOWARDS</small><strong>" + escapeHtml(bus.likely_towards) + "</strong></div></div>";
+        directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'></span><div><small>MOVING TOWARDS</small><strong>" + escapeHtml(bus.likely_towards) + "</strong></div></div>";
     } else if (isCurrentlyMoving && bus.direction) {
-        directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'>➤</span><div><small>MOVING</small><strong>" + escapeHtml(bus.direction) + "</strong></div></div>";
+        directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'></span><div><small>MOVING</small><strong>" + escapeHtml(bus.direction) + "</strong></div></div>";
     } else if (currentStatus === "no_signal") {
-        directionHtml = "<div class='bus-direction'><span class='direction-wait'>◌</span><div><small>STATUS</small><strong>Not moving · No signal</strong></div></div>";
+        directionHtml = "<div class='bus-direction'><span class='direction-wait' aria-hidden='true'></span><div><small>STATUS</small><strong>Not moving · No signal</strong></div></div>";
     } else if (currentStatus === "stationary" || (Number.isFinite(currentSpeed) && currentSpeed < 5)) {
-        directionHtml = "<div class='bus-direction'><span class='direction-wait'>●</span><div><small>STATUS</small><strong>Stationary</strong></div></div>";
+        directionHtml = "<div class='bus-direction'><span class='direction-wait stationary' aria-hidden='true'></span><div><small>STATUS</small><strong>Stationary</strong></div></div>";
     } else {
-        directionHtml = "<div class='bus-direction'><span class='direction-wait'>◌</span><div><small>STATUS</small><strong>Not moving</strong></div></div>";
+        directionHtml = "<div class='bus-direction'><span class='direction-wait' aria-hidden='true'></span><div><small>STATUS</small><strong>Not moving</strong></div></div>";
     }
 
     const route = getBusRoute(bus.bus_id);
@@ -1021,11 +1021,11 @@ function createBusCard(bus, rankIndex = 0) {
         "</div>" +
         directionHtml +
         "<div class='bus-meta-row'>" +
-            "<span class='bus-meta'>⌖ " + (bus.distance_km ?? "—") + " km</span>" +
+            "<span class='bus-meta'>Distance " + (bus.distance_km ?? "—") + " km</span>" +
             "<span class='bus-meta'>Speed " + (bus.speed ?? 0) + " km/h</span>" +
-            "<span class='bus-meta'>↗ " + movement + " km / " + history + " min</span>" +
+            "<span class='bus-meta'>Movement " + movement + " km / " + history + " min</span>" +
         "</div>" +
-        "<p class='status status-" + statusClass + "'>● " + escapeHtml(status) + "</p>" +
+        "<p class='status status-" + statusClass + "'><span class='status-dot' aria-hidden='true'></span>" + escapeHtml(status) + "</p>" +
         "<p class='updated'>" + escapeHtml(ageLabel) + " · " + sourceLabel + confidenceLabel + " · " + escapeHtml(etaLabel) + (predictionLabel ? " · " + predictionLabel : "") + "</p>" +
         "<div class='trust-summary'><span>" + escapeHtml(bus.position_type || "unknown") + "</span><span>" + (Number.isFinite(Number(bus.route_match_distance_m)) ? "Route " + Math.round(Number(bus.route_match_distance_m)) + "m" : "Route match unavailable") + "</span></div>";
 
