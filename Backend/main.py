@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from services.gps_service import get_latest_raw_electric_buses, get_noida_electric_buses, refresh_noida_electric_buses
+from services.gps_service import get_noida_electric_buses, refresh_noida_electric_buses
 from services.prediction_collector import collector_running, start_collector, stop_collector
 from utils.distance import calculate_distance
 from services.eta_service import calculate_eta
@@ -241,79 +241,34 @@ def admin_ingestion(
     return get_ingestion_stats()
 
 def get_processed_buses():
-    raw_buses = get_latest_raw_electric_buses()
+    buses = get_noida_electric_buses()
 
-    if not raw_buses:
-        try:
-            refresh_noida_electric_buses()
-        except Exception as error:
-            print(f"On-demand GPS refresh failed: {error}", flush=True)
-        raw_buses = get_latest_raw_electric_buses()
+    if buses:
+        return buses
 
-    processed = {
-        str(bus.get("bus_id") or "").strip().upper(): bus
-        for bus in get_noida_electric_buses()
-    }
-
-    buses = []
-    for raw_bus in raw_buses:
-        bus_id = str(raw_bus.get("bus_id") or "").strip().upper()
-        bus = dict(raw_bus)
-        enriched = processed.get(bus_id)
-
-        if enriched:
-            bus.update(enriched)
-            bus["validation_status"] = "accepted"
-        else:
-            bus["validation_status"] = "unvalidated"
-
-        buses.append(bus)
+    try:
+        buses = refresh_noida_electric_buses()
+    except Exception as error:
+        print(f"On-demand GPS refresh failed: {error}", flush=True)
+        buses = get_noida_electric_buses()
 
     if buses:
         return buses
 
     raise HTTPException(
         status_code=503,
-        detail="Live bus data is temporarily unavailable"
+        detail="No validated online Noida Electric bus data is currently available"
     )
 
 
 @app.get("/api/buses")
 def get_buses():
-    raw_buses = get_latest_raw_electric_buses()
-
-    if not raw_buses:
-        try:
-            refresh_noida_electric_buses()
-        except Exception as error:
-            print(f"On-demand GPS refresh failed: {error}", flush=True)
-        raw_buses = get_latest_raw_electric_buses()
-
-    processed_buses = {
-        str(bus.get("bus_id") or "").strip().upper(): bus
-        for bus in get_noida_electric_buses()
-    }
-
-    buses = []
-    for raw_bus in raw_buses:
-        bus_id = str(raw_bus.get("bus_id") or "").strip().upper()
-        processed = processed_buses.get(bus_id)
-
-        if processed:
-            bus = dict(raw_bus)
-            bus.update(processed)
-            bus["validation_status"] = "accepted"
-        else:
-            bus = dict(raw_bus)
-            bus["validation_status"] = "unvalidated"
-
-        buses.append(bus)
+    buses = get_processed_buses()
 
     return {
         "count": len(buses),
         "buses": buses
     }
-
 
 @app.get("/api/buses/nearby")
 def get_nearby_buses(
