@@ -14,6 +14,8 @@ ALLOW_SQLITE_DEV = os.getenv("ALLOW_SQLITE_DEV", "").strip().lower() in {"1", "t
 SQLITE_PATH = os.getenv("PREDICTION_DB_PATH", "/tmp/noidabus_prediction_history.sqlite3")
 MAX_HISTORY = 10
 MODEL_HISTORY = 10
+MAX_VALIDATION_LOG_ROWS = 5000
+MAX_INGESTION_LOG_ROWS = 1000
 MIN_MODEL_POINTS = 3
 _initialized = False
 
@@ -221,6 +223,16 @@ def record_validation_audit(validation):
                     """,
                     rows,
                 )
+                cursor.execute(
+                    """
+                    DELETE FROM gps_validation_log
+                    WHERE id < (
+                        SELECT COALESCE(MAX(id), 0) - %s
+                        FROM gps_validation_log
+                    )
+                    """,
+                    (MAX_VALIDATION_LOG_ROWS,),
+                )
         else:
             connection.executemany(
                 """
@@ -230,6 +242,16 @@ def record_validation_audit(validation):
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 rows,
+            )
+            connection.execute(
+                """
+                DELETE FROM gps_validation_log
+                WHERE id < (
+                    SELECT COALESCE(MAX(id), 0) - ?
+                    FROM gps_validation_log
+                )
+                """,
+                (MAX_VALIDATION_LOG_ROWS,),
             )
         connection.commit()
     finally:
@@ -268,6 +290,16 @@ def record_ingestion_log(
                     """,
                     values,
                 )
+                cursor.execute(
+                    """
+                    DELETE FROM ingestion_log
+                    WHERE id < (
+                        SELECT COALESCE(MAX(id), 0) - %s
+                        FROM ingestion_log
+                    )
+                    """,
+                    (MAX_INGESTION_LOG_ROWS,),
+                )
         else:
             connection.execute(
                 """
@@ -277,6 +309,16 @@ def record_ingestion_log(
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 values,
+            )
+            connection.execute(
+                """
+                DELETE FROM ingestion_log
+                WHERE id < (
+                    SELECT COALESCE(MAX(id), 0) - ?
+                    FROM ingestion_log
+                )
+                """,
+                (MAX_INGESTION_LOG_ROWS,),
             )
 
         connection.commit()
