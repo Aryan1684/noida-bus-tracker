@@ -1165,7 +1165,7 @@ function createPopupContent(bus) {
 
         <br><br>
 
-        🚌 ${directionText}
+        <span class="bus-inline-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 5.5h14a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-1v1.5a1.5 1.5 0 0 1-3 0V18H9v1.5a1.5 1.5 0 0 1-3 0V18H5a2 2 0 0 1-2-2V7.5a2 2 0 0 1 2-2Z"></path><path d="M6 8h12v4H6z"></path><circle cx="7" cy="15.5" r="1.2"></circle><circle cx="17" cy="15.5" r="1.2"></circle></svg></span> ${directionText}
 
         <br>
 
