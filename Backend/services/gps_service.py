@@ -24,6 +24,8 @@ _last_good_buses = []
 _last_good_at = None
 _latest_processed_buses = []
 _latest_processed_at = None
+_latest_raw_electric_buses = []
+_latest_raw_electric_at = None
 _cache_lock = threading.Lock()
 _ingestion_stats = {
     "cycles": 0,
@@ -459,12 +461,23 @@ def get_ingestion_stats():
 def refresh_noida_electric_buses():
     global _last_good_buses, _last_good_at
     global _latest_processed_buses, _latest_processed_at
+    global _latest_raw_electric_buses, _latest_raw_electric_at
 
     started_at = time.perf_counter()
 
     try:
         data = _fetch_live_data()
         upstream_latency_ms = round((time.perf_counter() - started_at) * 1000, 1)
+        raw_electric_buses = [
+            dict(item)
+            for item in data
+            if str(item.get("depot_name") or "").strip().upper() == "NOIDA ELECTRIC"
+        ]
+
+        with _cache_lock:
+            _latest_raw_electric_buses = [dict(bus) for bus in raw_electric_buses]
+            _latest_raw_electric_at = time.time()
+
         buses = _process_live_buses(data, upstream_latency_ms=upstream_latency_ms)
 
         with _cache_lock:
@@ -486,6 +499,13 @@ def refresh_noida_electric_buses():
 
     except Exception as error:
         raise RuntimeError(f"Noida bus refresh failed: {error}") from error
+
+
+def get_latest_raw_electric_buses():
+    with _cache_lock:
+        if _latest_raw_electric_buses:
+            return [dict(bus) for bus in _latest_raw_electric_buses]
+    return []
 
 
 def get_noida_electric_buses(force_refresh=False):
