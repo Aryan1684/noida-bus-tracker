@@ -174,6 +174,10 @@
         return status==="live"&&Number.isFinite(movement)&&movement>=0.08;
     }
 
+    window.showComingSoon=function(title,body){
+        showFeaturePopup(title,body,false);
+    };
+
     function showFeaturePopup(title,body,success){
         var existing=document.getElementById("featureModal");
         if(existing)existing.remove();
@@ -184,7 +188,7 @@
         overlay.innerHTML=
             "<div class='feature-modal-card' role='dialog' aria-modal='true'>"+
             "<button class='feature-modal-close' type='button' aria-label='Close'>×</button>"+
-            "<div class='feature-modal-icon "+(success?"success":"")+"'>"+(success?"✓":"⌖")+"</div>"+
+            "<div class='feature-modal-icon "+(success?"success":"")+"'>"+(success?"OK":"SOON")+"</div>"+
             "<h3>"+title+"</h3>"+
             "<div class='feature-modal-body'>"+body+"</div>"+
             "<button class='feature-modal-ok' type='button'>Got it</button>"+
@@ -244,10 +248,12 @@
 
         section.insertBefore(box,section.querySelector(".section-header"));
 
-        document.getElementById("featureAlert").onclick=enableAlert;
-        document.getElementById("featureFav").onclick=saveFavorite;
-
-        renderFavorites();
+        document.getElementById("featureAlert").onclick=function(){
+            window.showComingSoon("Nearby Alerts","Nearby bus alerts are currently under development. Automatic proximity notifications will be available soon.");
+        };
+        document.getElementById("featureFav").onclick=function(){
+            window.showComingSoon("Favorites","Favorites are currently under development. Saving and managing buses and locations will be available soon.");
+        };
     }
 
     function renderFavorites(){
@@ -703,6 +709,8 @@
     }
 
     function enableAlert(){
+        window.showComingSoon("Nearby Alerts","Nearby bus alerts are currently under development. Automatic proximity notifications will be available soon.");
+        return;
         var enabled=localStorage.getItem(ALERT_KEY)==="true";
 
         if(enabled){
@@ -721,6 +729,7 @@
     }
 
     function checkAlert(){
+        return;
         if(localStorage.getItem(ALERT_KEY)!=="true")return;
 
         var bus=buses.find(function(item){
