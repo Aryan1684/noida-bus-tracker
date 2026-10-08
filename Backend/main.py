@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from services.gps_service import get_noida_electric_buses, refresh_noida_electric_buses
+from services.gps_service import get_latest_raw_electric_buses, get_noida_electric_buses, refresh_noida_electric_buses
 from services.prediction_collector import collector_running, start_collector, stop_collector
 from utils.distance import calculate_distance
 from services.eta_service import calculate_eta
