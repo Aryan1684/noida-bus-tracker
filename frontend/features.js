@@ -23,6 +23,7 @@
             ".feature-coming-soon{display:flex;flex-direction:column;gap:5px;align-items:stretch}.feature-coming-soon>span{font-size:8px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center}.feature-coming-soon button:disabled{opacity:.58;cursor:not-allowed;background:var(--surface2);color:var(--muted);border-color:var(--line);box-shadow:none}"+
             ".feature-toolbar button{min-height:42px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);padding:8px 10px;font-size:10px;font-weight:800}"+
             ".feature-toolbar button:hover{background:var(--text);color:var(--bg)}"+
+            ".feature-toolbar button:disabled,.feature-toolbar button:disabled:hover{background:var(--surface2);color:var(--muted);border-color:var(--line);opacity:.58;cursor:not-allowed;box-shadow:none}"+
             ".feature-icon{width:15px;height:15px;display:inline-block;position:relative;flex:0 0 15px}"+
             ".feature-bell:before{content:'';position:absolute;left:3px;top:2px;width:9px;height:9px;border:1.5px solid currentColor;border-radius:6px 6px 3px 3px}"+
             ".feature-bell:after{content:'';position:absolute;left:1px;top:12px;width:13px;height:1.5px;background:currentColor;border-radius:2px}"+
@@ -250,8 +251,8 @@
         box.id="advancedFeatures";
         box.innerHTML=
             "<div class='feature-toolbar'>"+
-            "<button id='featureAlert' type='button'><span class='feature-icon feature-bell' aria-hidden='true'></span><span>Nearby Alert</span></button>"+
-            "<button id='featureFav' type='button'><span class='feature-icon feature-bookmark' aria-hidden='true'></span><span>Favorites</span></button>"+
+            "<div class='feature-coming-soon'><button id='featureAlert' type='button' disabled aria-disabled='true'><span class='feature-icon feature-bell' aria-hidden='true'></span><span>Nearby Alert</span></button><span>Coming Soon</span></div>"+
+            "<div class='feature-coming-soon'><button id='featureFav' type='button' disabled aria-disabled='true'><span class='feature-icon feature-bookmark' aria-hidden='true'></span><span>Favorites</span></button><span>Coming Soon</span></div>"+
             "</div>"+
             "<div id='featureSummary' class='feature-summary'></div>";
 
