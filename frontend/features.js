@@ -22,6 +22,14 @@
             ".feature-toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px}"+
             ".feature-toolbar button{min-height:42px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);padding:8px 10px;font-size:10px;font-weight:800}"+
             ".feature-toolbar button:hover{background:var(--text);color:var(--bg)}"+
+            ".feature-icon{width:15px;height:15px;display:inline-block;position:relative;flex:0 0 15px}"+
+            ".feature-bell:before{content:'';position:absolute;left:3px;top:2px;width:9px;height:9px;border:1.5px solid currentColor;border-radius:6px 6px 3px 3px}"+
+            ".feature-bell:after{content:'';position:absolute;left:1px;top:12px;width:13px;height:1.5px;background:currentColor;border-radius:2px}"+
+            ".feature-bookmark:before{content:'';position:absolute;left:3px;top:1px;width:9px;height:13px;border:1.5px solid currentColor;border-radius:2px 2px 1px 1px}"+
+            ".feature-bookmark:after{content:'';position:absolute;left:5px;top:10px;width:5px;height:5px;background:var(--surface);transform:rotate(45deg);border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor}"+
+            ".feature-modal-icon{display:inline-flex;align-items:center;justify-content:center;min-width:54px;height:28px;padding:0 9px;border:1px solid var(--line);border-radius:999px;font-size:9px;font-weight:900;letter-spacing:.08em}"+
+            ".bus-inline-icon{display:inline-flex;vertical-align:middle;margin-right:5px;width:16px;height:16px}.bus-inline-icon svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}"+
+            ".favorite-icon{display:inline-flex;width:16px;height:16px}.favorite-icon svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linejoin:round}"+
             ".feature-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}"+
             ".feature-summary div{padding:10px 11px;border-radius:12px;background:var(--surface);color:var(--muted);font-size:9px;border:1px solid var(--line)}"+
             ".feature-summary strong{display:block;color:var(--text);font-size:10px;margin-bottom:3px}"+
