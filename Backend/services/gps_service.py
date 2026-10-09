@@ -107,10 +107,15 @@ def _parse_timestamp(value):
     if not value:
         return None
 
+    raw = str(value).strip()
+
     try:
-        parsed = datetime.fromisoformat(
-            str(value).strip().replace("Z", "+00:00")
-        )
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+
+        if raw.upper().endswith("Z") and parsed.timestamp() > time.time() + 300:
+            local_value = raw[:-1].strip()
+            local_parsed = datetime.fromisoformat(local_value)
+            parsed = local_parsed.replace(tzinfo=ZoneInfo("Asia/Kolkata"))
 
         if parsed.tzinfo is None:
             parsed = parsed.replace(tzinfo=ZoneInfo("Asia/Kolkata"))
