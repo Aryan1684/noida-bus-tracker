@@ -579,9 +579,23 @@ def update_bus_history(bus, history_points=None):
     current_speed = _safe_speed(bus.get("speed"))
     current_status = str(bus.get("vehicle_status") or "").strip().lower()
 
+    recent_distance_km = calculate_distance(
+        history[-2]["latitude"],
+        history[-2]["longitude"],
+        history[-1]["latitude"],
+        history[-1]["longitude"],
+    )
+    recent_interval_seconds = max(1.0, history[-1]["time"] - history[-2]["time"])
+    recent_implied_speed = recent_distance_km / (recent_interval_seconds / 3600.0)
+    movement_evidence = (
+        movement_km >= MIN_MOVEMENT_KM
+        or recent_distance_km >= 0.03
+        or recent_implied_speed >= 3
+    )
+
     bearing = _history_movement_bearing(history)
 
-    if current_status == "stationary" or current_speed < 3:
+    if not movement_evidence and (current_status == "stationary" or current_speed < 3):
         return {
             "direction": get_direction_name(bearing) if bearing is not None else "Stationary",
             "heading": round(bearing, 1) if bearing is not None else None,
@@ -595,7 +609,7 @@ def update_bus_history(bus, history_points=None):
             "movement_status": "stationary"
         }
 
-    if movement_km < MIN_MOVEMENT_KM:
+    if not movement_evidence:
         return {
             "direction": None,
             "heading": None,
