@@ -49,9 +49,10 @@ def _trace(bus_id, stages):
 def validate_gps_batch(raw_buses, previous_points=None):
     previous_points = previous_points or {}
     accepted = []
+    trackable = []
     rejected = []
     seen = set()
-    last_accepted = {
+    last_trackable = {
         str(key).strip().upper(): dict(value)
         for key, value in previous_points.items()
     }
@@ -70,8 +71,14 @@ def validate_gps_batch(raw_buses, previous_points=None):
             continue
         stages.append("identity_valid")
 
-        status = str(bus.get("vehicle_status") or "").strip().lower().replace(" ", "_").replace("-", "_")
-        if status == "no_signal":
+        status = (
+            str(bus.get("vehicle_status") or "")
+            .strip()
+            .lower()
+            .replace(" ", "_")
+            .replace("-", "_")
+        )
+        if status in {"no_signal", "nosignal", "offline", "unavailable"}:
             rejected.append(_reject(bus, "no_signal"))
             continue
         stages.append("signal_available")
@@ -80,6 +87,9 @@ def validate_gps_batch(raw_buses, previous_points=None):
         event_time = _parse_timestamp(timestamp)
         if event_time is None:
             rejected.append(_reject(bus, "invalid_timestamp"))
+            continue
+        if event_time > time.time() + 300:
+            rejected.append(_reject(bus, "future_timestamp"))
             continue
         stages.append("timestamp_valid")
 
@@ -116,10 +126,10 @@ def validate_gps_batch(raw_buses, previous_points=None):
         seen.add(duplicate_key)
         stages.append("deduplicated")
 
-        validation_status = "accepted"
+        temporal_status = "accepted"
         history_trackable = True
+        previous = last_trackable.get(bus_id)
 
-        previous = last_accepted.get(bus_id)
         if previous is not None:
             previous_time = float(previous["event_time"])
             delta_seconds = event_time - previous_time
@@ -130,19 +140,24 @@ def validate_gps_batch(raw_buses, previous_points=None):
                 longitude,
             )
 
-            if delta_seconds < 0:
+            if delta_seconds < -120:
                 rejected.append(
                     _reject(
                         bus,
                         "out_of_order",
                         previous_timestamp=previous.get("timestamp"),
+                        regression_seconds=round(abs(delta_seconds), 2),
                     )
                 )
                 continue
 
-            if delta_seconds == 0:
+            if delta_seconds < 0:
+                temporal_status = "clock_drift"
+                history_trackable = False
+                stages.append("minor_timestamp_regression")
+            elif delta_seconds == 0:
                 if distance_km <= 0.05:
-                    validation_status = "unchanged"
+                    temporal_status = "unchanged_fix"
                     history_trackable = False
                     stages.append("unchanged")
                 else:
@@ -159,7 +174,7 @@ def validate_gps_batch(raw_buses, previous_points=None):
                 stages.append("ordered")
                 implied_speed = distance_km / (delta_seconds / 3600.0)
 
-                if implied_speed > max(MAX_SPEED_KMH, float(speed) + 90.0):
+                if implied_speed > max(MAX_SPEED_KMH, speed + 90.0):
                     rejected.append(
                         _reject(
                             bus,
@@ -180,14 +195,12 @@ def validate_gps_batch(raw_buses, previous_points=None):
                             bus,
                             "impossible_jump",
                             distance_km=round(distance_km, 3),
-                            threshold_km=MAX_JUMP_DISTANCE_KM,
                             interval_seconds=round(delta_seconds, 2),
-                            threshold_seconds=MAX_JUMP_INTERVAL_SECONDS,
                         )
                     )
                     continue
 
-        stages.append("visible")
+        stages.append("plausible_transition")
 
         normalized = {
             "bus_id": bus_id,
@@ -197,18 +210,19 @@ def validate_gps_batch(raw_buses, previous_points=None):
             "speed": round(speed, 1),
             "speed_valid": True,
             "timestamp": timestamp,
-            "fix_unchanged": validation_status == "unchanged",
+            "fix_unchanged": temporal_status == "unchanged_fix",
+            "validation_status": temporal_status,
+            "history_trackable": history_trackable,
             "event_time": event_time,
             "vehicle_status": bus.get("vehicle_status"),
-            "validation_status": validation_status,
-            "history_trackable": history_trackable,
-            "validation_trace": _trace(bus_id, stages + ["accepted"]),
+            "validation_trace": _trace(bus_id, stages + ["visible"]),
         }
 
         accepted.append(normalized)
 
         if history_trackable:
-            last_accepted[bus_id] = normalized
+            trackable.append(normalized)
+            last_trackable[bus_id] = normalized
 
     reason_counts = {}
     for item in rejected:
@@ -216,6 +230,7 @@ def validate_gps_batch(raw_buses, previous_points=None):
 
     return {
         "accepted": accepted,
+        "trackable": trackable,
         "rejected": rejected,
         "stats": {
             "received": len(raw_buses),
