@@ -3,6 +3,7 @@ import os
 import threading
 import time
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import requests
 import socket
@@ -112,7 +113,7 @@ def _parse_timestamp(value):
         )
 
         if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=timezone.utc)
+            parsed = parsed.replace(tzinfo=ZoneInfo("Asia/Kolkata"))
 
         return parsed.timestamp()
     except (TypeError, ValueError):
