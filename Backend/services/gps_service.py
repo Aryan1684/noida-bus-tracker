@@ -420,6 +420,8 @@ def _process_live_buses(data, upstream_latency_ms=None):
     if not buses:
         return []
 
+    trackable_buses = validation["trackable"]
+
     for result in buses:
         fix_age = _fix_age_seconds(result.get("timestamp"), now)
         result["fix_age_seconds"] = fix_age
