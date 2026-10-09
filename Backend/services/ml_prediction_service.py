@@ -323,6 +323,18 @@ def _prune_positions(connection, bus_ids):
         if DATABASE_URL:
             with connection.cursor() as cursor:
                 cursor.execute(
+                    "DELETE FROM bus_positions WHERE bus_id = %s AND event_time > EXTRACT(EPOCH FROM NOW()) + 120",
+                    (bus_id,),
+                )
+        else:
+            connection.execute(
+                "DELETE FROM bus_positions WHERE bus_id = ? AND event_time > CAST(strftime('%s', 'now') AS REAL) + 120",
+                (bus_id,),
+            )
+
+        if DATABASE_URL:
+            with connection.cursor() as cursor:
+                cursor.execute(
                     """
                     DELETE FROM bus_positions
                     WHERE bus_id = %s
