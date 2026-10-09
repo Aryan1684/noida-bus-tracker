@@ -270,19 +270,17 @@ def _process_live_buses(data, upstream_latency_ms=None):
     if not electric_buses:
         return []
 
-    global _validation_previous_points
+    global _validation_last_points
 
     with _cache_lock:
         previous_points = {
             bus_id: dict(point)
-            for bus_id, point in _validation_previous_points.items()
+            for bus_id, point in _validation_last_points.items()
         }
-
-    global _validation_last_points
 
     validation = validate_gps_batch(
         electric_buses,
-        previous_points=_validation_last_points,
+        previous_points=previous_points,
     )
 
     buses = validation["accepted"]
