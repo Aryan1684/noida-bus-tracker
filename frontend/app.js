@@ -41,8 +41,17 @@ function isBusMoving(bus) {
     const status = String(bus && bus.vehicle_status || "").toLowerCase();
     const speed = Number(bus && bus.speed);
     const movement = Number(bus && bus.movement_km);
+    const movementStatus = String(bus && bus.movement_status || "").toLowerCase();
 
-    if (status === "stationary" || status === "no_signal") {
+    if (status === "no_signal") {
+        return false;
+    }
+
+    if (movementStatus === "moving") {
+        return true;
+    }
+
+    if (status === "stationary" && !(Number.isFinite(movement) && movement >= 0.08)) {
         return false;
     }
 
@@ -51,7 +60,6 @@ function isBusMoving(bus) {
     }
 
     return (
-        status === "live" &&
         Number.isFinite(movement) &&
         movement >= 0.08
     );
@@ -967,7 +975,8 @@ function createBusCard(bus, rankIndex = 0) {
     const heading = Number.isFinite(Number(bus.heading)) ? Number(bus.heading) : 0;
     const currentSpeed = Number(bus.speed);
     const currentStatus = String(bus.vehicle_status || "").toLowerCase();
-    const isCurrentlyMoving = currentStatus !== "stationary" && currentStatus !== "no_signal" && Number.isFinite(currentSpeed) && currentSpeed >= 5;
+    const movementStatus = String(bus.movement_status || "").toLowerCase();
+    const isCurrentlyMoving = movementStatus === "moving" || isBusMoving(bus);
     let directionHtml;
 
     if (isCurrentlyMoving && bus.likely_towards) {
@@ -976,6 +985,8 @@ function createBusCard(bus, rankIndex = 0) {
         directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'></span><div><small>MOVING</small><strong>" + escapeHtml(bus.direction) + "</strong></div></div>";
     } else if (currentStatus === "no_signal") {
         directionHtml = "<div class='bus-direction'><span class='direction-wait' aria-hidden='true'></span><div><small>STATUS</small><strong>Not moving · No signal</strong></div></div>";
+    } else if (movementStatus === "moving") {
+        directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'></span><div><small>MOVING</small><strong>" + escapeHtml(bus.direction || "Moving") + "</strong></div></div>";
     } else if (currentStatus === "stationary" || (Number.isFinite(currentSpeed) && currentSpeed < 5)) {
         directionHtml = "<div class='bus-direction'><span class='direction-wait stationary' aria-hidden='true'></span><div><small>STATUS</small><strong>Stationary</strong></div></div>";
     } else {
