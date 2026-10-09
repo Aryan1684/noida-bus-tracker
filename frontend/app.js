@@ -1143,72 +1143,46 @@ function highlightBus(busId) {
 }
 
 function createPopupContent(bus) {
-    let directionText;
-
     const popupSpeed = Number(bus.speed);
+    const popupMovement = Number(bus.movement_km);
+    const movementStatus = String(bus.movement_status || "").toLowerCase();
     const popupStatus = String(bus.vehicle_status || "").toLowerCase();
 
-    if (popupStatus === "stationary" || (Number.isFinite(popupSpeed) && popupSpeed < 5)) {
-        directionText = "Stationary";
+    let movementText = "Movement unavailable";
+    if (movementStatus === "moving") {
+        movementText = bus.likely_towards
+            ? "Moving towards " + escapeHtml(bus.likely_towards)
+            : bus.direction
+            ? "Moving " + escapeHtml(bus.direction)
+            : "Moving";
+    } else if (popupStatus === "stationary" || (Number.isFinite(popupSpeed) && popupSpeed < 5)) {
+        movementText = "Stationary";
     } else if (popupStatus === "no_signal") {
-        directionText = "Not moving · No signal";
-    } else if (bus.likely_towards) {
-        directionText = `Moving towards: ${bus.likely_towards}`;
+        movementText = "No signal";
     } else if (bus.direction) {
-        directionText = `Moving: ${bus.direction}`;
-    } else {
-        directionText = "Not moving";
+        movementText = "Moving " + escapeHtml(bus.direction);
     }
 
+    const speedText = Number.isFinite(popupSpeed) ? popupSpeed + " km/h" : "Unavailable";
+    const distanceText = bus.distance_km != null ? escapeHtml(String(bus.distance_km)) + " km away" : "Distance unavailable";
+    const movementValue = Number.isFinite(popupMovement) ? popupMovement + " km" : "Unavailable";
+    const movementMinutes = Number.isFinite(Number(bus.history_minutes)) ? String(bus.history_minutes) + " min" : "recent period";
+    const etaText = bus.eta_label ? escapeHtml(String(bus.eta_label)) : "Unavailable";
+
     return `
-        <strong>
-            ${escapeHtml(bus.bus_id || "Unknown Bus")}
-        </strong>
-
+        <strong>${escapeHtml(bus.bus_id || "Unknown Bus")}</strong>
         <br><br>
-
-        <span class="bus-inline-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 5.5h14a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-1v1.5a1.5 1.5 0 0 1-3 0V18H9v1.5a1.5 1.5 0 0 1-3 0V18H5a2 2 0 0 1-2-2V7.5a2 2 0 0 1 2-2Z"></path><path d="M6 8h12v4H6z"></path><circle cx="7" cy="15.5" r="1.2"></circle><circle cx="17" cy="15.5" r="1.2"></circle></svg></span> ${directionText}
-
+        <span class="bus-inline-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 5.5h14a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-1v1.5a1.5 1.5 0 0 1-3 0V18H9v1.5a1.5 1.5 0 0 1-3 0V18H5a2 2 0 0 1-2-2V7.5a2 2 0 0 1 2-2Z"></path><path d="M6 8h12v4H6z"></path><circle cx="7" cy="15.5" r="1.2"></circle><circle cx="17" cy="15.5" r="1.2"></circle></svg></span> ${movementText}
         <br>
-
-        Speed:
-        ${bus.speed ?? 0} km/h
-
+        Speed: ${speedText}
         <br>
-
-        Distance:
-        ${bus.distance_km ?? "Unknown"} km
-
+        Distance: ${distanceText}
         <br>
-
-        Movement:
-        ${bus.movement_km ?? 0} km
-        in ${bus.history_minutes ?? 0} min
-
+        Movement: ${movementValue} in ${movementMinutes}
         <br>
-
-        Status:
-        ${formatStatus(
-            bus.vehicle_status
-        )}
-
-        <br><br>
-
-        <strong>
-            ${bus.prediction_applied ? "AI-estimated display position" : "Live GPS position"}
-        </strong>
-
-        <br><br>
-        <strong>${escapeHtml(bus.confidence_label || "Confidence unavailable")}</strong>
-        ${Number.isFinite(Number(bus.gps_age_seconds)) ? "<br>GPS age: " + Math.round(Number(bus.gps_age_seconds)) + "s" : ""}
-        ${Array.isArray(bus.confidence_reasons) && bus.confidence_reasons.length
-            ? "<br><br>Why: " + bus.confidence_reasons.map(reason =>
-                escapeHtml(String(reason.rule || "").replaceAll("_", " ")) +
-                " (" + escapeHtml(String(reason.effect || "")) + ")"
-            ).join(" · ")
-            : ""}
-        ${bus.prediction_available ? "<br><br>AI forecast available" : ""}
-        ${bus.gps_anomaly ? "<br>GPS quality: anomaly detected" : ""}
+        Status: ${formatStatus(bus.vehicle_status)}
+        <br>
+        ETA: ${etaText}
     `;
 }
 
@@ -1651,62 +1625,68 @@ function updateSelectedBusPanel(bus) {
     const distanceNode = document.getElementById("selectedBusDistance");
     const speedNode = document.getElementById("selectedBusSpeed");
     const movementNode = document.getElementById("selectedBusMovement");
-    const confidenceNode = document.getElementById("selectedBusConfidence");
-    const ageNode = document.getElementById("selectedBusAge");
-    const routeMatchNode = document.getElementById("selectedBusRouteMatch");
-    const reasonsNode = document.getElementById("selectedBusConfidenceReasons");
+    const etaNode = document.getElementById("selectedBusEta");
     const followButton = document.getElementById("selectedFollowBtn");
 
+    const moving = isBusMoving(bus);
+    const status = String(bus.vehicle_status || "").toLowerCase();
+    const direction = bus.likely_towards || bus.direction || (moving ? "Moving" : "Stationary");
+
     if (idNode) idNode.textContent = bus.bus_id || "Unknown Bus";
+
     if (routeNode) {
         const route = getBusRoute(bus.bus_id);
         routeNode.textContent = route || "";
         routeNode.classList.toggle("hidden", !route);
     }
-    if (statusNode) statusNode.textContent = bus.data_stale ? "LAST AVAILABLE" : "LIVE";
-    if (directionNode) directionNode.textContent = bus.likely_towards || bus.direction || "Determining...";
-    if (arrowNode && Number.isFinite(Number(bus.heading))) arrowNode.style.transform = "rotate(" + Number(bus.heading) + "deg)";
-    if (distanceNode) distanceNode.textContent = (bus.distance_km ?? "—") + " km away";
-    if (speedNode) speedNode.textContent = (bus.speed ?? 0) + " km/h";
-    if (movementNode) movementNode.textContent = (bus.movement_km ?? 0) + " km / " + (bus.history_minutes ?? 0) + " min";
-    if (confidenceNode) confidenceNode.textContent = bus.confidence_label || "Confidence unavailable";
 
-    const age = Number(bus.gps_age_seconds);
-    if (ageNode) {
-        ageNode.textContent = Number.isFinite(age)
-            ? age < 5 ? "Just now" : "Updated " + Math.round(age) + "s ago"
-            : "GPS age unavailable";
+    if (statusNode) {
+        statusNode.textContent = status === "no_signal"
+            ? "NO SIGNAL"
+            : status === "stationary"
+            ? "STATIONARY"
+            : moving
+            ? "MOVING"
+            : "LIVE";
     }
 
-    if (routeMatchNode) {
-        const distance = Number(bus.route_match_distance_m);
-        const progress = Number(bus.route_progress);
-        routeMatchNode.textContent = Number.isFinite(distance)
-            ? "Route match " + Math.round(distance) + "m · " +
-                (Number.isFinite(progress) ? Math.round(progress * 100) + "% route progress" : "progress unavailable")
-            : "Route match unavailable";
+    if (directionNode) directionNode.textContent = direction;
+    if (arrowNode) {
+        const heading = Number(bus.heading);
+        arrowNode.style.transform = Number.isFinite(heading)
+            ? "rotate(" + heading + "deg)"
+            : "rotate(0deg)";
+        arrowNode.classList.toggle("hidden", !Number.isFinite(heading));
     }
 
-    const nextStopsNode = document.getElementById("selectedBusNextStops");
-    if (nextStopsNode) {
-        const stops = Array.isArray(bus.next_stops) ? bus.next_stops.slice(0, 3) : [];
-        nextStopsNode.textContent = stops.length ? "Next stops: " + stops.join(" → ") : "Next stops unavailable";
+    if (distanceNode) {
+        distanceNode.textContent = bus.distance_km != null
+            ? String(bus.distance_km) + " km away"
+            : "Distance unavailable";
     }
 
-    const etaNode = document.getElementById("selectedBusEta");
+    if (speedNode) {
+        const speed = Number(bus.speed);
+        speedNode.textContent = Number.isFinite(speed)
+            ? String(bus.speed) + " km/h"
+            : "Speed unavailable";
+    }
+
+    if (movementNode) {
+        const movement = Number(bus.movement_km);
+        const minutes = Number(bus.history_minutes);
+
+        movementNode.textContent =
+            (Number.isFinite(movement) ? String(bus.movement_km) : "0") +
+            " km / " +
+            (Number.isFinite(minutes) ? String(bus.history_minutes) : "recent") +
+            " min";
+    }
+
     if (etaNode) {
-        etaNode.textContent = bus.eta_label || (
-            Number.isFinite(Number(bus.eta_minutes))
-                ? "ETA: " + Math.max(1, Number(bus.eta_minutes)) + " min"
-                : "ETA unavailable"
-        );
-    }
-
-    if (reasonsNode) {
-        const reasons = Array.isArray(bus.confidence_reasons) ? bus.confidence_reasons : [];
-        reasonsNode.textContent = reasons.length
-            ? reasons.map(reason => String(reason.rule || "").replaceAll("_", " ")).join(" · ")
-            : "No confidence diagnostics";
+        etaNode.textContent = bus.eta_label
+            ? "ETA: " + String(bus.eta_label)
+            : "ETA unavailable";
     }
 
     if (followButton) followButton.textContent = "Follow bus";
