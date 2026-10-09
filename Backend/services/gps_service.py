@@ -40,6 +40,7 @@ _ingestion_stats = {
     "last_buses_disappeared": [],
 }
 _previous_seen_bus_ids = set()
+_validation_last_points = {}
 _identity_last_seen = {}
 _identity_warnings = []
 _validation_previous_points = {}
@@ -277,9 +278,11 @@ def _process_live_buses(data, upstream_latency_ms=None):
             for bus_id, point in _validation_previous_points.items()
         }
 
+    global _validation_last_points
+
     validation = validate_gps_batch(
         electric_buses,
-        previous_points=previous_points,
+        previous_points=_validation_last_points,
     )
 
     with _cache_lock:
@@ -316,6 +319,10 @@ def _process_live_buses(data, upstream_latency_ms=None):
         disappeared = sorted(_previous_seen_bus_ids - accepted_ids)
         _previous_seen_bus_ids.clear()
         _previous_seen_bus_ids.update(accepted_ids)
+        _validation_last_points = {
+            item["bus_id"]: dict(item)
+            for item in validation["accepted"]
+        }
 
         ages = [
             int(_fix_age_seconds(item.get("timestamp"), now))
