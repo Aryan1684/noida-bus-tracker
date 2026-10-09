@@ -312,14 +312,14 @@ def _process_live_buses(data, upstream_latency_ms=None):
         _ingestion_stats["buses_received"] += validation["stats"]["received"]
         _ingestion_stats["buses_accepted"] += validation["stats"]["accepted"]
         _ingestion_stats["buses_rejected"] += validation["stats"]["rejected"]
-        accepted_ids = {item["bus_id"] for item in validation["accepted"]}
+        accepted_ids = {item["bus_id"] for item in trackable_buses}
         disappeared = sorted(_previous_seen_bus_ids - accepted_ids)
         _previous_seen_bus_ids.clear()
         _previous_seen_bus_ids.update(accepted_ids)
 
         ages = [
             int(_fix_age_seconds(item.get("timestamp"), now))
-            for item in validation["accepted"]
+            for item in buses
             if _fix_age_seconds(item.get("timestamp"), now) is not None
         ]
 
@@ -329,7 +329,7 @@ def _process_live_buses(data, upstream_latency_ms=None):
         )
         _ingestion_stats["last_buses_disappeared"] = disappeared
         current_time = time.time()
-        for item in validation["accepted"]:
+        for item in trackable_buses:
             bus_id = item["bus_id"]
             previous_identity = _identity_last_seen.get(bus_id)
             if previous_identity:
@@ -363,6 +363,7 @@ def _process_live_buses(data, upstream_latency_ms=None):
             )
 
     buses = validation["accepted"]
+    trackable_buses = validation["trackable"]
 
     try:
         record_ingestion_log(
@@ -394,7 +395,7 @@ def _process_live_buses(data, upstream_latency_ms=None):
         )
 
     try:
-        histories = prepare_histories(buses)
+        histories = prepare_histories(trackable_buses)
     except Exception as error:
         print(f"GPS history processing failed; continuing without history: {error}", flush=True)
         histories = {}
