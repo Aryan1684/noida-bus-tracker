@@ -38,11 +38,11 @@ class ValidationServiceTests(unittest.TestCase):
         ])
         self.assertEqual(result["stats"]["reject_reasons"]["out_of_order"], 1)
 
-    def test_bad_coordinates_are_rejected(self):
+    def test_missing_coordinates_are_rejected(self):
         result = validate_gps_batch([
-            point(latitude=61.716667, longitude=77.409700)
+            point(latitude=None, longitude=77.409700)
         ])
-        self.assertEqual(result["stats"]["reject_reasons"]["outside_noida_bounds"], 1)
+        self.assertEqual(result["stats"]["reject_reasons"]["invalid_coordinates"], 1)
 
     def test_impossible_speed_is_rejected(self):
         result = validate_gps_batch([point(speed=91)])
@@ -71,6 +71,19 @@ class ValidationServiceTests(unittest.TestCase):
             previous_points={"TEST001": previous},
         )
         self.assertEqual(result["stats"]["reject_reasons"]["out_of_order"], 1)
+
+    def test_future_z_timestamp_uses_india_wall_clock(self):
+        first = validate_gps_batch([
+            point(timestamp="2099-01-02T17:38:53Z")
+        ])["accepted"][0]
+        expected = first["event_time"]
+
+        self.assertEqual(first["timestamp_status"], "valid")
+        self.assertTrue(first["history_trackable"])
+        self.assertLess(
+            expected,
+            4070930933.0
+        )
 
     def test_previous_point_is_used_for_jump_validation(self):
         previous = {
