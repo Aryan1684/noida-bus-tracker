@@ -141,35 +141,17 @@ def validate_gps_batch(raw_buses, previous_points=None):
             )
 
             if delta_seconds < -120:
-                rejected.append(
-                    _reject(
-                        bus,
-                        "out_of_order",
-                        previous_timestamp=previous.get("timestamp"),
-                        regression_seconds=round(abs(delta_seconds), 2),
-                    )
-                )
-                continue
-
-            if delta_seconds < 0:
+                temporal_status = "out_of_order"
+                history_trackable = False
+                stages.append("large_timestamp_regression")
+            elif delta_seconds < 0:
                 temporal_status = "clock_drift"
                 history_trackable = False
                 stages.append("minor_timestamp_regression")
             elif delta_seconds == 0:
-                if distance_km <= 0.05:
-                    temporal_status = "unchanged_fix"
-                    history_trackable = False
-                    stages.append("unchanged")
-                else:
-                    rejected.append(
-                        _reject(
-                            bus,
-                            "out_of_order",
-                            previous_timestamp=previous.get("timestamp"),
-                            distance_km=round(distance_km, 3),
-                        )
-                    )
-                    continue
+                temporal_status = "unchanged_fix"
+                history_trackable = False
+                stages.append("unchanged")
             else:
                 stages.append("ordered")
                 implied_speed = distance_km / (delta_seconds / 3600.0)
