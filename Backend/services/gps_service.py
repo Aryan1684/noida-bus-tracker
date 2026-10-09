@@ -42,6 +42,7 @@ _ingestion_stats = {
 _previous_seen_bus_ids = set()
 _identity_last_seen = {}
 _identity_warnings = []
+_validation_previous_points = {}
 MAX_CACHE_SECONDS = 3600
 PROCESSED_CACHE_SECONDS = max(120, int(int(os.getenv("PREDICTION_COLLECT_INTERVAL_SECONDS", "60")) * 2.5))
 
@@ -268,22 +269,28 @@ def _process_live_buses(data, upstream_latency_ms=None):
     if not electric_buses:
         return []
 
-    raw_ids = [
-        str(item.get("bus_id") or "").strip().upper()
-        for item in electric_buses
-        if item.get("bus_id")
-    ]
+    global _validation_previous_points
 
-    try:
-        previous_points = load_latest_points(raw_ids)
-    except Exception as error:
-        print(f"GPS history read failed; continuing without history: {error}", flush=True)
-        previous_points = {}
+    with _cache_lock:
+        previous_points = {
+            bus_id: dict(point)
+            for bus_id, point in _validation_previous_points.items()
+        }
 
     validation = validate_gps_batch(
         electric_buses,
         previous_points=previous_points,
     )
+
+    with _cache_lock:
+        for item in validation["accepted"]:
+            _validation_previous_points[item["bus_id"]] = {
+                "timestamp": item.get("timestamp"),
+                "event_time": item.get("event_time"),
+                "latitude": item.get("latitude"),
+                "longitude": item.get("longitude"),
+                "speed": item.get("speed", 0),
+            }
 
     print(
         f"GPS validation: received={validation['stats']['received']} "
