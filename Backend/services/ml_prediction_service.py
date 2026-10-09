@@ -3,6 +3,7 @@ import os
 import sqlite3
 import time
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from sklearn.ensemble import IsolationForest
 from sklearn.linear_model import Ridge
@@ -147,12 +148,21 @@ def _parse_timestamp(value):
     if not value:
         return None
 
+    raw = str(value).strip()
+
     try:
-        parsed = datetime.fromisoformat(str(value).strip().replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+
+        if raw.upper().endswith("Z") and parsed.timestamp() > time.time() + 300:
+            local_value = raw[:-1].strip()
+            local_parsed = datetime.fromisoformat(local_value)
+            parsed = local_parsed.replace(tzinfo=ZoneInfo("Asia/Kolkata"))
+
         if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=timezone.utc)
+            parsed = parsed.replace(tzinfo=ZoneInfo("Asia/Kolkata"))
+
         return parsed.timestamp()
-    except ValueError:
+    except (TypeError, ValueError):
         return None
 
 
@@ -513,6 +523,7 @@ def load_histories(bus_ids):
                         SELECT event_time, latitude, longitude, speed
                         FROM bus_positions
                         WHERE bus_id = %s
+                          AND event_time <= EXTRACT(EPOCH FROM NOW()) + 120
                         ORDER BY event_time DESC, id DESC
                         LIMIT %s
                         """,
@@ -525,6 +536,7 @@ def load_histories(bus_ids):
                     SELECT event_time, latitude, longitude, speed
                     FROM bus_positions
                     WHERE bus_id = ?
+                      AND event_time <= CAST(strftime('%s', 'now') AS REAL) + 120
                     ORDER BY event_time DESC, id DESC
                     LIMIT ?
                     """,
