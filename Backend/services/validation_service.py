@@ -1,6 +1,7 @@
 import math
 import time
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from utils.distance import calculate_distance
 
@@ -18,7 +19,7 @@ def _parse_timestamp(value):
             str(value).strip().replace("Z", "+00:00")
         )
         if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=timezone.utc)
+            parsed = parsed.replace(tzinfo=ZoneInfo("Asia/Kolkata"))
         return parsed.timestamp()
     except (TypeError, ValueError):
         return None
