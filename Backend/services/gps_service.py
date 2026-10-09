@@ -285,15 +285,14 @@ def _process_live_buses(data, upstream_latency_ms=None):
         previous_points=_validation_last_points,
     )
 
+    buses = validation["accepted"]
+    trackable_buses = validation["trackable"]
+
     with _cache_lock:
-        for item in validation["accepted"]:
-            _validation_previous_points[item["bus_id"]] = {
-                "timestamp": item.get("timestamp"),
-                "event_time": item.get("event_time"),
-                "latitude": item.get("latitude"),
-                "longitude": item.get("longitude"),
-                "speed": item.get("speed", 0),
-            }
+        _validation_last_points = {
+            item["bus_id"]: dict(item)
+            for item in trackable_buses
+        }
 
     print(
         f"GPS validation: received={validation['stats']['received']} "
@@ -368,9 +367,6 @@ def _process_live_buses(data, upstream_latency_ms=None):
             _ingestion_stats["reject_reasons"][reason] = (
                 _ingestion_stats["reject_reasons"].get(reason, 0) + count
             )
-
-    buses = validation["accepted"]
-    trackable_buses = validation["trackable"]
 
     try:
         record_ingestion_log(
