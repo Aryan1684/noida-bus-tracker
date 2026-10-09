@@ -588,7 +588,8 @@ def update_bus_history(bus, history_points=None):
     recent_interval_seconds = max(1.0, history[-1]["time"] - history[-2]["time"])
     recent_implied_speed = recent_distance_km / (recent_interval_seconds / 3600.0)
     movement_evidence = (
-        movement_km >= MIN_MOVEMENT_KM
+        current_speed >= 3
+        or movement_km >= MIN_MOVEMENT_KM
         or recent_distance_km >= 0.03
         or recent_implied_speed >= 3
     )
