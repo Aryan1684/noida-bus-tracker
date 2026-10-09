@@ -14,12 +14,19 @@ def _parse_timestamp(value):
     if not value:
         return None
 
+    raw = str(value).strip()
+
     try:
-        parsed = datetime.fromisoformat(
-            str(value).strip().replace("Z", "+00:00")
-        )
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+
+        if raw.upper().endswith("Z") and parsed.timestamp() > time.time() + 300:
+            local_value = raw[:-1].strip()
+            local_parsed = datetime.fromisoformat(local_value)
+            parsed = local_parsed.replace(tzinfo=ZoneInfo("Asia/Kolkata"))
+
         if parsed.tzinfo is None:
             parsed = parsed.replace(tzinfo=ZoneInfo("Asia/Kolkata"))
+
         return parsed.timestamp()
     except (TypeError, ValueError):
         return None
@@ -134,7 +141,7 @@ def validate_gps_batch(raw_buses, previous_points=None):
         stages.append("deduplicated")
 
         temporal_status = "accepted"
-        history_trackable = locals().get("history_trackable", True)
+        history_trackable = True
         previous = last_trackable.get(bus_id)
 
         if previous is not None:
