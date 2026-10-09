@@ -1,4 +1,5 @@
 import math
+import time
 from datetime import datetime, timezone
 
 from utils.distance import calculate_distance
@@ -79,6 +80,9 @@ def validate_gps_batch(raw_buses, previous_points=None):
         event_time = _parse_timestamp(timestamp)
         if event_time is None:
             rejected.append(_reject(bus, "invalid_timestamp"))
+            continue
+        if event_time > time.time() + 300:
+            rejected.append(_reject(bus, "future_timestamp"))
             continue
         stages.append("timestamp_valid")
 
