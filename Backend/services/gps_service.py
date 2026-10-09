@@ -316,11 +316,6 @@ def _process_live_buses(data, upstream_latency_ms=None):
         disappeared = sorted(_previous_seen_bus_ids - accepted_ids)
         _previous_seen_bus_ids.clear()
         _previous_seen_bus_ids.update(accepted_ids)
-        _validation_last_points = {
-            item["bus_id"]: dict(item)
-            for item in validation["accepted"]
-        }
-
         ages = [
             int(_fix_age_seconds(item.get("timestamp"), now))
             for item in buses
