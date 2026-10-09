@@ -85,14 +85,20 @@ def validate_gps_batch(raw_buses, previous_points=None):
         stages.append("signal_available")
 
         timestamp = bus.get("timestamp")
-        event_time = _parse_timestamp(timestamp)
+        parsed_event_time = _parse_timestamp(timestamp)
+        event_time = parsed_event_time
+        timestamp_status = "valid"
+
         if event_time is None:
-            rejected.append(_reject(bus, "invalid_timestamp"))
-            continue
-        if event_time > time.time() + 300:
-            rejected.append(_reject(bus, "future_timestamp"))
-            continue
-        stages.append("timestamp_valid")
+            event_time = time.time()
+            timestamp_status = "missing_or_invalid"
+            history_trackable = False
+        elif event_time > time.time() + 300:
+            event_time = time.time()
+            timestamp_status = "future_normalized"
+            history_trackable = False
+
+        stages.append("timestamp_received")
 
         latitude = _safe_float(bus.get("latitude"))
         longitude = _safe_float(bus.get("longitude"))
@@ -128,7 +134,7 @@ def validate_gps_batch(raw_buses, previous_points=None):
         stages.append("deduplicated")
 
         temporal_status = "accepted"
-        history_trackable = True
+        history_trackable = locals().get("history_trackable", True)
         previous = last_trackable.get(bus_id)
 
         if previous is not None:
@@ -219,6 +225,7 @@ def validate_gps_batch(raw_buses, previous_points=None):
             "speed": round(speed, 1),
             "speed_valid": True,
             "timestamp": timestamp,
+            "timestamp_status": timestamp_status,
             "fix_unchanged": temporal_status == "unchanged_fix",
             "validation_status": temporal_status,
             "history_trackable": history_trackable,
