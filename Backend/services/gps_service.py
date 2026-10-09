@@ -389,11 +389,13 @@ def _process_live_buses(data, upstream_latency_ms=None):
         result["fix_age_seconds"] = fix_age
         result["gps_age_seconds"] = fix_age
         result["data_stale"] = bool(
-            fix_age is None or fix_age > 180
+            result.get("fix_unchanged")
+            or fix_age is None
+            or fix_age > 180
         )
         result["source_health"] = (
-            "fresh" if fix_age is not None and fix_age <= 90
-            else "aging" if fix_age is not None and fix_age <= 180
+            "fresh" if not result.get("fix_unchanged") and fix_age is not None and fix_age <= 90
+            else "aging" if not result.get("fix_unchanged") and fix_age is not None and fix_age <= 180
             else "stale"
         )
 
