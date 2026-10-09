@@ -261,9 +261,52 @@ def _process_live_buses(data, upstream_latency_ms=None):
         if str(item.get("depot_name") or "").strip().upper() == "NOIDA ELECTRIC"
     ]
 
+    raw_electric_count = len(electric_buses)
+    latest_by_bus = {}
+
+    for item in electric_buses:
+        bus_id = str(item.get("bus_id") or "").strip().upper()
+        if not bus_id:
+            continue
+
+        status = (
+            str(item.get("vehicle_status") or "")
+            .strip()
+            .lower()
+            .replace(" ", "_")
+            .replace("-", "_")
+        )
+        current = latest_by_bus.get(bus_id)
+
+        if current is None:
+            latest_by_bus[bus_id] = item
+            continue
+
+        current_status = (
+            str(current.get("vehicle_status") or "")
+            .strip()
+            .lower()
+            .replace(" ", "_")
+            .replace("-", "_")
+        )
+        item_time = _parse_timestamp(item.get("timestamp"))
+        current_time = _parse_timestamp(current.get("timestamp"))
+        item_online = status not in {"no_signal", "nosignal", "offline", "unavailable"}
+        current_online = current_status not in {"no_signal", "nosignal", "offline", "unavailable"}
+
+        if item_online and not current_online:
+            latest_by_bus[bus_id] = item
+        elif item_online == current_online and item_time is not None and (
+            current_time is None or item_time > current_time
+        ):
+            latest_by_bus[bus_id] = item
+
+    electric_buses = list(latest_by_bus.values())
+
     print(
         f"GPS feed received {len(data)} raw records; "
-        f"{len(electric_buses)} match NOIDA ELECTRIC",
+        f"{raw_electric_count} NOIDA ELECTRIC records; "
+        f"{len(electric_buses)} unique buses after dedupe",
         flush=True,
     )
 
