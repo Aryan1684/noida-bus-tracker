@@ -141,13 +141,39 @@ def validate_gps_batch(raw_buses, previous_points=None):
             )
 
             if delta_seconds < -120:
-                temporal_status = "out_of_order"
-                history_trackable = False
-                stages.append("large_timestamp_regression")
+                current_age = time.time() - event_time
+                previous_age = time.time() - previous_time
+                if current_age <= 600 and previous_age < -300:
+                    temporal_status = "baseline_reset"
+                    history_trackable = True
+                    stages.append("future_baseline_reset")
+                else:
+                    rejected.append(
+                        _reject(
+                            bus,
+                            "out_of_order",
+                            previous_timestamp=previous.get("timestamp"),
+                            regression_seconds=round(abs(delta_seconds), 2),
+                        )
+                    )
+                    continue
             elif delta_seconds < 0:
-                temporal_status = "clock_drift"
-                history_trackable = False
-                stages.append("minor_timestamp_regression")
+                current_age = time.time() - event_time
+                previous_age = time.time() - previous_time
+                if current_age <= 600 and previous_age < -300:
+                    temporal_status = "baseline_reset"
+                    history_trackable = True
+                    stages.append("future_baseline_reset")
+                else:
+                    rejected.append(
+                        _reject(
+                            bus,
+                            "out_of_order",
+                            previous_timestamp=previous.get("timestamp"),
+                            regression_seconds=round(abs(delta_seconds), 2),
+                        )
+                    )
+                    continue
             elif delta_seconds == 0:
                 temporal_status = "unchanged_fix"
                 history_trackable = False
