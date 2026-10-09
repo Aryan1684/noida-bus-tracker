@@ -120,7 +120,23 @@ def validate_gps_batch(raw_buses, previous_points=None):
             previous_time = float(previous["event_time"])
             delta_seconds = event_time - previous_time
 
-            if delta_seconds <= 0:
+            if delta_seconds == 0:
+                same_position = (
+                    abs(latitude - float(previous["latitude"])) < 0.00001
+                    and abs(longitude - float(previous["longitude"])) < 0.00001
+                )
+                if same_position:
+                    stages.append("unchanged")
+                else:
+                    rejected.append(
+                        _reject(
+                            bus,
+                            "out_of_order",
+                            previous_timestamp=previous.get("timestamp"),
+                        )
+                    )
+                    continue
+            elif delta_seconds < 0:
                 rejected.append(
                     _reject(
                         bus,
@@ -129,14 +145,15 @@ def validate_gps_batch(raw_buses, previous_points=None):
                     )
                 )
                 continue
-            stages.append("ordered")
+            else:
+                stages.append("ordered")
 
-            distance_km = calculate_distance(
-                previous["latitude"],
-                previous["longitude"],
-                latitude,
-                longitude,
-            )
+                distance_km = calculate_distance(
+                    previous["latitude"],
+                    previous["longitude"],
+                    latitude,
+                    longitude,
+                )
 
             if (
                 delta_seconds < MAX_JUMP_INTERVAL_SECONDS
@@ -164,6 +181,7 @@ def validate_gps_batch(raw_buses, previous_points=None):
             "speed": round(speed, 1),
             "speed_valid": True,
             "timestamp": timestamp,
+            "fix_unchanged": "unchanged" in stages,
             "event_time": event_time,
             "vehicle_status": bus.get("vehicle_status"),
             "validation_trace": _trace(bus_id, stages + ["accepted"]),
