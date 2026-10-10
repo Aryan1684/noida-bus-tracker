@@ -718,11 +718,12 @@ async function loadNearbyBuses(
         )}` +
         `&radius=${encodeURIComponent(
             radius
-        )}`;
+        )}` +
+        `&_refresh=${Date.now()}`;
 
     try {
         const response =
-            await fetch(url);
+            await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache" } });
 
         if (!response.ok) {
             throw new Error(
