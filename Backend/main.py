@@ -71,12 +71,12 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup_prediction_collector():
-    start_collector()
+    pass
 
 
 @app.on_event("shutdown")
 def shutdown_prediction_collector():
-    stop_collector()
+    pass
 
 
 @app.get("/")
