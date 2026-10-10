@@ -248,8 +248,6 @@ def get_direct_live_buses():
         if not bus_id:
             continue
         status = str(item.get("vehicle_status") or "").strip().lower().replace(" ", "_").replace("-", "_")
-        if status in {"no_signal", "nosignal", "offline", "unavailable"}:
-            continue
         try:
             latitude = float(item.get("latitude"))
             longitude = float(item.get("longitude"))
@@ -266,7 +264,7 @@ def get_direct_live_buses():
             "latitude": latitude,
             "longitude": longitude,
             "speed": max(0.0, speed) if math.isfinite(speed) else 0.0,
-            "vehicle_status": "stationary" if status == "stationary" else "live",
+            "vehicle_status": "stationary" if status == "stationary" else "no_signal" if status in {"no_signal", "nosignal", "offline", "unavailable"} else "live",
             "movement_status": "unknown",
             "direction": None,
             "heading": None,
