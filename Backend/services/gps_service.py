@@ -280,7 +280,29 @@ def get_direct_live_buses():
             latest[bus_id] = bus
 
     buses = list(latest.values())
-    print(f"Direct MARGDARSHI mode: {len(buses)} online Noida Electric buses", flush=True)
+    status_counts = {}
+    for bus in buses:
+        status = str(bus.get("vehicle_status") or "unknown")
+        status_counts[status] = status_counts.get(status, 0) + 1
+    sample = [
+        {
+            "bus_id": bus.get("bus_id"),
+            "timestamp": bus.get("timestamp"),
+            "latitude": bus.get("latitude"),
+            "longitude": bus.get("longitude"),
+            "status": bus.get("vehicle_status"),
+        }
+        for bus in buses[:5]
+    ]
+    unique_positions = len({
+        (round(bus["latitude"], 5), round(bus["longitude"], 5))
+        for bus in buses
+    })
+    print(
+        f"Direct MARGDARSHI feed: buses={len(buses)} "
+        f"unique_positions={unique_positions} statuses={status_counts} sample={sample}",
+        flush=True,
+    )
     return buses
 
 
