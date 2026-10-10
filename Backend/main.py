@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from services.gps_service import get_noida_electric_buses, refresh_noida_electric_buses
+from services.gps_service import get_noida_electric_buses, refresh_noida_electric_buses, get_direct_live_buses
 from services.prediction_collector import collector_running, start_collector, stop_collector
 from utils.distance import calculate_distance
 from services.eta_service import calculate_eta
@@ -241,25 +241,16 @@ def admin_ingestion(
     return get_ingestion_stats()
 
 def get_processed_buses():
-    buses = get_noida_electric_buses()
-
-    if buses:
-        return buses
-
     try:
-        buses = refresh_noida_electric_buses()
+        buses = get_direct_live_buses()
     except Exception as error:
-        print(f"On-demand GPS refresh failed: {error}", flush=True)
-        buses = get_noida_electric_buses()
+        print(f"Direct MARGDARSHI fetch failed: {error}", flush=True)
+        raise HTTPException(status_code=502, detail="MARGDARSHI live bus feed is temporarily unavailable")
 
-    if buses:
-        return buses
+    if not buses:
+        raise HTTPException(status_code=503, detail="MARGDARSHI returned no buses with valid coordinates")
 
-    raise HTTPException(
-        status_code=503,
-        detail="No validated online Noida Electric bus data is currently available"
-    )
-
+    return buses
 
 @app.get("/api/buses")
 def get_buses():
