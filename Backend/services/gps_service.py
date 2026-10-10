@@ -224,6 +224,68 @@ def _post_with_dns_fallback(url, headers, timeout=(4, 8)):
         raise last_error
 
 
+def get_direct_live_buses():
+    response = _post_with_dns_fallback(
+        GPS_API_URL,
+        headers={
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json, text/plain, */*",
+            "Origin": "https://margdarshi.upsrtcvlt.com",
+            "Referer": "https://margdarshi.upsrtcvlt.com/",
+        },
+        timeout=(4, 8),
+    )
+    response.raise_for_status()
+    data = response.json()
+    if not isinstance(data, list):
+        raise RuntimeError("Unexpected MARGDARSHI response")
+
+    latest = {}
+    for item in data:
+        if str(item.get("depot_name") or "").strip().upper() != "NOIDA ELECTRIC":
+            continue
+        bus_id = str(item.get("bus_id") or "").strip().upper()
+        if not bus_id:
+            continue
+        status = str(item.get("vehicle_status") or "").strip().lower().replace(" ", "_").replace("-", "_")
+        if status in {"no_signal", "nosignal", "offline", "unavailable"}:
+            continue
+        try:
+            latitude = float(item.get("latitude"))
+            longitude = float(item.get("longitude"))
+            speed = float(item.get("speed") or 0)
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(latitude) or not math.isfinite(longitude):
+            continue
+        if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+            continue
+        bus = dict(item)
+        bus.update({
+            "bus_id": bus_id,
+            "latitude": latitude,
+            "longitude": longitude,
+            "speed": max(0.0, speed) if math.isfinite(speed) else 0.0,
+            "vehicle_status": "stationary" if status == "stationary" else "live",
+            "movement_status": "unknown",
+            "direction": None,
+            "heading": None,
+            "likely_towards": None,
+            "movement_km": None,
+            "history_minutes": None,
+            "prediction_available": False,
+            "prediction_applied": False,
+            "source": "MARGDARSHI live GPS",
+        })
+        old = latest.get(bus_id)
+        if old is None or str(bus.get("timestamp") or "") > str(old.get("timestamp") or ""):
+            latest[bus_id] = bus
+
+    buses = list(latest.values())
+    print(f"Direct MARGDARSHI mode: {len(buses)} online Noida Electric buses", flush=True)
+    return buses
+
+
 def _fetch_live_data():
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
