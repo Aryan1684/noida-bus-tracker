@@ -424,9 +424,10 @@ def get_direct_live_buses(data=None):
         for bus in buses
     })
     global _direct_snapshot, _direct_snapshot_at
-    with _cache_lock:
-        _direct_snapshot = copy.deepcopy(buses)
-        _direct_snapshot_at = time.time()
+    if buses:
+        with _cache_lock:
+            _direct_snapshot = copy.deepcopy(buses)
+            _direct_snapshot_at = time.time()
 
     print(
         f"Direct MARGDARSHI feed: buses={len(buses)} "
