@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from services.gps_service import get_noida_electric_buses, refresh_noida_electric_buses, get_direct_live_buses
+from services.gps_service import get_noida_electric_buses, refresh_noida_electric_buses, get_direct_live_buses, get_cached_direct_live_buses
 from services.prediction_collector import collector_running, start_collector, stop_collector
 from utils.distance import calculate_distance
 from services.eta_service import calculate_eta
@@ -110,7 +110,7 @@ def root():
 
 
 @app.get("/api/health")
-def api_health():
+async def api_health():
     return {
         "status": "ok",
         "data_source": "MARGDARSHI",
@@ -276,15 +276,9 @@ def admin_ingestion(
     return get_ingestion_stats()
 
 def get_processed_buses():
-    try:
-        buses = get_direct_live_buses()
-    except Exception as error:
-        print(f"Direct MARGDARSHI fetch failed: {error}", flush=True)
-        raise HTTPException(status_code=502, detail="MARGDARSHI live bus feed is temporarily unavailable")
-
+    buses = get_cached_direct_live_buses()
     if not buses:
-        raise HTTPException(status_code=503, detail="MARGDARSHI returned no buses with valid coordinates")
-
+        raise HTTPException(status_code=503, detail="Bus snapshot is not available yet or has expired")
     return buses
 
 @app.get("/api/buses")
@@ -302,12 +296,11 @@ def get_nearby_buses(
     lon: float = Query(...),
     radius: float = Query(5, gt=0, le=25)
 ):
-    buses = get_processed_buses()
-
-    nearby_buses = []
-
     if not (-90 <= lat <= 90 and -180 <= lon <= 180):
         raise HTTPException(status_code=400, detail="Invalid coordinates")
+
+    buses = get_processed_buses()
+    nearby_buses = []
 
     for bus in buses:
         distance = calculate_distance(
