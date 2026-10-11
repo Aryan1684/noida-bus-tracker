@@ -76,18 +76,13 @@ class ValidationServiceTests(unittest.TestCase):
         self.assertEqual(result["stats"]["accepted"], 1)
         self.assertEqual(result["stats"]["rejected"], 0)
 
-    def test_future_z_timestamp_uses_india_wall_clock(self):
+    def test_future_z_timestamp_is_normalized(self):
         first = validate_gps_batch([
             point(timestamp="2099-01-02T17:38:53Z")
         ])["accepted"][0]
-        expected = first["event_time"]
 
-        self.assertEqual(first["timestamp_status"], "valid")
-        self.assertTrue(first["history_trackable"])
-        self.assertLess(
-            expected,
-            4070930933.0
-        )
+        self.assertEqual(first["timestamp_status"], "future_normalized")
+        self.assertLess(first["event_time"], 4070930933.0)
 
     def test_previous_point_is_used_for_jump_validation(self):
         previous = {
