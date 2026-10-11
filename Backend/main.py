@@ -314,6 +314,7 @@ def get_buses():
 
     return {
         "count": len(buses),
+        "feed_state": get_direct_snapshot_status()["state"],
         "buses": buses
     }
 
@@ -377,6 +378,8 @@ def get_nearby_buses(
 
     return {
         "count": len(nearby_buses),
+        "total_buses": len(buses),
+        "feed_state": get_direct_snapshot_status()["state"],
         "radius_km": radius,
         "buses": nearby_buses
     }
