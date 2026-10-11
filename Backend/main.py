@@ -4,6 +4,7 @@ import requests
 from fastapi import FastAPI, Query, HTTPException, Header, Response
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from dotenv import load_dotenv
 
 from services.gps_service import get_noida_electric_buses, refresh_noida_electric_buses, get_direct_live_buses, get_cached_direct_live_buses
@@ -59,6 +60,7 @@ def submit_web3forms(access_key: str | None, payload: dict):
     return {"success": True}
 
 app = FastAPI(title="Noida Electric Bus Tracker")
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.add_middleware(
     CORSMiddleware,
@@ -117,7 +119,12 @@ async def api_livez():
 @app.get("/api/health")
 async def api_health():
     snapshot = get_direct_snapshot_status()
-    data_healthy = snapshot["state"] == "available"
+    stale_after = max(120, int(os.getenv("PREDICTION_COLLECT_INTERVAL_SECONDS", "60")) * 2)
+    data_healthy = (
+        snapshot["state"] == "available"
+        and snapshot["snapshot_age_seconds"] is not None
+        and snapshot["snapshot_age_seconds"] <= stale_after
+    )
     collector_healthy = collector_running()
     return {
         "status": "ok" if data_healthy and collector_healthy else "degraded",
@@ -127,6 +134,7 @@ async def api_health():
         "bus_count": snapshot["bus_count"],
         "last_feed_check_at": snapshot["last_feed_check_at"],
         "max_snapshot_age_seconds": snapshot["max_age_seconds"],
+        "stale_after_seconds": stale_after,
         "database_configured": bool(os.getenv("DATABASE_URL")),
         "feedback_configured": bool(WEB3FORMS_FEEDBACK_KEY),
         "reports_configured": bool(WEB3FORMS_REPORT_KEY),
