@@ -984,8 +984,10 @@ function createBusCard(bus, rankIndex = 0) {
         directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'></span><div><small>MOVING TOWARDS</small><strong>" + escapeHtml(bus.likely_towards) + "</strong></div></div>";
     } else if (isCurrentlyMoving && bus.direction) {
         directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'></span><div><small>MOVING</small><strong>" + escapeHtml(bus.direction) + "</strong></div></div>";
+    } else if (currentStatus === "no_signal" && (bus.likely_towards || bus.direction)) {
+        directionHtml = "<div class='bus-direction'><span class='direction-wait' aria-hidden='true'></span><div><small>LAST KNOWN MOVEMENT · NO SIGNAL</small><strong>" + escapeHtml(bus.likely_towards || bus.direction) + "</strong></div></div>";
     } else if (currentStatus === "no_signal") {
-        directionHtml = "<div class='bus-direction'><span class='direction-wait' aria-hidden='true'></span><div><small>STATUS</small><strong>Not moving · No signal</strong></div></div>";
+        directionHtml = "<div class='bus-direction'><span class='direction-wait' aria-hidden='true'></span><div><small>STATUS</small><strong>No signal · Movement unavailable</strong></div></div>";
     } else if (movementStatus === "moving") {
         directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'></span><div><small>MOVING</small><strong>" + escapeHtml(bus.direction || "Moving") + "</strong></div></div>";
     } else if (currentStatus === "stationary" || (Number.isFinite(currentSpeed) && currentSpeed < 5)) {
@@ -1002,8 +1004,8 @@ function createBusCard(bus, rankIndex = 0) {
         : statusKey === "no_signal"
         ? "offline"
         : "live";
-    const movement = bus.movement_km !== undefined ? bus.movement_km : 0;
-    const history = bus.history_minutes !== undefined ? bus.history_minutes : 0;
+    const movement = Number.isFinite(Number(bus.movement_km)) ? Number(bus.movement_km) : null;
+    const history = Number.isFinite(Number(bus.history_minutes)) ? Number(bus.history_minutes) : null;
     const confidenceLabel = bus.confidence_label
         ? " · " + escapeHtml(bus.confidence_label)
         : "";
@@ -1156,10 +1158,14 @@ function createPopupContent(bus) {
             : bus.direction
             ? "Moving " + escapeHtml(bus.direction)
             : "Moving";
+    } else if (popupStatus === "no_signal") {
+        movementText = bus.likely_towards
+            ? "Last known movement towards " + escapeHtml(bus.likely_towards) + " · No signal"
+            : bus.direction
+            ? "Last known movement " + escapeHtml(bus.direction) + " · No signal"
+            : "No signal · Movement unavailable";
     } else if (popupStatus === "stationary" || (Number.isFinite(popupSpeed) && popupSpeed < 5)) {
         movementText = "Stationary";
-    } else if (popupStatus === "no_signal") {
-        movementText = "No signal";
     } else if (bus.direction) {
         movementText = "Moving " + escapeHtml(bus.direction);
     }
