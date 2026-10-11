@@ -258,13 +258,31 @@ def get_direct_live_buses():
             continue
         if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
             continue
+        source_status = "stationary" if status == "stationary" else "no_signal" if status in {"no_signal", "nosignal", "offline", "unavailable"} else "live"
+        source_timestamp = item.get("timestamp")
+        age_seconds = _fix_age_seconds(source_timestamp)
+        if age_seconds is None:
+            freshness = "unknown"
+        elif age_seconds <= 120:
+            freshness = "fresh"
+        elif age_seconds <= 600:
+            freshness = "delayed"
+        else:
+            freshness = "stale"
         bus = dict(item)
         bus.update({
             "bus_id": bus_id,
             "latitude": latitude,
             "longitude": longitude,
             "speed": max(0.0, speed) if math.isfinite(speed) else 0.0,
-            "vehicle_status": "stationary" if status == "stationary" else "no_signal" if status in {"no_signal", "nosignal", "offline", "unavailable"} else "live",
+            "vehicle_status": source_status,
+            "source_vehicle_status": item.get("vehicle_status"),
+            "source_timestamp": source_timestamp,
+            "gps_age_seconds": age_seconds,
+            "gps_freshness": freshness,
+            "is_stale": freshness in {"stale", "unknown"} or source_status == "no_signal",
+            "location_label": "Last known location" if source_status == "no_signal" or freshness in {"stale", "unknown"} else "GPS location",
+            "position_confidence": "high" if source_status == "live" and freshness == "fresh" else "medium" if source_status == "live" and freshness == "delayed" else "low",
             "movement_status": "unknown",
             "direction": None,
             "heading": None,
@@ -273,8 +291,23 @@ def get_direct_live_buses():
             "history_minutes": None,
             "prediction_available": False,
             "prediction_applied": False,
-            "source": "MARGDARSHI live GPS",
+            "source": "MARGDARSHI",
         })
+        try:
+            route_match = match_position(bus_id, latitude, longitude)
+            bus.update(route_match)
+        except Exception as error:
+            print(f"Route matching failed for {bus_id}: {error}", flush=True)
+            bus.update({
+                "route_match_status": "unavailable",
+                "route_match_distance_m": None,
+                "route_progress": None,
+                "route_match_confidence": "none",
+                "matched_route_id": None,
+                "matched_route": None,
+                "next_stop": None,
+                "next_stops": [],
+            })
         old = latest.get(bus_id)
         if old is None or str(bus.get("timestamp") or "") > str(old.get("timestamp") or ""):
             latest[bus_id] = bus
