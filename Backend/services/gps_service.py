@@ -461,7 +461,7 @@ def get_direct_snapshot_status():
         "bus_count": count if state == "available" else 0,
         "snapshot_age_seconds": age,
         "max_age_seconds": DIRECT_SNAPSHOT_MAX_AGE_SECONDS,
-        "last_successful_feed_at": checked_at,
+        "last_feed_check_at": checked_at,
     }
 
 def get_cached_direct_live_buses():
