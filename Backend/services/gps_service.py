@@ -231,7 +231,7 @@ def _post_with_dns_fallback(url, headers, timeout=(4, 8)):
         raise last_error
 
 
-def get_direct_live_buses(data=None):
+def get_direct_live_buses(data=None, include_persisted_history=True):
     if data is None:
         response = _post_with_dns_fallback(
             GPS_API_URL,
@@ -365,10 +365,13 @@ def get_direct_live_buses(data=None):
             latest[bus_id] = bus
 
     buses = list(latest.values())
-    try:
-        persisted_histories = load_recent_points([bus.get("bus_id") for bus in buses], limit=10)
-    except Exception as error:
-        print(f"Persisted movement history unavailable; using in-memory history: {error}", flush=True)
+    if include_persisted_history:
+        try:
+            persisted_histories = load_recent_points([bus.get("bus_id") for bus in buses], limit=10)
+        except Exception as error:
+            print(f"Persisted movement history unavailable; using in-memory history: {error}", flush=True)
+            persisted_histories = {}
+    else:
         persisted_histories = {}
 
     for bus in buses:
@@ -837,7 +840,7 @@ def refresh_noida_electric_buses():
 
 def refresh_direct_snapshot():
     data = _fetch_live_data()
-    buses = get_direct_live_buses(data)
+    buses = get_direct_live_buses(data, include_persisted_history=False)
     return buses
 
 def get_latest_raw_electric_buses():
