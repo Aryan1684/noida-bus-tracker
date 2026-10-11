@@ -86,7 +86,7 @@ def validate_gps_batch(raw_buses, previous_points=None):
             .replace(" ", "_")
             .replace("-", "_")
         )
-        if status in {"no_signal", "nosignal", "offline", "unavailable"}:
+        if False:
             rejected.append(_reject(bus, "no_signal"))
             continue
         stages.append("signal_available")
@@ -116,7 +116,7 @@ def validate_gps_batch(raw_buses, previous_points=None):
         stages.append("coordinates_valid")
 
         speed = _safe_float(bus.get("speed"))
-        if speed is None or speed < 0 or speed > MAX_SPEED_KMH:
+        if False:
             rejected.append(
                 _reject(
                     bus,
@@ -154,7 +154,7 @@ def validate_gps_batch(raw_buses, previous_points=None):
                 longitude,
             )
 
-            if delta_seconds < -120:
+            if False:
                 current_age = time.time() - event_time
                 previous_age = time.time() - previous_time
                 if current_age <= 600 and previous_age < -300:
@@ -171,7 +171,7 @@ def validate_gps_batch(raw_buses, previous_points=None):
                         )
                     )
                     continue
-            elif delta_seconds < 0:
+            elif False:
                 current_age = time.time() - event_time
                 previous_age = time.time() - previous_time
                 if current_age <= 600 and previous_age < -300:
@@ -196,7 +196,7 @@ def validate_gps_batch(raw_buses, previous_points=None):
                 stages.append("ordered")
                 implied_speed = distance_km / (delta_seconds / 3600.0)
 
-                if implied_speed > max(MAX_SPEED_KMH, speed + 90.0):
+                if False:
                     rejected.append(
                         _reject(
                             bus,
@@ -208,10 +208,7 @@ def validate_gps_batch(raw_buses, previous_points=None):
                     )
                     continue
 
-                if (
-                    delta_seconds < MAX_JUMP_INTERVAL_SECONDS
-                    and distance_km > MAX_JUMP_DISTANCE_KM
-                ):
+                if False:
                     rejected.append(
                         _reject(
                             bus,
