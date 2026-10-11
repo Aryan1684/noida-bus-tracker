@@ -726,9 +726,24 @@ async function loadNearbyBuses(
             await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache" } });
 
         if (!response.ok) {
-            throw new Error(
-                `HTTP ${response.status}`
-            );
+            let detail = null;
+            try {
+                const errorData = await response.json();
+                detail = errorData.detail;
+            } catch (parseError) {
+                detail = null;
+            }
+
+            if (detail && typeof detail === "object") {
+                const code = String(detail.code || "");
+                if (code === "warming") {
+                    throw new Error("BUS_DATA_WARMING");
+                }
+                if (code === "expired") {
+                    throw new Error("BUS_DATA_EXPIRED");
+                }
+            }
+            throw new Error(`HTTP ${response.status}`);
         }
 
         const data =
@@ -740,7 +755,11 @@ async function loadNearbyBuses(
 
         updateLastRefreshed();
 
-        if (data.data_stale || (data.buses || []).some(bus => bus.data_stale)) {
+        if (data.count === 0 && data.total_buses === 0) {
+            updateLocationMessage("No Noida Electric buses are currently present in the live feed. The feed may be temporarily empty.");
+        } else if (data.count === 0) {
+            updateLocationMessage(`No electric buses found within ${radius} km. ${data.total_buses} buses are present in the wider feed.`);
+        } else if (data.data_stale || (data.buses || []).some(bus => bus.data_stale)) {
             updateLocationMessage(
                 `Live GPS temporarily unavailable. Showing the last available bus positions (${data.count} buses within ${radius} km).`
             );
@@ -774,9 +793,12 @@ async function loadNearbyBuses(
                 "Unable to refresh bus data. Showing the previous results."
             );
         } else {
-            showErrorState(
-                "UPSRTC MARGDARSHI website is currently down. Please try again in 15 minutes."
-            );
+            const message = error.message === "BUS_DATA_WARMING"
+                ? "Bus data is warming up after a restart. Please retry in a few seconds."
+                : error.message === "BUS_DATA_EXPIRED"
+                ? "Live bus data has not refreshed in time. The upstream feed may be unavailable; please retry shortly."
+                : "Unable to load bus data right now. Please retry in a few seconds.";
+            showErrorState(message);
         }
     } finally {
         isLoading = false;
