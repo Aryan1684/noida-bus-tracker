@@ -2,7 +2,7 @@ import os
 import threading
 import time
 
-from services.gps_service import refresh_noida_electric_buses
+from services.gps_service import refresh_direct_snapshot
 
 INTERVAL_SECONDS = max(30, int(os.getenv("PREDICTION_COLLECT_INTERVAL_SECONDS", "60")))
 
@@ -17,9 +17,9 @@ def _run():
         started = time.time()
 
         try:
-            print("Prediction collector fetching live GPS", flush=True)
-            buses = refresh_noida_electric_buses()
-            print(f"Prediction collector processed {len(buses)} buses", flush=True)
+            print("GPS snapshot collector fetching live feed", flush=True)
+            buses = refresh_direct_snapshot()
+            print(f"GPS snapshot collector refreshed {len(buses)} buses", flush=True)
         except Exception as error:
             print(f"Prediction collector error: {error}", flush=True)
 
