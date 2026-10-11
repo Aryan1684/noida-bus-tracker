@@ -12,7 +12,7 @@ from utils.distance import calculate_distance
 from services.eta_service import calculate_eta
 from services.direction_service import ROUTES, LANDMARKS
 from services.analytics_service import dashboard as get_analytics_dashboard, record_consented_location, record_event, verify_admin_token
-from services.gps_service import get_ingestion_stats
+from services.gps_service import get_ingestion_stats, get_direct_snapshot_status
 
 load_dotenv()
 
@@ -109,16 +109,29 @@ def root():
     }
 
 
+@app.get("/api/livez")
+async def api_livez():
+    return {"status": "ok"}
+
+
 @app.get("/api/health")
 async def api_health():
+    snapshot = get_direct_snapshot_status()
+    data_healthy = snapshot["state"] == "available"
+    collector_healthy = collector_running()
     return {
-        "status": "ok",
+        "status": "ok" if data_healthy and collector_healthy else "degraded",
         "data_source": "MARGDARSHI",
+        "snapshot_state": snapshot["state"],
+        "snapshot_age_seconds": snapshot["snapshot_age_seconds"],
+        "bus_count": snapshot["bus_count"],
+        "last_feed_check_at": snapshot["last_feed_check_at"],
+        "max_snapshot_age_seconds": snapshot["max_age_seconds"],
         "database_configured": bool(os.getenv("DATABASE_URL")),
         "feedback_configured": bool(WEB3FORMS_FEEDBACK_KEY),
         "reports_configured": bool(WEB3FORMS_REPORT_KEY),
         "admin_configured": bool(os.getenv("ADMIN_TOKEN")),
-        "prediction_collector_running": collector_running(),
+        "prediction_collector_running": collector_healthy,
     }
 
 
@@ -276,9 +289,23 @@ def admin_ingestion(
     return get_ingestion_stats()
 
 def get_processed_buses():
+    snapshot = get_direct_snapshot_status()
     buses = get_cached_direct_live_buses()
-    if not buses:
-        raise HTTPException(status_code=503, detail="Bus snapshot is not available yet or has expired")
+    if snapshot["state"] == "empty":
+        return []
+    if snapshot["state"] in {"warming", "expired"} or not buses:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": snapshot["state"],
+                "message": (
+                    "Bus data is warming up. Please retry shortly."
+                    if snapshot["state"] == "warming"
+                    else "The last bus snapshot has expired. Live data is temporarily unavailable."
+                ),
+                "snapshot_age_seconds": snapshot["snapshot_age_seconds"],
+            },
+        )
     return buses
 
 @app.get("/api/buses")
