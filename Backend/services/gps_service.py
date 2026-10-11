@@ -1,3 +1,4 @@
+import copy
 import math
 import os
 import threading
@@ -29,6 +30,9 @@ _latest_raw_electric_buses = []
 _latest_raw_electric_at = None
 _cache_lock = threading.Lock()
 _direct_history = {}
+_direct_snapshot = []
+_direct_snapshot_at = None
+DIRECT_SNAPSHOT_MAX_AGE_SECONDS = max(300, int(os.getenv("DIRECT_SNAPSHOT_MAX_AGE_SECONDS", "300")))
 _ingestion_stats = {
     "cycles": 0,
     "buses_received": 0,
@@ -243,6 +247,8 @@ def get_direct_live_buses():
 
     latest = {}
     for item in data:
+        if not isinstance(item, dict):
+            continue
         if str(item.get("depot_name") or "").strip().upper() != "NOIDA ELECTRIC":
             continue
         bus_id = str(item.get("bus_id") or "").strip().upper()
@@ -412,11 +418,39 @@ def get_direct_live_buses():
         (round(bus["latitude"], 5), round(bus["longitude"], 5))
         for bus in buses
     })
+    global _direct_snapshot, _direct_snapshot_at
+    with _cache_lock:
+        _direct_snapshot = copy.deepcopy(buses)
+        _direct_snapshot_at = time.time()
+
     print(
         f"Direct MARGDARSHI feed: buses={len(buses)} "
-        f"unique_positions={unique_positions} statuses={status_counts} sample={sample}",
+        f"unique_positions={unique_positions} statuses={status_counts}",
         flush=True,
     )
+    return buses
+
+
+def get_cached_direct_live_buses():
+    with _cache_lock:
+        if not _direct_snapshot or _direct_snapshot_at is None:
+            return []
+        age = time.time() - _direct_snapshot_at
+        if age > DIRECT_SNAPSHOT_MAX_AGE_SECONDS:
+            return []
+        buses = copy.deepcopy(_direct_snapshot)
+
+    snapshot_stale = age > max(120, int(os.getenv("PREDICTION_COLLECT_INTERVAL_SECONDS", "60")) * 2)
+    for bus in buses:
+        bus["snapshot_age_seconds"] = int(age)
+        bus["snapshot_stale"] = snapshot_stale
+        if snapshot_stale:
+            bus["is_stale"] = True
+            bus["data_stale"] = True
+            bus["position_confidence"] = "low"
+            bus["location_label"] = "Last known location"
+            bus["movement_is_current"] = False
+            bus["movement_label"] = "Last known movement"
     return buses
 
 
@@ -460,7 +494,8 @@ def _process_live_buses(data, upstream_latency_ms=None):
     electric_buses = [
         item
         for item in data
-        if str(item.get("depot_name") or "").strip().upper() == "NOIDA ELECTRIC"
+        if isinstance(item, dict)
+        and str(item.get("depot_name") or "").strip().upper() == "NOIDA ELECTRIC"
     ]
 
     raw_electric_count = len(electric_buses)
@@ -600,6 +635,13 @@ def _process_live_buses(data, upstream_latency_ms=None):
                 "longitude": item["longitude"],
                 "upstream_id": item["upstream_id"],
             }
+
+        if len(_identity_last_seen) > 500:
+            for stale_id, _ in sorted(
+                _identity_last_seen.items(),
+                key=lambda entry: entry[1].get("seen_at", 0),
+            )[:len(_identity_last_seen) - 500]:
+                _identity_last_seen.pop(stale_id, None)
 
         for reason, count in validation["stats"]["reject_reasons"].items():
             _ingestion_stats["reject_reasons"][reason] = (
