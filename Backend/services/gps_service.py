@@ -32,6 +32,8 @@ _cache_lock = threading.Lock()
 _direct_history = {}
 _direct_snapshot = []
 _direct_snapshot_at = None
+_direct_feed_state = "warming"
+_direct_feed_checked_at = None
 DIRECT_SNAPSHOT_MAX_AGE_SECONDS = max(300, int(os.getenv("DIRECT_SNAPSHOT_MAX_AGE_SECONDS", "300")))
 _ingestion_stats = {
     "cycles": 0,
@@ -427,11 +429,13 @@ def get_direct_live_buses(data=None):
         (round(bus["latitude"], 5), round(bus["longitude"], 5))
         for bus in buses
     })
-    global _direct_snapshot, _direct_snapshot_at
-    if buses:
-        with _cache_lock:
-            _direct_snapshot = copy.deepcopy(buses)
-            _direct_snapshot_at = time.time()
+    global _direct_snapshot, _direct_snapshot_at, _direct_feed_state, _direct_feed_checked_at
+    checked_at = time.time()
+    with _cache_lock:
+        _direct_snapshot = copy.deepcopy(buses)
+        _direct_snapshot_at = checked_at
+        _direct_feed_checked_at = checked_at
+        _direct_feed_state = "available" if buses else "empty"
 
     print(
         f"Direct MARGDARSHI feed: buses={len(buses)} "
@@ -440,6 +444,25 @@ def get_direct_live_buses(data=None):
     )
     return buses
 
+
+
+def get_direct_snapshot_status():
+    with _cache_lock:
+        checked_at = _direct_feed_checked_at
+        state = _direct_feed_state
+        count = len(_direct_snapshot)
+    age = None if checked_at is None else max(0, int(time.time() - checked_at))
+    if checked_at is None:
+        state = "warming"
+    elif age > DIRECT_SNAPSHOT_MAX_AGE_SECONDS:
+        state = "expired"
+    return {
+        "state": state,
+        "bus_count": count if state == "available" else 0,
+        "snapshot_age_seconds": age,
+        "max_age_seconds": DIRECT_SNAPSHOT_MAX_AGE_SECONDS,
+        "last_successful_feed_at": checked_at,
+    }
 
 def get_cached_direct_live_buses():
     with _cache_lock:
