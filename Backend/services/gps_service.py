@@ -229,19 +229,20 @@ def _post_with_dns_fallback(url, headers, timeout=(4, 8)):
         raise last_error
 
 
-def get_direct_live_buses():
-    response = _post_with_dns_fallback(
-        GPS_API_URL,
-        headers={
-            "User-Agent": "Mozilla/5.0",
-            "Accept": "application/json, text/plain, */*",
-            "Origin": "https://margdarshi.upsrtcvlt.com",
-            "Referer": "https://margdarshi.upsrtcvlt.com/",
-        },
-        timeout=(4, 8),
-    )
-    response.raise_for_status()
-    data = response.json()
+def get_direct_live_buses(data=None):
+    if data is None:
+        response = _post_with_dns_fallback(
+            GPS_API_URL,
+            headers={
+                "User-Agent": "Mozilla/5.0",
+                "Accept": "application/json, text/plain, */*",
+                "Origin": "https://margdarshi.upsrtcvlt.com",
+                "Referer": "https://margdarshi.upsrtcvlt.com/",
+            },
+            timeout=(4, 8),
+        )
+        response.raise_for_status()
+        data = response.json()
     if not isinstance(data, list):
         raise RuntimeError("Unexpected MARGDARSHI response")
 
@@ -762,6 +763,10 @@ def refresh_noida_electric_buses():
 
     try:
         data = _fetch_live_data()
+        try:
+            get_direct_live_buses(data)
+        except Exception as direct_error:
+            print(f"Direct GPS snapshot refresh failed: {direct_error}", flush=True)
         upstream_latency_ms = round((time.perf_counter() - started_at) * 1000, 1)
         raw_electric_buses = [
             dict(item)
