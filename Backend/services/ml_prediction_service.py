@@ -480,6 +480,58 @@ def load_latest_points(bus_ids):
     return points
 
 
+
+def load_recent_points(bus_ids, limit=10):
+    connection = _connect()
+    points = {}
+
+    try:
+        for bus_id in bus_ids:
+            normalized_id = str(bus_id).strip().upper()
+            if not normalized_id:
+                continue
+
+            if DATABASE_URL:
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT source_timestamp, event_time, latitude, longitude, speed
+                        FROM bus_positions
+                        WHERE bus_id = %s
+                        ORDER BY event_time DESC, id DESC
+                        LIMIT %s
+                        """,
+                        (normalized_id, max(2, min(int(limit), 10))),
+                    )
+                    rows = cursor.fetchall()
+            else:
+                rows = connection.execute(
+                    """
+                    SELECT source_timestamp, event_time, latitude, longitude, speed
+                    FROM bus_positions
+                    WHERE bus_id = ?
+                    ORDER BY event_time DESC, id DESC
+                    LIMIT ?
+                    """,
+                    (normalized_id, max(2, min(int(limit), 10))),
+                ).fetchall()
+
+            if rows:
+                points[normalized_id] = [
+                    {
+                        "timestamp": row[0],
+                        "time": float(row[1]),
+                        "latitude": float(row[2]),
+                        "longitude": float(row[3]),
+                        "speed": float(row[4] or 0.0),
+                    }
+                    for row in reversed(rows)
+                ]
+    finally:
+        connection.close()
+
+    return points
+
 def record_positions(buses):
     connection = _connect()
     rows = []
