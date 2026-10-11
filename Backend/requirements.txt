@@ -1,7 +1,7 @@
-fastapi
-uvicorn
-requests
-python-dotenv
-scikit-learn>=1.5,<2
-psycopg[binary]>=3.2,<4
-dnspython>=2.7,<3
+fastapi==0.115.12
+uvicorn==0.34.0
+requests==2.32.3
+python-dotenv==1.0.1
+scikit-learn==1.6.1
+psycopg[binary]==3.2.6
+dnspython==2.7.0
