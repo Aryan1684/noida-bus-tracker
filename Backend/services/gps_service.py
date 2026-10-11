@@ -328,6 +328,10 @@ def get_direct_live_buses(data=None):
         }
         with _cache_lock:
             history = _direct_history.setdefault(bus_id, [])
+            if len(_direct_history) > 300:
+                for stale_bus_id in list(_direct_history)[:len(_direct_history) - 300]:
+                    if stale_bus_id != bus_id:
+                        _direct_history.pop(stale_bus_id, None)
             if not history or (
                 history[-1].get("timestamp") != source_timestamp
                 or round(history[-1]["latitude"], 7) != round(latitude, 7)
@@ -771,7 +775,8 @@ def refresh_noida_electric_buses():
         raw_electric_buses = [
             dict(item)
             for item in data
-            if str(item.get("depot_name") or "").strip().upper() == "NOIDA ELECTRIC"
+            if isinstance(item, dict)
+            and str(item.get("depot_name") or "").strip().upper() == "NOIDA ELECTRIC"
         ]
 
         with _cache_lock:
