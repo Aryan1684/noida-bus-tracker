@@ -28,6 +28,7 @@ _latest_processed_at = None
 _latest_raw_electric_buses = []
 _latest_raw_electric_at = None
 _cache_lock = threading.Lock()
+_direct_history = {}
 _ingestion_stats = {
     "cycles": 0,
     "buses_received": 0,
@@ -308,6 +309,40 @@ def get_direct_live_buses():
                 "next_stop": None,
                 "next_stops": [],
             })
+        event_time = _parse_timestamp(source_timestamp)
+        if event_time is None or event_time > time.time() + 300:
+            event_time = time.time()
+        point = {
+            "time": event_time,
+            "timestamp": source_timestamp,
+            "latitude": latitude,
+            "longitude": longitude,
+            "speed": bus["speed"],
+        }
+        with _cache_lock:
+            history = _direct_history.setdefault(bus_id, [])
+            if not history or (
+                history[-1].get("timestamp") != source_timestamp
+                or round(history[-1]["latitude"], 7) != round(latitude, 7)
+                or round(history[-1]["longitude"], 7) != round(longitude, 7)
+            ):
+                if not history or event_time > history[-1]["time"]:
+                    history.append(point)
+                    del history[:-10]
+            history_snapshot = [dict(entry) for entry in history]
+        bus["movement_history"] = history_snapshot
+        bus["history_points"] = len(history_snapshot)
+        if len(history_snapshot) >= 2:
+            movement = update_bus_history(bus, history_snapshot)
+            bus.update(movement)
+            bus["historical_movement_status"] = movement.get("movement_status")
+            if bus.get("is_stale") or bus.get("vehicle_status") == "no_signal":
+                bus["movement_status"] = "unknown"
+                bus["direction"] = None
+                bus["heading"] = None
+                bus["likely_towards"] = None
+        else:
+            bus["historical_movement_status"] = "unknown"
         old = latest.get(bus_id)
         if old is None or str(bus.get("timestamp") or "") > str(old.get("timestamp") or ""):
             latest[bus_id] = bus
