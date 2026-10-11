@@ -93,7 +93,32 @@ def shutdown_prediction_collector():
 def root():
     return {
         "message": "Noida Electric Bus Tracker API is running",
-        "prediction_collector_running": collector_running()
+        "status": "ok",
+        "data_source": "MARGDARSHI",
+        "prediction_collector_running": collector_running(),
+        "features": {
+            "nearby_buses": True,
+            "gps_freshness": True,
+            "route_matching": True,
+            "eta_estimates": True,
+            "location_search": True,
+            "feedback": bool(WEB3FORMS_FEEDBACK_KEY),
+            "bus_reports": bool(WEB3FORMS_REPORT_KEY),
+            "admin_analytics": bool(os.getenv("ADMIN_TOKEN")),
+        },
+    }
+
+
+@app.get("/api/health")
+def api_health():
+    return {
+        "status": "ok",
+        "data_source": "MARGDARSHI",
+        "database_configured": bool(os.getenv("DATABASE_URL")),
+        "feedback_configured": bool(WEB3FORMS_FEEDBACK_KEY),
+        "reports_configured": bool(WEB3FORMS_REPORT_KEY),
+        "admin_configured": bool(os.getenv("ADMIN_TOKEN")),
+        "prediction_collector_running": collector_running(),
     }
 
 
@@ -281,6 +306,9 @@ def get_nearby_buses(
 
     nearby_buses = []
 
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        raise HTTPException(status_code=400, detail="Invalid coordinates")
+
     for bus in buses:
         distance = calculate_distance(
             lat,
@@ -291,7 +319,14 @@ def get_nearby_buses(
 
         if distance <= radius:
             bus["distance_km"] = round(distance, 2)
-            eta = calculate_eta(bus, lat, lon)
+            if bus.get("is_stale") or bus.get("vehicle_status") == "no_signal":
+                eta = {
+                    "eta_minutes": None,
+                    "eta_status": "unavailable",
+                    "eta_reason": "GPS signal is unavailable or the location is stale",
+                }
+            else:
+                eta = calculate_eta(bus, lat, lon)
             bus.update(eta)
             eta_minutes = eta.get("eta_minutes")
             confidence = str(bus.get("position_confidence") or "medium").lower()
