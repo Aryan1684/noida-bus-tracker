@@ -1004,8 +1004,8 @@ function createBusCard(bus, rankIndex = 0) {
         : statusKey === "no_signal"
         ? "offline"
         : "live";
-    const movement = Number.isFinite(Number(bus.movement_km)) ? Number(bus.movement_km) : null;
-    const history = Number.isFinite(Number(bus.history_minutes)) ? Number(bus.history_minutes) : null;
+    const movement = bus.movement_km != null && Number.isFinite(Number(bus.movement_km)) ? Number(bus.movement_km).toFixed(2) : "Unavailable";
+    const history = bus.history_minutes != null && Number.isFinite(Number(bus.history_minutes)) ? Number(bus.history_minutes).toFixed(1) : "Unavailable";
     const confidenceLabel = bus.confidence_label
         ? " · " + escapeHtml(bus.confidence_label)
         : "";
@@ -1147,7 +1147,7 @@ function highlightBus(busId) {
 
 function createPopupContent(bus) {
     const popupSpeed = Number(bus.speed);
-    const popupMovement = Number(bus.movement_km);
+    const popupMovement = bus.movement_km == null ? NaN : Number(bus.movement_km);
     const movementStatus = String(bus.movement_status || "").toLowerCase();
     const popupStatus = String(bus.vehicle_status || "").toLowerCase();
 
@@ -1173,7 +1173,7 @@ function createPopupContent(bus) {
     const speedText = Number.isFinite(popupSpeed) ? popupSpeed + " km/h" : "Unavailable";
     const distanceText = bus.distance_km != null ? escapeHtml(String(bus.distance_km)) + " km away" : "Distance unavailable";
     const movementValue = Number.isFinite(popupMovement) ? popupMovement + " km" : "Unavailable";
-    const movementMinutes = Number.isFinite(Number(bus.history_minutes)) ? String(bus.history_minutes) + " min" : "recent period";
+    const movementMinutes = bus.history_minutes != null && Number.isFinite(Number(bus.history_minutes)) ? String(bus.history_minutes) + " min" : "period unavailable";
     const etaText = bus.eta_label ? escapeHtml(String(bus.eta_label)) : "Unavailable";
 
     return `
