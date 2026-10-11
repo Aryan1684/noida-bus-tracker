@@ -31,12 +31,13 @@ class ValidationServiceTests(unittest.TestCase):
         self.assertEqual(result["stats"]["accepted"], 1)
         self.assertEqual(result["stats"]["reject_reasons"]["duplicate_point"], 1)
 
-    def test_out_of_order_is_rejected(self):
+    def test_out_of_order_point_is_kept_for_display(self):
         result = validate_gps_batch([
             point(),
             point(latitude=28.515000, timestamp="2026-10-07T09:59:00Z"),
         ])
-        self.assertEqual(result["stats"]["reject_reasons"]["out_of_order"], 1)
+        self.assertEqual(result["stats"]["accepted"], 2)
+        self.assertEqual(result["stats"]["rejected"], 0)
 
     def test_missing_coordinates_are_rejected(self):
         result = validate_gps_batch([
@@ -44,11 +45,12 @@ class ValidationServiceTests(unittest.TestCase):
         ])
         self.assertEqual(result["stats"]["reject_reasons"]["invalid_coordinates"], 1)
 
-    def test_impossible_speed_is_rejected(self):
+    def test_high_reported_speed_is_kept_for_display(self):
         result = validate_gps_batch([point(speed=91)])
-        self.assertEqual(result["stats"]["reject_reasons"]["impossible_speed"], 1)
+        self.assertEqual(result["stats"]["accepted"], 1)
+        self.assertEqual(result["stats"]["rejected"], 0)
 
-    def test_impossible_jump_is_rejected(self):
+    def test_large_jump_is_kept_for_display(self):
         result = validate_gps_batch([
             point(),
             point(
@@ -57,9 +59,10 @@ class ValidationServiceTests(unittest.TestCase):
                 timestamp="2026-10-07T10:00:04Z",
             ),
         ])
-        self.assertEqual(result["stats"]["reject_reasons"]["impossible_jump"], 1)
+        self.assertEqual(result["stats"]["accepted"], 2)
+        self.assertEqual(result["stats"]["rejected"], 0)
 
-    def test_previous_point_rejects_out_of_order_across_cycles(self):
+    def test_previous_point_does_not_hide_out_of_order_fix(self):
         previous = {
             "latitude": BASE["latitude"],
             "longitude": BASE["longitude"],
@@ -70,7 +73,8 @@ class ValidationServiceTests(unittest.TestCase):
             [point(timestamp="2026-10-07T09:59:59Z")],
             previous_points={"TEST001": previous},
         )
-        self.assertEqual(result["stats"]["reject_reasons"]["out_of_order"], 1)
+        self.assertEqual(result["stats"]["accepted"], 1)
+        self.assertEqual(result["stats"]["rejected"], 0)
 
     def test_future_z_timestamp_uses_india_wall_clock(self):
         first = validate_gps_batch([
