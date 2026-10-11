@@ -14,7 +14,7 @@ from io import BytesIO
 import dns.resolver
 
 from services.direction_service import update_bus_history
-from services.ml_prediction_service import analyze_buses, load_latest_points, prepare_histories, record_ingestion_log, record_validation_audit
+from services.ml_prediction_service import analyze_buses, load_latest_points, load_recent_points, prepare_histories, record_ingestion_log, record_validation_audit
 from services.validation_service import validate_gps_batch
 from utils.distance import calculate_distance
 from services.position_trust_service import match_history, match_position
@@ -348,6 +348,52 @@ def get_direct_live_buses():
             latest[bus_id] = bus
 
     buses = list(latest.values())
+    try:
+        persisted_histories = load_recent_points([bus.get("bus_id") for bus in buses], limit=10)
+    except Exception as error:
+        print(f"Persisted movement history unavailable; using in-memory history: {error}", flush=True)
+        persisted_histories = {}
+
+    for bus in buses:
+        bus_id = str(bus.get("bus_id") or "").strip().upper()
+        persisted = persisted_histories.get(bus_id, [])
+        in_memory = bus.get("movement_history") or []
+        merged = {}
+        for point in list(persisted) + list(in_memory):
+            try:
+                event_time = float(point.get("time", point.get("event_time")))
+                latitude_point = float(point["latitude"])
+                longitude_point = float(point["longitude"])
+            except (TypeError, ValueError, KeyError):
+                continue
+            key = (round(event_time, 3), round(latitude_point, 6), round(longitude_point, 6))
+            merged[key] = {
+                "time": event_time,
+                "timestamp": point.get("timestamp"),
+                "latitude": latitude_point,
+                "longitude": longitude_point,
+                "speed": float(point.get("speed") or 0.0),
+            }
+        history = sorted(merged.values(), key=lambda point: point["time"])[-10:]
+        bus["movement_history"] = history
+        bus["history_points"] = len(history)
+        if len(history) >= 2:
+            movement = update_bus_history(bus, history)
+            if movement:
+                bus.update(movement)
+                bus["historical_movement_status"] = movement.get("movement_status")
+                bus["movement_source"] = "recent GPS history"
+        else:
+            bus["historical_movement_status"] = "unknown"
+            bus["movement_source"] = "insufficient GPS history"
+
+        if bus.get("is_stale") or bus.get("vehicle_status") == "no_signal":
+            bus["movement_is_current"] = False
+            bus["movement_label"] = "Last known movement"
+        else:
+            bus["movement_is_current"] = True
+            bus["movement_label"] = "Recent movement"
+
     status_counts = {}
     for bus in buses:
         status = str(bus.get("vehicle_status") or "unknown")
