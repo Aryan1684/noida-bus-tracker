@@ -834,6 +834,12 @@ def refresh_noida_electric_buses():
         raise RuntimeError(f"Noida bus refresh failed: {error}") from error
 
 
+
+def refresh_direct_snapshot():
+    data = _fetch_live_data()
+    buses = get_direct_live_buses(data)
+    return buses
+
 def get_latest_raw_electric_buses():
     with _cache_lock:
         if _latest_raw_electric_buses:
