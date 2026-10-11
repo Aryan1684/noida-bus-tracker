@@ -1,7 +1,9 @@
 import json
 import os
+import queue
 import secrets
 import sqlite3
+import threading
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 
@@ -25,6 +27,9 @@ ALLOWED_EVENTS = {
 }
 
 _initialized = False
+_event_queue = queue.Queue(maxsize=1000)
+_event_worker = None
+_event_worker_lock = threading.Lock()
 
 EVENT_COLUMNS = {
     "visitor_id": "VARCHAR(100)",
@@ -195,7 +200,7 @@ def _clean_metadata(metadata):
     return cleaned
 
 
-def record_event(
+def _write_event(
     event_name,
     path=None,
     session_id=None,
@@ -298,6 +303,76 @@ def record_event(
 
     return True
 
+
+
+def _run_event_worker():
+    while True:
+        payload = _event_queue.get()
+        try:
+            _write_event(**payload)
+        except Exception as error:
+            print(f"Analytics event write failed: {error}", flush=True)
+        finally:
+            _event_queue.task_done()
+
+
+def record_event(
+    event_name,
+    path=None,
+    session_id=None,
+    visitor_id=None,
+    source="web",
+    device_type=None,
+    browser=None,
+    os_name=None,
+    language=None,
+    referrer=None,
+    screen_width=None,
+    screen_height=None,
+    app_version=None,
+    metadata=None,
+    coarse_lat=None,
+    coarse_lon=None,
+):
+    global _event_worker
+
+    if event_name not in ALLOWED_EVENTS:
+        return False
+
+    payload = {
+        "event_name": event_name,
+        "path": path,
+        "session_id": session_id,
+        "visitor_id": visitor_id,
+        "source": source,
+        "device_type": device_type,
+        "browser": browser,
+        "os_name": os_name,
+        "language": language,
+        "referrer": referrer,
+        "screen_width": screen_width,
+        "screen_height": screen_height,
+        "app_version": app_version,
+        "metadata": metadata,
+        "coarse_lat": coarse_lat,
+        "coarse_lon": coarse_lon,
+    }
+
+    with _event_worker_lock:
+        if _event_worker is None or not _event_worker.is_alive():
+            _event_worker = threading.Thread(
+                target=_run_event_worker,
+                name="analytics-writer",
+                daemon=True,
+            )
+            _event_worker.start()
+
+    try:
+        _event_queue.put_nowait(payload)
+        return True
+    except queue.Full:
+        print("Analytics event queue full; event dropped", flush=True)
+        return False
 
 def record_consented_location(
     latitude,
