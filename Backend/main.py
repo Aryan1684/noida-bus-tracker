@@ -2,7 +2,7 @@ import os
 import requests
 
 from fastapi import FastAPI, Query, HTTPException, Header, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from dotenv import load_dotenv
@@ -24,19 +24,19 @@ WEB3FORMS_REPORT_KEY = os.getenv("WEB3FORMS_REPORT_KEY")
 
 
 class FeedbackSubmission(BaseModel):
-    rating: str
-    feedback_type: str
-    message: str
-    time: str | None = None
+    rating: str = Field(max_length=20)
+    feedback_type: str = Field(max_length=50)
+    message: str = Field(max_length=1500)
+    time: str | None = Field(default=None, max_length=80)
 
 
 class ReportSubmission(BaseModel):
-    bus_id: str
-    report_type: str
-    value: str | None = None
-    note: str | None = None
-    consent: str
-    time: str | None = None
+    bus_id: str = Field(max_length=80)
+    report_type: str = Field(max_length=50)
+    value: str | None = Field(default=None, max_length=100)
+    note: str | None = Field(default=None, max_length=500)
+    consent: str = Field(max_length=20)
+    time: str | None = Field(default=None, max_length=80)
 
 
 def submit_web3forms(access_key: str | None, payload: dict):
@@ -170,19 +170,19 @@ def submit_report(payload: ReportSubmission):
 
 
 class AnalyticsEvent(BaseModel):
-    event_name: str
-    path: str | None = None
-    session_id: str | None = None
-    visitor_id: str | None = None
-    source: str | None = "web"
-    device_type: str | None = None
-    browser: str | None = None
-    os: str | None = None
-    language: str | None = None
-    referrer: str | None = None
+    event_name: str = Field(max_length=80)
+    path: str | None = Field(default=None, max_length=500)
+    session_id: str | None = Field(default=None, max_length=100)
+    visitor_id: str | None = Field(default=None, max_length=100)
+    source: str | None = Field(default="web", max_length=30)
+    device_type: str | None = Field(default=None, max_length=30)
+    browser: str | None = Field(default=None, max_length=50)
+    os: str | None = Field(default=None, max_length=50)
+    language: str | None = Field(default=None, max_length=20)
+    referrer: str | None = Field(default=None, max_length=300)
     screen_width: int | None = None
     screen_height: int | None = None
-    app_version: str | None = None
+    app_version: str | None = Field(default=None, max_length=40)
     metadata: dict | None = None
 
 
