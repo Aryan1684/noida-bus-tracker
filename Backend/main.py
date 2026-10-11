@@ -81,12 +81,12 @@ async def disable_api_caching(request, call_next):
 
 @app.on_event("startup")
 def startup_prediction_collector():
-    pass
+    start_collector()
 
 
 @app.on_event("shutdown")
 def shutdown_prediction_collector():
-    pass
+    stop_collector()
 
 
 @app.get("/")
