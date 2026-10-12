@@ -227,7 +227,9 @@ def _post_with_dns_fallback(url, headers, timeout=(4, 8)):
         raise last_error
 
 
-def get_direct_live_buses(data=None, include_persisted_history=True):
+def get_direct_live_buses(data=None, include_persisted_history=False):
+    global _direct_snapshot, _direct_snapshot_at, _direct_feed_state, _direct_feed_checked_at
+
     if data is None:
         response = _post_with_dns_fallback(
             GPS_API_URL,
@@ -241,6 +243,7 @@ def get_direct_live_buses(data=None, include_persisted_history=True):
         )
         response.raise_for_status()
         data = response.json()
+
     if not isinstance(data, list):
         raise RuntimeError("Unexpected MARGDARSHI response")
 
@@ -250,23 +253,32 @@ def get_direct_live_buses(data=None, include_persisted_history=True):
             continue
         if str(item.get("depot_name") or "").strip().upper() != "NOIDA ELECTRIC":
             continue
+
         bus_id = str(item.get("bus_id") or "").strip().upper()
         if not bus_id:
             continue
-        status = str(item.get("vehicle_status") or "").strip().lower().replace(" ", "_").replace("-", "_")
+
         try:
             latitude = float(item.get("latitude"))
             longitude = float(item.get("longitude"))
             speed = float(item.get("speed") or 0)
         except (TypeError, ValueError):
             continue
+
         if not math.isfinite(latitude) or not math.isfinite(longitude):
             continue
         if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
             continue
-        source_status = "stationary" if status == "stationary" else "no_signal" if status in {"no_signal", "nosignal", "offline", "unavailable"} else "live"
+
+        source_status = str(item.get("vehicle_status") or "").strip().lower().replace(" ", "_").replace("-", "_")
+        vehicle_status = (
+            "stationary" if source_status == "stationary"
+            else "no_signal" if source_status in {"no_signal", "nosignal", "offline", "unavailable"}
+            else "live"
+        )
         source_timestamp = item.get("timestamp")
         age_seconds = _fix_age_seconds(source_timestamp)
+
         if age_seconds is None:
             freshness = "unknown"
         elif age_seconds <= 120:
@@ -275,161 +287,42 @@ def get_direct_live_buses(data=None, include_persisted_history=True):
             freshness = "delayed"
         else:
             freshness = "stale"
-        bus = dict(item)
-        bus.update({
+
+        bus = {
             "bus_id": bus_id,
+            "depot_name": item.get("depot_name"),
             "latitude": latitude,
             "longitude": longitude,
             "speed": max(0.0, speed) if math.isfinite(speed) else 0.0,
-            "vehicle_status": source_status,
+            "vehicle_status": vehicle_status,
             "source_vehicle_status": item.get("vehicle_status"),
+            "timestamp": source_timestamp,
             "source_timestamp": source_timestamp,
             "gps_age_seconds": age_seconds,
             "gps_freshness": freshness,
-            "is_stale": freshness in {"stale", "unknown"} or source_status == "no_signal",
-            "location_label": "Last known location" if source_status == "no_signal" or freshness in {"stale", "unknown"} else "GPS location",
-            "position_confidence": "high" if source_status == "live" and freshness == "fresh" else "medium" if source_status == "live" and freshness == "delayed" else "low",
+            "is_stale": freshness in {"stale", "unknown"} or vehicle_status == "no_signal",
+            "location_label": "Last known location" if freshness in {"stale", "unknown"} or vehicle_status == "no_signal" else "GPS location",
             "movement_status": "unknown",
             "direction": None,
             "heading": None,
             "likely_towards": None,
-            "movement_km": None,
-            "history_minutes": None,
             "prediction_available": False,
             "prediction_applied": False,
             "source": "MARGDARSHI",
-        })
-        try:
-            route_match = match_position(bus_id, latitude, longitude)
-            bus.update(route_match)
-        except Exception as error:
-            print(f"Route matching failed for {bus_id}: {error}", flush=True)
-            bus.update({
-                "route_match_status": "unavailable",
-                "route_match_distance_m": None,
-                "route_progress": None,
-                "route_match_confidence": "none",
-                "matched_route_id": None,
-                "matched_route": None,
-                "next_stop": None,
-                "next_stops": [],
-            })
-        event_time = _parse_timestamp(source_timestamp)
-        if event_time is None or event_time > time.time() + 300:
-            event_time = time.time()
-        point = {
-            "time": event_time,
-            "timestamp": source_timestamp,
-            "latitude": latitude,
-            "longitude": longitude,
-            "speed": bus["speed"],
         }
-        with _cache_lock:
-            history = _direct_history.setdefault(bus_id, [])
-            while len(_direct_history) > 300:
-                stale_bus_id = next(
-                    (key for key in _direct_history if key != bus_id),
-                    None,
-                )
-                if stale_bus_id is None:
-                    break
-                _direct_history.pop(stale_bus_id, None)
-            if not history or (
-                history[-1].get("timestamp") != source_timestamp
-                or round(history[-1]["latitude"], 7) != round(latitude, 7)
-                or round(history[-1]["longitude"], 7) != round(longitude, 7)
-            ):
-                if not history or event_time > history[-1]["time"]:
-                    history.append(point)
-                    del history[:-10]
-            history_snapshot = [dict(entry) for entry in history]
-        bus["movement_history"] = history_snapshot
-        bus["history_points"] = len(history_snapshot)
-        if len(history_snapshot) >= 2:
-            movement = update_bus_history(bus, history_snapshot)
-            bus.update(movement)
-            bus["historical_movement_status"] = movement.get("movement_status")
-            if bus.get("is_stale") or bus.get("vehicle_status") == "no_signal":
-                bus["movement_status"] = "unknown"
-                bus["direction"] = None
-                bus["heading"] = None
-                bus["likely_towards"] = None
-        else:
-            bus["historical_movement_status"] = "unknown"
+
         old = latest.get(bus_id)
-        if old is None or str(bus.get("timestamp") or "") > str(old.get("timestamp") or ""):
+        if old is None:
             latest[bus_id] = bus
+        else:
+            old_time = _parse_timestamp(old.get("timestamp"))
+            new_time = _parse_timestamp(source_timestamp)
+            if new_time is not None and (old_time is None or new_time > old_time):
+                latest[bus_id] = bus
 
     buses = list(latest.values())
-    if include_persisted_history:
-        try:
-            persisted_histories = load_recent_points([bus.get("bus_id") for bus in buses], limit=10)
-        except Exception as error:
-            print(f"Persisted movement history unavailable; using in-memory history: {error}", flush=True)
-            persisted_histories = {}
-    else:
-        persisted_histories = {}
-
-    for bus in buses:
-        bus_id = str(bus.get("bus_id") or "").strip().upper()
-        persisted = persisted_histories.get(bus_id, [])
-        in_memory = bus.get("movement_history") or []
-        merged = {}
-        for point in list(persisted) + list(in_memory):
-            try:
-                event_time = float(point.get("time", point.get("event_time")))
-                latitude_point = float(point["latitude"])
-                longitude_point = float(point["longitude"])
-            except (TypeError, ValueError, KeyError):
-                continue
-            key = (round(event_time, 3), round(latitude_point, 6), round(longitude_point, 6))
-            merged[key] = {
-                "time": event_time,
-                "timestamp": point.get("timestamp"),
-                "latitude": latitude_point,
-                "longitude": longitude_point,
-                "speed": float(point.get("speed") or 0.0),
-            }
-        history = sorted(merged.values(), key=lambda point: point["time"])[-10:]
-        bus["movement_history"] = history
-        bus["history_points"] = len(history)
-        if len(history) >= 2:
-            movement = update_bus_history(bus, history)
-            if movement:
-                bus.update(movement)
-                bus["historical_movement_status"] = movement.get("movement_status")
-                bus["movement_source"] = "recent GPS history"
-        else:
-            bus["historical_movement_status"] = "unknown"
-            bus["movement_source"] = "insufficient GPS history"
-
-        if bus.get("is_stale") or bus.get("vehicle_status") == "no_signal":
-            bus["movement_is_current"] = False
-            bus["movement_label"] = "Last known movement"
-        else:
-            bus["movement_is_current"] = True
-            bus["movement_label"] = "Recent movement"
-
-    status_counts = {}
-    for bus in buses:
-        status = str(bus.get("vehicle_status") or "unknown")
-        status_counts[status] = status_counts.get(status, 0) + 1
-    sample = [
-        {
-            "bus_id": bus.get("bus_id"),
-            "timestamp": bus.get("timestamp"),
-            "latitude": bus.get("latitude"),
-            "longitude": bus.get("longitude"),
-            "status": bus.get("vehicle_status"),
-        }
-        for bus in buses[:5]
-    ]
-    unique_positions = len({
-        (round(bus["latitude"], 5), round(bus["longitude"], 5))
-        for bus in buses
-    })
-    global _direct_snapshot, _direct_snapshot_at, _direct_feed_state, _direct_feed_checked_at
     checked_at = time.time()
+
     with _cache_lock:
         _direct_snapshot = copy.deepcopy(buses)
         _direct_snapshot_at = checked_at
@@ -437,12 +330,10 @@ def get_direct_live_buses(data=None, include_persisted_history=True):
         _direct_feed_state = "available" if buses else "empty"
 
     print(
-        f"Direct MARGDARSHI feed: buses={len(buses)} "
-        f"unique_positions={unique_positions} statuses={status_counts}",
+        f"Direct MARGDARSHI feed: buses={len(buses)}; prediction/history/route processing disabled",
         flush=True,
     )
     return buses
-
 
 
 def get_direct_snapshot_status():
