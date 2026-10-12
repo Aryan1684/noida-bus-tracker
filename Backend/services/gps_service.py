@@ -14,11 +14,7 @@ from io import BytesIO
 
 import dns.resolver
 
-from services.direction_service import update_bus_history
-from services.ml_prediction_service import analyze_buses, load_latest_points, load_recent_points, prepare_histories, record_ingestion_log, record_validation_audit
-from services.validation_service import validate_gps_batch
 from utils.distance import calculate_distance
-from services.position_trust_service import match_history, match_position
 
 GPS_API_URL = "https://margdarshi.upsrtcvlt.com/php/getGpsLiveData.php"
 
@@ -527,6 +523,10 @@ def _fetch_live_data():
 
 
 def _process_live_buses(data, upstream_latency_ms=None):
+    from services.direction_service import update_bus_history
+    from services.ml_prediction_service import analyze_buses, load_recent_points, prepare_histories, record_ingestion_log, record_validation_audit
+    from services.validation_service import validate_gps_batch
+    from services.position_trust_service import match_history, match_position
     electric_buses = [
         item
         for item in data
