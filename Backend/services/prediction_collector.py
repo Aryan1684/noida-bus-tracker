@@ -4,14 +4,14 @@ import time
 
 from services.gps_service import refresh_direct_snapshot
 
-INTERVAL_SECONDS = max(30, int(os.getenv("PREDICTION_COLLECT_INTERVAL_SECONDS", "60")))
+INTERVAL_SECONDS = max(30, int(os.getenv("GPS_REFRESH_INTERVAL_SECONDS", "60")))
 
 _stop_event = threading.Event()
 _thread = None
 
 
 def _run():
-    print("Prediction collector thread started", flush=True)
+    print("Live GPS collector thread started", flush=True)
 
     while not _stop_event.is_set():
         started = time.time()
@@ -21,7 +21,7 @@ def _run():
             buses = refresh_direct_snapshot()
             print(f"GPS snapshot collector refreshed {len(buses)} buses", flush=True)
         except Exception as error:
-            print(f"Prediction collector error: {error}", flush=True)
+            print(f"Live GPS collector error: {error}", flush=True)
 
         elapsed = time.time() - started
         _stop_event.wait(max(1, INTERVAL_SECONDS - elapsed))
@@ -38,7 +38,7 @@ def start_collector():
     _stop_event.clear()
     _thread = threading.Thread(
         target=_run,
-        name="prediction-collector",
+        name="live-gps-collector",
         daemon=True,
     )
     _thread.start()
