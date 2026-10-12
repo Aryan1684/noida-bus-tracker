@@ -7,10 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from dotenv import load_dotenv
 
-from services.gps_service import get_noida_electric_buses, refresh_noida_electric_buses, get_direct_live_buses, get_cached_direct_live_buses
+from services.gps_service import get_cached_direct_live_buses
 from services.prediction_collector import collector_running, start_collector, stop_collector
 from utils.distance import calculate_distance
-from services.eta_service import calculate_eta
 from services.direction_service import ROUTES, LANDMARKS
 from services.analytics_service import dashboard as get_analytics_dashboard, record_consented_location, record_event, verify_admin_token
 from services.gps_service import get_ingestion_stats, get_direct_snapshot_status
@@ -88,12 +87,12 @@ async def disable_api_caching(request, call_next):
 
 
 @app.on_event("startup")
-def startup_prediction_collector():
+def startup_live_gps_collector():
     start_collector()
 
 
 @app.on_event("shutdown")
-def shutdown_prediction_collector():
+def shutdown_live_gps_collector():
     stop_collector()
 
 
@@ -103,7 +102,7 @@ def root():
         "message": "Noida Electric Bus Tracker API is running",
         "status": "ok",
         "data_source": "MARGDARSHI",
-        "prediction_collector_running": collector_running(),
+        "live_gps_collector_running": collector_running(),
         "features": {
             "nearby_buses": True,
             "gps_freshness": True,
@@ -145,7 +144,7 @@ async def api_health():
         "feedback_configured": bool(WEB3FORMS_FEEDBACK_KEY),
         "reports_configured": bool(WEB3FORMS_REPORT_KEY),
         "admin_configured": bool(os.getenv("ADMIN_TOKEN")),
-        "prediction_collector_running": collector_healthy,
+        "live_gps_collector_running": collector_healthy,
     }
 
 
@@ -344,57 +343,33 @@ def get_nearby_buses(
     buses = get_processed_buses()
     nearby_buses = []
 
-    for bus in buses:
+    for source_bus in buses:
         distance = calculate_distance(
             lat,
             lon,
-            bus["latitude"],
-            bus["longitude"]
+            source_bus["latitude"],
+            source_bus["longitude"]
         )
 
         if distance <= radius:
+            bus = dict(source_bus)
             bus["distance_km"] = round(distance, 2)
-            if bus.get("is_stale") or bus.get("vehicle_status") == "no_signal":
-                eta = {
-                    "eta_minutes": None,
-                    "eta_status": "unavailable",
-                    "eta_reason": "GPS signal is unavailable or the location is stale",
-                }
-            else:
-                eta = calculate_eta(bus, lat, lon)
-            bus.update(eta)
-            eta_minutes = eta.get("eta_minutes")
-            confidence = str(bus.get("position_confidence") or "medium").lower()
-            if eta_minutes is not None:
-                if confidence == "high":
-                    eta_min, eta_max = max(1, eta_minutes - 1), eta_minutes + 1
-                elif confidence == "medium":
-                    eta_min, eta_max = max(1, eta_minutes - 1), eta_minutes + 2
-                else:
-                    eta_min, eta_max = eta_minutes, eta_minutes + 3
-                bus["eta_min"] = eta_min
-                bus["eta_max"] = eta_max
-                bus["eta_label"] = f"{eta_min}–{eta_max} min"
-            else:
-                bus["eta_min"] = None
-                bus["eta_max"] = None
-                bus["eta_label"] = "ETA unavailable"
+            bus["eta_minutes"] = None
+            bus["eta_min"] = None
+            bus["eta_max"] = None
+            bus["eta_label"] = "ETA disabled"
+            bus["eta_status"] = "disabled"
             nearby_buses.append(bus)
 
-    nearby_buses.sort(
-        key=lambda bus: (
-            0 if bus.get("eta_status") == "estimated" else
-            1 if bus.get("eta_status") == "unavailable" else 2,
-            bus.get("eta_minutes") if bus.get("eta_minutes") is not None else 9999,
-            bus["distance_km"],
-        )
-    )
+    nearby_buses.sort(key=lambda bus: bus["distance_km"])
 
     return {
         "count": len(nearby_buses),
         "total_buses": len(buses),
         "feed_state": get_direct_snapshot_status()["state"],
         "radius_km": radius,
+        "data_source": "MARGDARSHI",
+        "prediction_enabled": False,
         "buses": nearby_buses
     }
 
