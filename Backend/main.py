@@ -106,8 +106,8 @@ def root():
         "features": {
             "nearby_buses": True,
             "gps_freshness": True,
-            "route_matching": True,
-            "eta_estimates": True,
+            "route_matching": False,
+            "eta_estimates": False,
             "location_search": True,
             "feedback": bool(WEB3FORMS_FEEDBACK_KEY),
             "bus_reports": bool(WEB3FORMS_REPORT_KEY),
@@ -124,7 +124,7 @@ async def api_livez():
 @app.get("/api/health")
 async def api_health():
     snapshot = get_direct_snapshot_status()
-    stale_after = max(120, int(os.getenv("PREDICTION_COLLECT_INTERVAL_SECONDS", "60")) * 2)
+    stale_after = max(120, int(os.getenv("GPS_REFRESH_INTERVAL_SECONDS", "60")) * 2)
     data_healthy = (
         snapshot["state"] == "available"
         and snapshot["snapshot_age_seconds"] is not None
@@ -287,7 +287,7 @@ def admin_fleet(
         "predictions_applied": corrected,
         "position_confidence_counts": confidence_counts,
         "buses": buses,
-        "prediction_collector_running": collector_running(),
+        "live_gps_collector_running": collector_running(),
         "prediction_history_points_per_bus": 10,
     }
 
