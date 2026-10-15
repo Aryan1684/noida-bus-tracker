@@ -1081,7 +1081,7 @@ function createBusCard(bus, rankIndex = 0) {
     } else if (movementState === "stationary") {
         directionHtml = "<div class='bus-direction'><span class='direction-wait stationary' aria-hidden='true'></span><div><small>STATUS</small><strong>" + (freshness.stale ? "Last known stationary" : "Stationary") + "</strong></div></div>";
     } else {
-        directionHtml = "<div class='bus-direction'><span class='direction-wait' aria-hidden='true'></span><div><small>DIRECTION</small><strong>Not enough recent movement data</strong></div></div>";
+        directionHtml = "";
     }
 
     const route = getBusRoute(bus.bus_id);
