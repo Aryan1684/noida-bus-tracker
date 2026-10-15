@@ -1124,8 +1124,13 @@ function createBusCard(bus, rankIndex = 0) {
 
     const nextStop = String(bus && (bus.likely_next_stop || bus.likely_towards) || "").trim();
     const routeMatched = Boolean(bus && (bus.route_path_id || bus.route_id) && nextStop && bus.route_confidence);
+    const routeStopLabel = routeMatched && /^(high|medium)$/i.test(String(bus.route_confidence))
+        ? "LIKELY NEXT STOP"
+        : routeMatched
+        ? "POSSIBLE NEXT STOP"
+        : "LIKELY TOWARDS";
     const nextStopHtml = nextStop && !/unknownroute|^unknown$/i.test(nextStop)
-        ? "<div class='bus-terminal-stop'><small>" + (routeMatched ? "LIKELY NEXT STOP" : "LIKELY TOWARDS") + "</small><strong>" + escapeHtml(nextStop) + "</strong></div>"
+        ? "<div class='bus-terminal-stop'><small>" + routeStopLabel + "</small><strong>" + escapeHtml(nextStop) + "</strong></div>"
         : "";
     const lastPassedStop = String(bus && (bus.last_passed_stop || bus.last_stop) || "").trim();
     const lastStopHtml = lastPassedStop && !/not enough route history|unknownroute|^unknown$/i.test(lastPassedStop)
@@ -1867,13 +1872,13 @@ function updateSelectedBusPanel(bus) {
     const freshness = getBusFreshness(bus);
     const moving = movementState === "moving";
     const nextStop = String(bus.likely_next_stop || bus.likely_towards || "").trim();
-    const matchedNextStop = Boolean(
+    const hasRouteStop = Boolean(
         nextStop &&
         (bus.route_path_id || bus.route_id) &&
         bus.route_confidence &&
-        /^(high|medium)$/i.test(String(bus.route_confidence)) &&
         !/unknownroute|^unknown$/i.test(nextStop)
     );
+    const matchedNextStop = Boolean(hasRouteStop && /^(high|medium)$/i.test(String(bus.route_confidence)));
     const place = String(bus.nearby_place || bus.location_label || "").trim();
     const cardinalDirection = String(bus.direction || "").trim();
     const normalizedDirection = /^(moving|stationary|unknown|direction unavailable)$/i.test(cardinalDirection)
@@ -1901,7 +1906,9 @@ function updateSelectedBusPanel(bus) {
     }
 
     if (directionLabelNode) {
-        directionLabelNode.textContent = moving && matchedNextStop
+        directionLabelNode.textContent = freshness.stale && moving
+            ? matchedNextStop ? "LAST KNOWN MOVEMENT TOWARDS" : "LAST KNOWN LOCATION"
+            : moving && matchedNextStop
             ? "MOVING TOWARDS"
             : moving
             ? "CURRENTLY MOVING THROUGH"
@@ -1911,17 +1918,22 @@ function updateSelectedBusPanel(bus) {
     }
     if (directionNode) {
         directionNode.textContent = moving && matchedNextStop
-            ? nextStop
+            ? (freshness.stale ? "Last known towards " : "") + nextStop
             : moving
-            ? [place, normalizedDirection].filter(Boolean).join(" · ") || "Nearby location being resolved"
+            ? [freshness.stale ? "Last seen near " + place.replace(/^Near /i, "") : place, normalizedDirection].filter(Boolean).join(" · ") || "Nearby location being resolved"
             : movementState === "stationary"
             ? place ? "Stationary near " + place.replace(/^Near /i, "") : "Stationary"
             : normalizedDirection || "Direction unavailable";
     }
 
     if (lastStopNode) {
+        const labelNode = lastStopNode.parentElement?.querySelector("span");
         const lastStop = String(bus.last_passed_stop || bus.last_stop || "").trim();
-        lastStopNode.textContent = lastStop && !/not enough route history|unknownroute|^unknown$/i.test(lastStop)
+        const hasLastStop = Boolean(lastStop && !/not enough route history|unknownroute|^unknown$/i.test(lastStop));
+        if (labelNode) labelNode.textContent = hasLastStop
+            ? String(bus.last_stop_confidence || "").toLowerCase() === "low" ? "Likely previous stop" : "Last passed stop · estimate"
+            : "Last passed stop";
+        lastStopNode.textContent = hasLastStop
             ? lastStop
             : "No stop confirmed from recent history";
     }
@@ -1929,6 +1941,8 @@ function updateSelectedBusPanel(bus) {
     if (nextStopNode) {
         nextStopNode.textContent = matchedNextStop
             ? nextStop
+            : hasRouteStop
+            ? nextStop + " · low-confidence estimate"
             : "No route-matched stop yet";
     }
 
