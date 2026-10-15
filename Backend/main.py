@@ -1,5 +1,7 @@
+import math
 import os
 import requests
+import time
 
 from fastapi import FastAPI, Query, HTTPException, Header, Response
 from pydantic import BaseModel, Field
@@ -10,7 +12,8 @@ from dotenv import load_dotenv
 from services.gps_service import get_cached_direct_live_buses, refresh_direct_snapshot
 from services.prediction_collector import collector_running, start_collector, stop_collector
 from utils.distance import calculate_distance
-from services.direction_service import ROUTES, LANDMARKS
+from services.direction_service import ROUTES, LANDMARKS, update_bus_history
+from services.ml_prediction_service import load_histories
 from services.analytics_service import dashboard as get_analytics_dashboard, record_consented_location, record_event, verify_admin_token
 from services.gps_service import get_ingestion_stats, get_direct_snapshot_status
 
@@ -107,7 +110,7 @@ def root():
             "nearby_buses": True,
             "gps_freshness": True,
             "route_matching": True,
-            "eta_estimates": False,
+            "eta_estimates": True,
             "movement_prediction": True,
             "last_stop_estimates": True,
             "location_search": True,
@@ -342,6 +345,194 @@ def get_buses():
         "buses": buses
     }
 
+
+def _finite_bus_number(value):
+    try:
+        number = float(value)
+        return number if math.isfinite(number) else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _recent_bus_history(bus, stored_history):
+    age_seconds = _finite_bus_number(bus.get("gps_age_seconds"))
+    sample_time = time.time() - max(0.0, age_seconds or 0.0)
+    try:
+        latitude = float(bus.get("latitude"))
+        longitude = float(bus.get("longitude"))
+        speed = max(0.0, float(bus.get("speed") or 0.0))
+    except (TypeError, ValueError):
+        return [], sample_time
+
+    history = []
+    for point in stored_history or []:
+        try:
+            point_time = float(point.get("time"))
+            point_lat = float(point.get("latitude"))
+            point_lon = float(point.get("longitude"))
+            point_speed = max(0.0, float(point.get("speed") or 0.0))
+        except (TypeError, ValueError, AttributeError):
+            continue
+
+        if not all(math.isfinite(value) for value in (point_time, point_lat, point_lon, point_speed)):
+            continue
+        if not (-90 <= point_lat <= 90 and -180 <= point_lon <= 180):
+            continue
+        if sample_time - 1200 <= point_time <= sample_time + 5:
+            history.append({
+                "time": point_time,
+                "latitude": point_lat,
+                "longitude": point_lon,
+                "speed": point_speed,
+            })
+
+    history.sort(key=lambda point: point["time"])
+    current_point = {
+        "time": sample_time,
+        "latitude": latitude,
+        "longitude": longitude,
+        "speed": speed,
+    }
+
+    if not history:
+        history.append(current_point)
+    elif sample_time > history[-1]["time"] + 2:
+        history.append(current_point)
+    elif abs(sample_time - history[-1]["time"]) <= 2:
+        history[-1] = current_point
+
+    return history[-10:], sample_time
+
+
+def _set_eta_estimate(bus, history):
+    bus["eta_minutes"] = None
+    bus["eta_min"] = None
+    bus["eta_max"] = None
+    bus["eta_status"] = "unavailable"
+    bus["eta_label"] = "ETA unavailable"
+
+    age_seconds = _finite_bus_number(bus.get("gps_age_seconds"))
+    if (
+        age_seconds is None
+        or age_seconds > 120
+        or bus.get("data_stale")
+        or bus.get("is_stale")
+        or str(bus.get("vehicle_status") or "").lower() == "no_signal"
+    ):
+        bus["eta_label"] = "ETA unavailable · GPS update delayed"
+        return
+
+    if len(history) < 3 or history[-1]["time"] - history[0]["time"] < 60:
+        bus["eta_label"] = "ETA unavailable · collecting movement history"
+        return
+
+    if str(bus.get("movement_status") or "").lower() != "moving":
+        bus["eta_label"] = "ETA unavailable · bus not confirmed moving"
+        return
+
+    route_id = bus.get("route_path_id") or bus.get("route_id")
+    confidence = str(bus.get("route_confidence") or "").strip().lower()
+    next_stop = str(bus.get("likely_towards") or "").strip()
+    if not route_id or confidence not in {"high", "medium"} or next_stop not in LANDMARKS:
+        bus["eta_label"] = "ETA unavailable · next stop not confirmed"
+        return
+
+    try:
+        latitude = float(bus.get("latitude"))
+        longitude = float(bus.get("longitude"))
+    except (TypeError, ValueError):
+        bus["eta_label"] = "ETA unavailable · location missing"
+        return
+
+    stop_latitude, stop_longitude = LANDMARKS[next_stop]
+    distance_km = calculate_distance(latitude, longitude, stop_latitude, stop_longitude)
+    if not math.isfinite(distance_km) or distance_km < 0 or distance_km > 15:
+        bus["eta_label"] = "ETA unavailable · next stop distance uncertain"
+        return
+
+    if distance_km <= 0.15:
+        bus["eta_minutes"] = 0
+        bus["eta_min"] = 0
+        bus["eta_max"] = 1
+        bus["eta_status"] = "arriving"
+        bus["eta_label"] = "Arriving at " + next_stop
+        bus["eta_distance_km"] = round(distance_km, 2)
+        return
+
+    current_speed = _finite_bus_number(bus.get("speed"))
+    valid_speeds = []
+    recent_history = history[-6:]
+    for previous, current in zip(recent_history, recent_history[1:]):
+        elapsed = current["time"] - previous["time"]
+        if elapsed < 5:
+            continue
+        segment_distance = calculate_distance(
+            previous["latitude"],
+            previous["longitude"],
+            current["latitude"],
+            current["longitude"],
+        )
+        implied_speed = segment_distance * 3600 / elapsed
+        if 3 <= implied_speed <= 85:
+            valid_speeds.append(implied_speed)
+
+    if current_speed is not None and 3 <= current_speed <= 85:
+        speed_kmh = current_speed
+    elif valid_speeds:
+        valid_speeds.sort()
+        speed_kmh = valid_speeds[len(valid_speeds) // 2]
+    else:
+        bus["eta_label"] = "ETA unavailable · speed not reliable"
+        return
+
+    estimated_minutes = max(1, math.ceil(distance_km * 1.2 / speed_kmh * 60))
+    if estimated_minutes > 120:
+        bus["eta_label"] = "ETA unavailable · travel time uncertain"
+        return
+
+    bus["eta_minutes"] = estimated_minutes
+    bus["eta_min"] = max(1, math.floor(estimated_minutes * 0.8))
+    bus["eta_max"] = max(estimated_minutes, math.ceil(estimated_minutes * 1.4))
+    bus["eta_status"] = "estimated"
+    bus["eta_label"] = "~" + str(estimated_minutes) + " min to " + next_stop
+    bus["eta_distance_km"] = round(distance_km, 2)
+    bus["eta_speed_kmh"] = round(speed_kmh, 1)
+
+
+def _enrich_nearby_buses_with_history(buses):
+    if not buses:
+        return buses
+
+    bus_ids = [str(bus.get("bus_id") or "").strip().upper() for bus in buses if bus.get("bus_id")]
+    try:
+        histories = load_histories(bus_ids)
+    except Exception as error:
+        print(f"Movement history unavailable; serving live GPS without route estimates: {error}", flush=True)
+        histories = {}
+
+    for bus in buses:
+        bus_id = str(bus.get("bus_id") or "").strip().upper()
+        history, _sample_time = _recent_bus_history(bus, histories.get(bus_id, []))
+        bus["history_points_used"] = len(history)
+        bus["history_span_minutes"] = round((history[-1]["time"] - history[0]["time"]) / 60, 1) if len(history) >= 2 else 0
+
+        if len(history) >= 2:
+            movement = update_bus_history(bus, history)
+            if movement:
+                bus.update(movement)
+
+        speed = _finite_bus_number(bus.get("speed"))
+        status = str(bus.get("vehicle_status") or "").strip().lower()
+        if status != "no_signal" and speed is not None and speed >= 5:
+            bus["movement_status"] = "moving"
+        elif status != "no_signal" and len(history) < 2 and status == "stationary":
+            bus["movement_status"] = "stationary"
+
+        _set_eta_estimate(bus, history)
+
+    return buses
+
+
 @app.get("/api/buses/nearby")
 def get_nearby_buses(
     lat: float = Query(...),
@@ -369,15 +560,11 @@ def get_nearby_buses(
             bus["latitude"] = bus_lat
             bus["longitude"] = bus_lon
             bus["distance_km"] = round(distance, 2)
-            bus["eta_minutes"] = None
-            bus["eta_min"] = None
-            bus["eta_max"] = None
-            bus["eta_label"] = "ETA disabled"
-            bus["eta_status"] = "disabled"
             bus["prediction_enabled"] = False
             nearby_buses.append(bus)
 
     nearby_buses.sort(key=lambda bus: bus["distance_km"])
+    nearby_buses = _enrich_nearby_buses_with_history(nearby_buses)
 
     return {
         "count": len(nearby_buses),
