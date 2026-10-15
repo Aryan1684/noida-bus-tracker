@@ -441,7 +441,11 @@ def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=
         "route_id": "R1" if best_route["id"].startswith("N-R01") else (
             "GR01" if best_route["id"].startswith("GR01") else best_route["id"]
         ),
+        "route_path_id": best_route["id"],
         "likely_towards": segment["to"],
+        "likely_destination": best_route["points"][-1],
+        "last_stop": best_route["points"][-1],
+        "last_stop_confidence": confidence,
         "route": best_route["name"],
         "route_confidence": confidence,
         "route_distance_km": round(segment["distance"], 2)
@@ -528,8 +532,12 @@ def _infer_nearest_destination(latitude, longitude, bearing, history_points=None
 
     return {
         "likely_towards": destination,
+        "likely_destination": None,
+        "last_stop": None,
+        "last_stop_confidence": None,
         "route": "Towards " + destination,
         "route_id": None,
+        "route_path_id": None,
         "route_confidence": confidence,
         "route_distance_km": round(distance_km, 2)
     }
