@@ -1063,14 +1063,20 @@ function createBusCard(bus, rankIndex = 0) {
     const isCurrentlyMoving = movementState === "moving";
     card.dataset.moving = isCurrentlyMoving ? "true" : "false";
 
-    const direction = String(bus.likely_towards || bus.direction || "").trim();
+    const nextStopValue = String(bus.likely_next_stop || bus.likely_towards || "").trim();
+    const hasMatchedNextStop = Boolean(nextStopValue && (bus.route_path_id || bus.route_id) && bus.route_confidence);
+    const rawDirection = String(bus.direction || "").trim();
+    const cardinalDirection = /^(moving|stationary|unknown|direction unavailable)$/i.test(rawDirection) ? "" : rawDirection;
+    const currentPlace = String(bus.nearby_place || "").trim();
     let directionHtml = "";
 
     if (isCurrentlyMoving) {
         const directionLabel = freshness.stale
-            ? direction ? "LAST KNOWN MOVEMENT TOWARDS" : "LAST KNOWN MOVEMENT"
-            : direction ? "MOVING TOWARDS" : "MOVEMENT";
-        const directionText = direction || (freshness.stale ? "Last known moving" : "Moving");
+            ? hasMatchedNextStop ? "LAST KNOWN MOVEMENT TOWARDS" : "LAST KNOWN LOCATION"
+            : hasMatchedNextStop ? "MOVING TOWARDS" : "CURRENTLY MOVING THROUGH";
+        const directionText = hasMatchedNextStop
+            ? nextStopValue
+            : [currentPlace, cardinalDirection].filter(Boolean).join(" · ") || "Nearby location being resolved";
         directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'></span><div><small>" + directionLabel + "</small><strong>" + escapeHtml(directionText) + "</strong></div></div>";
     } else if (movementState === "no_signal") {
         directionHtml = "<div class='bus-direction'><span class='direction-wait' aria-hidden='true'></span><div><small>LAST KNOWN MOVEMENT</small><strong>" + escapeHtml(direction || "No signal") + "</strong></div></div>";
@@ -1116,11 +1122,14 @@ function createBusCard(bus, rankIndex = 0) {
         ? "<span class='bus-meta'>Movement " + movement.toFixed(2) + " km / " + history.toFixed(1) + " min</span>"
         : "";
 
-    const nextStop = String(bus && bus.likely_towards || "").trim();
-    const routeMatched = Boolean(bus && bus.route_path_id && nextStop && bus.route_confidence);
-    const nextStopLabel = routeMatched ? "LIKELY NEXT STOP" : "LIKELY TOWARDS";
+    const nextStop = String(bus && (bus.likely_next_stop || bus.likely_towards) || "").trim();
+    const routeMatched = Boolean(bus && (bus.route_path_id || bus.route_id) && nextStop && bus.route_confidence);
     const nextStopHtml = nextStop && !/unknownroute|^unknown$/i.test(nextStop)
-        ? "<div class='bus-terminal-stop'><small>" + nextStopLabel + "</small><strong>" + escapeHtml(nextStop) + "</strong></div>"
+        ? "<div class='bus-terminal-stop'><small>" + (routeMatched ? "LIKELY NEXT STOP" : "LIKELY TOWARDS") + "</small><strong>" + escapeHtml(nextStop) + "</strong></div>"
+        : "";
+    const lastPassedStop = String(bus && (bus.last_passed_stop || bus.last_stop) || "").trim();
+    const lastStopHtml = lastPassedStop && !/not enough route history|unknownroute|^unknown$/i.test(lastPassedStop)
+        ? "<div class='bus-terminal-stop'><small>LAST PASSED STOP</small><strong>" + escapeHtml(lastPassedStop) + "</strong></div>"
         : "";
     const etaValue = String(bus && bus.eta_label || "").trim();
     const etaLabel = /disabled/i.test(etaValue)
@@ -1140,9 +1149,10 @@ function createBusCard(bus, rankIndex = 0) {
             "<span class='bus-rank'>#" + (rankIndex + 1) + "</span>" +
         "</div>" +
         directionHtml +
+        lastStopHtml +
         nextStopHtml +
         "<div class='bus-meta-row'>" +
-            "<span class='bus-meta'>Location " + escapeHtml(locationText) + "</span>" +
+            "<span class='bus-meta'>Location " + escapeHtml(String(bus.nearby_place || locationText)) + "</span>" +
             "<span class='bus-meta'>Distance " + escapeHtml(distanceText) + "</span>" +
             "<span class='bus-meta'>Speed " + escapeHtml(speedText) + "</span>" +
             movementHtml +
