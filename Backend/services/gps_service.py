@@ -227,6 +227,78 @@ def _post_with_dns_fallback(url, headers, timeout=(4, 8)):
         raise last_error
 
 
+DIRECT_HISTORY_LIMIT = 36
+DIRECT_HISTORY_MAX_AGE_SECONDS = 1800
+
+
+def _record_direct_history(buses):
+    now = time.time()
+
+    with _cache_lock:
+        for bus in buses:
+            bus_id = str(bus.get("bus_id") or "").strip().upper()
+            event_time = _parse_timestamp(bus.get("source_timestamp") or bus.get("timestamp"))
+
+            if not bus_id or event_time is None:
+                continue
+            if event_time > now + 120 or event_time < now - DIRECT_HISTORY_MAX_AGE_SECONDS:
+                continue
+
+            try:
+                latitude = float(bus.get("latitude"))
+                longitude = float(bus.get("longitude"))
+                speed = max(0.0, float(bus.get("speed") or 0.0))
+            except (TypeError, ValueError):
+                continue
+
+            if not all(math.isfinite(value) for value in (latitude, longitude, speed)):
+                continue
+            if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+                continue
+
+            history = _direct_history.setdefault(bus_id, [])
+            point = {
+                "time": event_time,
+                "latitude": latitude,
+                "longitude": longitude,
+                "speed": speed,
+            }
+
+            if history:
+                previous = history[-1]
+                if event_time < previous["time"] - 1:
+                    continue
+                if abs(event_time - previous["time"]) <= 1:
+                    history[-1] = point
+                    continue
+
+            history.append(point)
+            if len(history) > DIRECT_HISTORY_LIMIT:
+                del history[:-DIRECT_HISTORY_LIMIT]
+
+        stale_before = now - DIRECT_HISTORY_MAX_AGE_SECONDS
+        for bus_id in list(_direct_history):
+            history = _direct_history[bus_id]
+            history[:] = [point for point in history if point["time"] >= stale_before]
+            if not history:
+                _direct_history.pop(bus_id, None)
+
+
+def get_direct_bus_histories(bus_ids, limit=DIRECT_HISTORY_LIMIT):
+    normalized_ids = {
+        str(bus_id or "").strip().upper()
+        for bus_id in bus_ids
+        if str(bus_id or "").strip()
+    }
+    safe_limit = max(2, min(int(limit), DIRECT_HISTORY_LIMIT))
+
+    with _cache_lock:
+        return {
+            bus_id: [dict(point) for point in _direct_history.get(bus_id, [])[-safe_limit:]]
+            for bus_id in normalized_ids
+        }
+
+
 def get_direct_live_buses(data=None, include_persisted_history=False):
     global _direct_snapshot, _direct_snapshot_at, _direct_feed_state, _direct_feed_checked_at
 
@@ -328,6 +400,8 @@ def get_direct_live_buses(data=None, include_persisted_history=False):
         _direct_snapshot_at = checked_at
         _direct_feed_checked_at = checked_at
         _direct_feed_state = "available" if buses else "empty"
+
+    _record_direct_history(buses)
 
     print(
         f"Raw MARGDARSHI GPS parsed: buses={len(buses)}; history-backed movement analysis follows",
