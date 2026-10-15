@@ -346,21 +346,26 @@ def get_nearby_buses(
     nearby_buses = []
 
     for source_bus in buses:
-        distance = calculate_distance(
-            lat,
-            lon,
-            source_bus["latitude"],
-            source_bus["longitude"]
-        )
+        try:
+            bus_lat = float(source_bus.get("latitude"))
+            bus_lon = float(source_bus.get("longitude"))
+            if not (-90 <= bus_lat <= 90 and -180 <= bus_lon <= 180):
+                continue
+            distance = calculate_distance(lat, lon, bus_lat, bus_lon)
+        except (TypeError, ValueError, KeyError):
+            continue
 
         if distance <= radius:
             bus = dict(source_bus)
+            bus["latitude"] = bus_lat
+            bus["longitude"] = bus_lon
             bus["distance_km"] = round(distance, 2)
             bus["eta_minutes"] = None
             bus["eta_min"] = None
             bus["eta_max"] = None
             bus["eta_label"] = "ETA disabled"
             bus["eta_status"] = "disabled"
+            bus["prediction_enabled"] = False
             nearby_buses.append(bus)
 
     nearby_buses.sort(key=lambda bus: bus["distance_km"])
@@ -371,7 +376,7 @@ def get_nearby_buses(
         "feed_state": get_direct_snapshot_status()["state"],
         "radius_km": radius,
         "data_source": "MARGDARSHI",
-        "prediction_enabled": True,
+        "prediction_enabled": False,
         "buses": nearby_buses
     }
 
