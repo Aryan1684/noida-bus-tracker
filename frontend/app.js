@@ -1033,6 +1033,9 @@ function createBusCard(bus, rankIndex = 0) {
         ? " · " + escapeHtml(bus.confidence_label)
         : "";
     const etaLabel = bus.eta_label || "ETA unavailable";
+    const lastStopText = bus.last_stop
+        ? escapeHtml(String(bus.last_stop)) + " · estimated"
+        : "Not enough route history";
     const favorite = false;
     const ageSeconds = Number(bus.gps_age_seconds);
     const ageLabel = Number.isFinite(ageSeconds)
@@ -1057,6 +1060,7 @@ function createBusCard(bus, rankIndex = 0) {
             "<span class='bus-rank'>#" + (rankIndex + 1) + "</span>" +
         "</div>" +
         directionHtml +
+        "<div class='bus-terminal-stop'><small>LIKELY LAST STOP</small><strong>" + lastStopText + "</strong></div>" +
         "<div class='bus-meta-row'>" +
             "<span class='bus-meta'>Distance " + (bus.distance_km ?? "—") + " km</span>" +
             "<span class='bus-meta'>Speed " + (bus.speed ?? 0) + " km/h</span>" +
