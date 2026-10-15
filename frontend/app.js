@@ -317,6 +317,8 @@ function initializeWarningModal() {
 
     if (localStorage.getItem(acknowledgementKey) === "true") {
         modal.classList.add("hidden");
+    } else {
+        modal.classList.remove("hidden");
     }
 
     function close() {
@@ -332,7 +334,9 @@ function initializeWarningModal() {
         feedbackButton.addEventListener("click", () => {
             close();
             const siteFeedbackButton = document.getElementById("feedbackBtn");
-            if (siteFeedbackButton) siteFeedbackButton.click();
+            if (siteFeedbackButton) {
+                window.setTimeout(() => siteFeedbackButton.click(), 350);
+            }
         });
     }
 
