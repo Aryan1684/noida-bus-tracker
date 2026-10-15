@@ -25,7 +25,7 @@
     }
     </script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
     <header class="topbar">
@@ -276,6 +276,10 @@
                             <span id="selectedBusSpeed">— km/h</span>
                             <span id="selectedBusMovement">— km / 5 min</span>
                         </div>
+                        <div class="selected-bus-location-note selected-bus-last-stop">
+                            <span>Likely last stop</span>
+                            <strong id="selectedBusLastStop">Not enough route history</strong>
+                        </div>
                         <div class="selected-bus-location-note">
                             <span>Current bus location</span>
                             <strong id="selectedBusEta">ETA unavailable</strong>
@@ -323,11 +327,25 @@
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="app.js?v=19"></script>
+    <script src="app.js?v=20"></script>
     <script src="analytics.js?v=2"></script>
-    <script src="features.js?v=23"></script>
+    <script src="features.js?v=24"></script>
     <script src="server-history.js?v=1"></script>
     <script src="theme.js?v=9"></script>
+
+    <div id="warningModal" class="tracker-disclosure-modal hidden" role="dialog" aria-modal="true" aria-labelledby="trackerDisclosureTitle">
+        <div class="tracker-disclosure-card">
+            <p class="eyebrow">LIVE DATA & ESTIMATES</p>
+            <h2 id="trackerDisclosureTitle">A quick note before you track</h2>
+            <p>Bus locations come from the MARGDARSHI · UPSRTC feed when available. Direction and likely last-stop details are estimates based on recent GPS points and mapped route coordinates, not confirmed dispatch information.</p>
+            <p>Some buses may not appear because they are missing from the source feed, have no recent GPS signal, or have insufficient history. We cannot verify every bus outside the feed. Predictions can be wrong, especially near turns, diversions, or route changes.</p>
+            <div class="tracker-disclosure-actions">
+                <button id="warningAcceptBtn" class="button button-primary" type="button">Continue to tracker</button>
+                <button id="warningFeedbackBtn" class="button button-secondary" type="button">Feedback & suggestions</button>
+            </div>
+            <p class="tracker-disclosure-footnote">Independent project · Not affiliated with UPSRTC or any government department.</p>
+        </div>
+    </div>
 
     <div id="appComingSoonModal" class="app-coming-soon-modal hidden" role="dialog" aria-modal="true" aria-labelledby="appComingSoonTitle">
         <div class="app-coming-soon-card">
