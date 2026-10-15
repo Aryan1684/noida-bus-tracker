@@ -579,9 +579,15 @@ def _normalise_place_label(name, locality, latitude, longitude):
     name = " ".join(str(name or "").replace(",", " ").split()).strip()
     locality = " ".join(str(locality or "").replace(",", " ").split()).strip()
     fallback = _nearest_landmark_label(latitude, longitude)
+    is_greater_noida_west = 28.58 <= latitude <= 28.66 and 77.36 <= longitude <= 77.47
+    area = "Greater Noida West" if is_greater_noida_west else ""
 
     if not name or name.lower() in {"road", "residential area", "unnamed road", "unknown"}:
         return fallback["label"]
+    if area and locality and area.casefold() not in locality.casefold():
+        locality = locality + ", " + area
+    elif area and not locality:
+        locality = area
     if locality and locality.casefold() != name.casefold():
         return f"Near {name}, {locality}"
     return f"Near {name}"
