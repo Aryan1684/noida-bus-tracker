@@ -361,7 +361,7 @@ def _finite_bus_number(value):
 
 def _recent_bus_history(bus, stored_history):
     age_seconds = _finite_bus_number(bus.get("gps_age_seconds"))
-    sample_time = time.time() - max(0.0, age_seconds or 0.0)
+    sample_time = time.time()
     try:
         latitude = float(bus.get("latitude"))
         longitude = float(bus.get("longitude"))
