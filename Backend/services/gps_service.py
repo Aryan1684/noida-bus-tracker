@@ -237,11 +237,11 @@ def _record_direct_history(buses):
     with _cache_lock:
         for bus in buses:
             bus_id = str(bus.get("bus_id") or "").strip().upper()
-            event_time = _parse_timestamp(bus.get("source_timestamp") or bus.get("timestamp"))
+            source_time = _parse_timestamp(bus.get("source_timestamp") or bus.get("timestamp"))
 
-            if not bus_id or event_time is None:
+            if not bus_id or source_time is None:
                 continue
-            if event_time > now + 120 or event_time < now - DIRECT_HISTORY_MAX_AGE_SECONDS:
+            if source_time > now + 120 or source_time < now - DIRECT_HISTORY_MAX_AGE_SECONDS:
                 continue
 
             try:
@@ -258,7 +258,7 @@ def _record_direct_history(buses):
 
             history = _direct_history.setdefault(bus_id, [])
             point = {
-                "time": event_time,
+                "time": now,
                 "latitude": latitude,
                 "longitude": longitude,
                 "speed": speed,
