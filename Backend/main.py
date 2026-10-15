@@ -13,7 +13,6 @@ from services.gps_service import get_cached_direct_live_buses, refresh_direct_sn
 from services.prediction_collector import collector_running, start_collector, stop_collector
 from utils.distance import calculate_distance
 from services.direction_service import ROUTES, LANDMARKS, update_bus_history
-from services.ml_prediction_service import load_histories
 from services.analytics_service import dashboard as get_analytics_dashboard, record_consented_location, record_event, verify_admin_token
 from services.gps_service import get_ingestion_stats, get_direct_snapshot_status
 
@@ -505,6 +504,7 @@ def _enrich_nearby_buses_with_history(buses):
 
     bus_ids = [str(bus.get("bus_id") or "").strip().upper() for bus in buses if bus.get("bus_id")]
     try:
+        from services.ml_prediction_service import load_histories
         histories = load_histories(bus_ids)
     except Exception as error:
         print(f"Movement history unavailable; serving live GPS without route estimates: {error}", flush=True)
