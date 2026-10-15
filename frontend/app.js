@@ -354,16 +354,10 @@ function initializeWarningModal() {
 
     const acceptButton = document.getElementById("warningAcceptBtn");
     const feedbackButton = document.getElementById("warningFeedbackBtn");
-    const acknowledgementKey = "trackerDisclosureAcknowledgedV1";
 
-    if (localStorage.getItem(acknowledgementKey) === "true") {
-        modal.classList.add("hidden");
-    } else {
-        modal.classList.remove("hidden");
-    }
+    modal.classList.remove("hidden");
 
     function close() {
-        localStorage.setItem(acknowledgementKey, "true");
         modal.classList.add("hidden");
     }
 
