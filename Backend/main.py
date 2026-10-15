@@ -1,6 +1,7 @@
 import math
 import os
 import requests
+import threading
 import time
 
 from fastapi import FastAPI, Query, HTTPException, Header, Response
@@ -9,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from dotenv import load_dotenv
 
-from services.gps_service import get_cached_direct_live_buses, refresh_direct_snapshot
+from services.gps_service import get_cached_direct_live_buses, get_direct_bus_histories, refresh_direct_snapshot
 from services.prediction_collector import collector_running, start_collector, stop_collector
 from utils.distance import calculate_distance
 from services.direction_service import ROUTES, LANDMARKS, update_bus_history
@@ -20,6 +21,11 @@ load_dotenv()
 
 MAPTILER_API_KEY = os.getenv("MAPTILER_API_KEY")
 WEB3FORMS_API = "https://api.web3forms.com/submit"
+_location_label_cache = {}
+_location_label_cache_lock = threading.Lock()
+_last_nominatim_lookup_at = 0.0
+LOCATION_LABEL_CACHE_SECONDS = 1800
+LOCATION_LABEL_CACHE_LIMIT = 300
 WEB3FORMS_FEEDBACK_KEY = os.getenv("WEB3FORMS_FEEDBACK_KEY")
 WEB3FORMS_REPORT_KEY = os.getenv("WEB3FORMS_REPORT_KEY")
 
@@ -377,7 +383,7 @@ def _recent_bus_history(bus, stored_history):
             continue
         if not (-90 <= point_lat <= 90 and -180 <= point_lon <= 180):
             continue
-        if sample_time - 1200 <= point_time <= sample_time + 5:
+        if sample_time - 1800 <= point_time <= sample_time + 5:
             history.append({
                 "time": point_time,
                 "latitude": point_lat,
@@ -400,7 +406,7 @@ def _recent_bus_history(bus, stored_history):
     elif abs(sample_time - history[-1]["time"]) <= 2:
         history[-1] = current_point
 
-    return history[-10:], sample_time
+    return history[-36:], sample_time
 
 
 def _set_eta_estimate(bus, history):
@@ -503,18 +509,36 @@ def _enrich_nearby_buses_with_history(buses):
         return buses
 
     bus_ids = [str(bus.get("bus_id") or "").strip().upper() for bus in buses if bus.get("bus_id")]
+    histories = get_direct_bus_histories(bus_ids, limit=36)
     try:
         from services.ml_prediction_service import load_histories
-        histories = load_histories(bus_ids)
+        stored_histories = load_histories(bus_ids)
+        for bus_id, points in stored_histories.items():
+            combined = {}
+            for point in list(histories.get(bus_id, [])) + list(points or []):
+                key = (
+                    round(float(point.get("time", 0)), 1),
+                    round(float(point.get("latitude", 0)), 6),
+                    round(float(point.get("longitude", 0)), 6),
+                )
+                combined[key] = point
+            histories[bus_id] = sorted(combined.values(), key=lambda point: float(point.get("time", 0)))[-36:]
     except Exception as error:
-        print(f"Movement history unavailable; serving live GPS without route estimates: {error}", flush=True)
-        histories = {}
+        print(f"Stored GPS history unavailable; using in-memory recent fixes: {error}", flush=True)
 
     for bus in buses:
         bus_id = str(bus.get("bus_id") or "").strip().upper()
         history, _sample_time = _recent_bus_history(bus, histories.get(bus_id, []))
         bus["history_points_used"] = len(history)
         bus["history_span_minutes"] = round((history[-1]["time"] - history[0]["time"]) / 60, 1) if len(history) >= 2 else 0
+
+        latitude = _finite_bus_number(bus.get("latitude"))
+        longitude = _finite_bus_number(bus.get("longitude"))
+        if latitude is not None and longitude is not None:
+            place = _nearest_landmark_label(latitude, longitude)
+            bus["nearby_place"] = place["label"]
+            bus["nearby_place_source"] = place["source"]
+            bus["nearby_landmark"] = place.get("landmark")
 
         if len(history) >= 2:
             movement = update_bus_history(bus, history)
@@ -523,14 +547,160 @@ def _enrich_nearby_buses_with_history(buses):
 
         speed = _finite_bus_number(bus.get("speed"))
         status = str(bus.get("vehicle_status") or "").strip().lower()
-        if status != "no_signal" and speed is not None and speed >= 5:
+        if status != "no_signal" and speed is not None and speed >= 3:
             bus["movement_status"] = "moving"
-        elif status != "no_signal" and len(history) < 2 and status == "stationary":
+        elif status != "no_signal" and speed is not None and speed <= 1.5 and len(history) >= 2:
             bus["movement_status"] = "stationary"
 
+        bus["last_passed_stop"] = bus.get("last_passed_stop") or bus.get("last_stop")
+        bus["likely_next_stop"] = bus.get("likely_next_stop") or bus.get("likely_towards")
         _set_eta_estimate(bus, history)
 
     return buses
+
+
+def _nearest_landmark_label(latitude, longitude):
+    candidates = []
+    for name, (point_latitude, point_longitude) in LANDMARKS.items():
+        distance = calculate_distance(latitude, longitude, point_latitude, point_longitude)
+        candidates.append((distance, name))
+    candidates.sort(key=lambda item: item[0])
+
+    distance, name = candidates[0] if candidates else (None, None)
+    is_greater_noida_west = 28.58 <= latitude <= 28.66 and 77.36 <= longitude <= 77.47
+    area = "Greater Noida West" if is_greater_noida_west else "Noida / Greater Noida"
+
+    if name and distance is not None and distance <= 2.5:
+        return {"label": f"Near {name}, {area}", "source": "route_landmark", "landmark": name, "distance_km": round(distance, 2)}
+    return {"label": area, "source": "area_fallback", "landmark": name, "distance_km": round(distance, 2) if distance is not None else None}
+
+
+def _normalise_place_label(name, locality, latitude, longitude):
+    name = " ".join(str(name or "").replace(",", " ").split()).strip()
+    locality = " ".join(str(locality or "").replace(",", " ").split()).strip()
+    fallback = _nearest_landmark_label(latitude, longitude)
+
+    if not name or name.lower() in {"road", "residential area", "unnamed road", "unknown"}:
+        return fallback["label"]
+    if locality and locality.casefold() != name.casefold():
+        return f"Near {name}, {locality}"
+    return f"Near {name}"
+
+
+def _fetch_reverse_place_label(latitude, longitude):
+    if MAPTILER_API_KEY:
+        try:
+            url = f"https://api.maptiler.com/geocoding/{longitude},{latitude}.json"
+            response = requests.get(
+                url,
+                params={"key": MAPTILER_API_KEY, "language": "en", "limit": 1},
+                headers={"Accept": "application/json"},
+                timeout=4,
+            )
+            response.raise_for_status()
+            features = response.json().get("features", [])
+            if features:
+                feature = features[0]
+                properties = feature.get("properties", {})
+                name = feature.get("text") or properties.get("name") or feature.get("place_name", "").split(",")[0]
+                context_items = feature.get("context", []) or []
+                locality = next((str(item.get("text") or "") for item in context_items if any(token in str(item.get("id") or "") for token in ("neighborhood", "locality", "place", "district"))), "")
+                label = _normalise_place_label(name, locality, latitude, longitude)
+                if label:
+                    return {"label": label, "source": "reverse_geocoded", "landmark": None}
+        except (requests.RequestException, ValueError, TypeError, KeyError) as error:
+            print(f"MapTiler reverse lookup unavailable: {error}", flush=True)
+
+    global _last_nominatim_lookup_at
+    now = time.time()
+    with _location_label_cache_lock:
+        can_query_nominatim = now - _last_nominatim_lookup_at >= 1.0
+        if can_query_nominatim:
+            _last_nominatim_lookup_at = now
+
+    if can_query_nominatim:
+        try:
+            response = requests.get(
+                "https://nominatim.openstreetmap.org/reverse",
+                params={
+                    "format": "jsonv2",
+                    "lat": latitude,
+                    "lon": longitude,
+                    "zoom": 18,
+                    "addressdetails": 1,
+                    "namedetails": 1,
+                },
+                headers={
+                    "User-Agent": "NoidaBusTracker/1.0 (independent project)",
+                    "Accept": "application/json",
+                },
+                timeout=4,
+            )
+            response.raise_for_status()
+            data = response.json()
+            address = data.get("address", {}) or {}
+            name = (
+                data.get("name")
+                or address.get("amenity")
+                or address.get("shop")
+                or address.get("tourism")
+                or address.get("leisure")
+                or address.get("building")
+            )
+            if not name:
+                named = data.get("namedetails", {}) or {}
+                name = named.get("name:en") or named.get("name")
+            locality = (
+                address.get("neighbourhood")
+                or address.get("suburb")
+                or address.get("residential")
+                or address.get("quarter")
+                or address.get("city_district")
+                or address.get("town")
+                or address.get("city")
+            )
+            if not name:
+                parts = [part.strip() for part in str(data.get("display_name") or "").split(",") if part.strip()]
+                name = parts[0] if parts else ""
+                if not locality and len(parts) > 1:
+                    locality = parts[1]
+            if name:
+                return {
+                    "label": _normalise_place_label(name, locality, latitude, longitude),
+                    "source": "reverse_geocoded",
+                    "landmark": None,
+                }
+        except (requests.RequestException, ValueError, TypeError, KeyError) as error:
+            print(f"Reverse geocoding unavailable: {error}", flush=True)
+
+    return _nearest_landmark_label(latitude, longitude)
+
+
+@app.get("/api/location-label")
+def get_location_label(
+    lat: float = Query(...),
+    lon: float = Query(...),
+):
+    if not (28.10 <= lat <= 28.80 and 77.20 <= lon <= 77.75):
+        raise HTTPException(status_code=400, detail="Coordinates are outside the supported area")
+
+    key = (round(lat, 4), round(lon, 4))
+    now = time.time()
+    with _location_label_cache_lock:
+        cached = _location_label_cache.get(key)
+        if cached and now - cached["cached_at"] <= LOCATION_LABEL_CACHE_SECONDS:
+            return {**cached["result"], "cached": True}
+
+    result = _fetch_reverse_place_label(lat, lon)
+    result.update({"latitude": lat, "longitude": lon})
+    with _location_label_cache_lock:
+        _location_label_cache[key] = {"cached_at": now, "result": result}
+        if len(_location_label_cache) > LOCATION_LABEL_CACHE_LIMIT:
+            oldest = sorted(_location_label_cache, key=lambda item: _location_label_cache[item]["cached_at"])
+            for stale_key in oldest[:len(oldest) - LOCATION_LABEL_CACHE_LIMIT]:
+                _location_label_cache.pop(stale_key, None)
+
+    return {**result, "cached": False}
 
 
 @app.get("/api/buses/nearby")
