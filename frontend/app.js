@@ -37,32 +37,73 @@ function getBusRoute(busId) {
     return BUS_ROUTES[String(busId || "").trim().toUpperCase()] || null;
 }
 
-function isBusMoving(bus) {
+function getBusFreshness(bus) {
+    const rawAge = bus && bus.gps_age_seconds;
+    const ageSeconds = rawAge !== undefined && rawAge !== null && rawAge !== ""
+        ? Number(rawAge)
+        : NaN;
+    const hasAge = Number.isFinite(ageSeconds) && ageSeconds >= 0;
+    const staleFlag = bus && (
+        bus.data_stale === true ||
+        bus.data_stale === 1 ||
+        String(bus.data_stale).toLowerCase() === "true"
+    );
+    const stale = Boolean(staleFlag) || (hasAge && ageSeconds > 120);
+    const ageLabel = hasAge
+        ? ageSeconds < 60
+            ? "Updated " + Math.round(ageSeconds) + "s ago"
+            : "Updated " + Math.round(ageSeconds / 60) + "m ago"
+        : "GPS timestamp unavailable";
+    const sourceLabel = stale
+        ? "Last known location"
+        : hasAge
+        ? "Live GPS"
+        : "GPS freshness unknown";
+
+    return {ageSeconds, hasAge, stale, ageLabel, sourceLabel};
+}
+
+function getBusMovementState(bus) {
     const status = String(bus && bus.vehicle_status || "").toLowerCase();
-    const speed = Number(bus && bus.speed);
-    const movement = Number(bus && bus.movement_km);
     const movementStatus = String(bus && bus.movement_status || "").toLowerCase();
+    const rawSpeed = bus && bus.speed;
+    const speed = rawSpeed !== undefined && rawSpeed !== null && rawSpeed !== ""
+        ? Number(rawSpeed)
+        : NaN;
+    const rawMovement = bus && bus.movement_km;
+    const movement = rawMovement !== undefined && rawMovement !== null && rawMovement !== ""
+        ? Number(rawMovement)
+        : NaN;
 
     if (status === "no_signal") {
-        return false;
-    }
-
-    if (movementStatus === "moving") {
-        return true;
-    }
-
-    if (status === "stationary" && !(Number.isFinite(movement) && movement >= 0.08)) {
-        return false;
+        return "no_signal";
     }
 
     if (Number.isFinite(speed) && speed >= 5) {
-        return true;
+        return "moving";
     }
 
-    return (
-        Number.isFinite(movement) &&
-        movement >= 0.08
-    );
+    if (movementStatus === "moving") {
+        return "moving";
+    }
+
+    if (status === "stationary") {
+        return "stationary";
+    }
+
+    if (Number.isFinite(speed) && speed <= 1.5) {
+        return "stationary";
+    }
+
+    if (Number.isFinite(movement) && movement >= 0.08) {
+        return "moving";
+    }
+
+    return "unknown";
+}
+
+function isBusMoving(bus) {
+    return getBusMovementState(bus) === "moving";
 }
 
 function compareBusRanking(a, b) {
@@ -1015,63 +1056,76 @@ function createBusCard(bus, rankIndex = 0) {
     card.id = "bus-card-" + bus.bus_id;
     card.dataset.busId = String(bus.bus_id || "");
     card.dataset.distance = Number.isFinite(Number(bus.distance_km)) ? String(Number(bus.distance_km)) : "9999";
-    card.dataset.moving = isBusMoving(bus) ? "true" : "false";
 
     const heading = Number.isFinite(Number(bus.heading)) ? Number(bus.heading) : 0;
-    const currentSpeed = Number(bus.speed);
-    const currentStatus = String(bus.vehicle_status || "").toLowerCase();
-    const movementStatus = String(bus.movement_status || "").toLowerCase();
-    const isCurrentlyMoving = movementStatus === "moving" || isBusMoving(bus);
+    const movementState = getBusMovementState(bus);
+    const freshness = getBusFreshness(bus);
+    const rawSpeed = bus && bus.speed;
+    const currentSpeed = rawSpeed !== undefined && rawSpeed !== null && rawSpeed !== ""
+        ? Number(rawSpeed)
+        : NaN;
+    const isCurrentlyMoving = movementState === "moving";
+    card.dataset.moving = isCurrentlyMoving ? "true" : "false";
+
+    const direction = String(bus.likely_towards || bus.direction || "").trim();
     let directionHtml;
 
-    if (isCurrentlyMoving && bus.likely_towards) {
-        directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'></span><div><small>MOVING TOWARDS</small><strong>" + escapeHtml(bus.likely_towards) + "</strong></div></div>";
-    } else if (isCurrentlyMoving && bus.direction) {
-        directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'></span><div><small>MOVING</small><strong>" + escapeHtml(bus.direction) + "</strong></div></div>";
-    } else if (currentStatus === "no_signal" && (bus.likely_towards || bus.direction)) {
-        directionHtml = "<div class='bus-direction'><span class='direction-wait' aria-hidden='true'></span><div><small>LAST KNOWN MOVEMENT · NO SIGNAL</small><strong>" + escapeHtml(bus.likely_towards || bus.direction) + "</strong></div></div>";
-    } else if (currentStatus === "no_signal") {
-        directionHtml = "<div class='bus-direction'><span class='direction-wait' aria-hidden='true'></span><div><small>STATUS</small><strong>No signal · Movement unavailable</strong></div></div>";
-    } else if (movementStatus === "moving") {
-        directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'></span><div><small>MOVING</small><strong>" + escapeHtml(bus.direction || "Moving") + "</strong></div></div>";
-    } else if (currentStatus === "stationary" || (Number.isFinite(currentSpeed) && currentSpeed < 5)) {
-        directionHtml = "<div class='bus-direction'><span class='direction-wait stationary' aria-hidden='true'></span><div><small>STATUS</small><strong>Stationary</strong></div></div>";
+    if (isCurrentlyMoving) {
+        const directionLabel = freshness.stale
+            ? direction ? "LAST KNOWN MOVEMENT TOWARDS" : "LAST KNOWN MOVEMENT"
+            : direction ? "MOVING TOWARDS" : "MOVEMENT";
+        const directionText = direction || (freshness.stale ? "Last known moving" : "Moving");
+        directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'></span><div><small>" + directionLabel + "</small><strong>" + escapeHtml(directionText) + "</strong></div></div>";
+    } else if (movementState === "no_signal") {
+        directionHtml = "<div class='bus-direction'><span class='direction-wait' aria-hidden='true'></span><div><small>LAST KNOWN MOVEMENT</small><strong>" + escapeHtml(direction || "No signal") + "</strong></div></div>";
+    } else if (movementState === "stationary") {
+        directionHtml = "<div class='bus-direction'><span class='direction-wait stationary' aria-hidden='true'></span><div><small>STATUS</small><strong>" + (freshness.stale ? "Last known stationary" : "Stationary") + "</strong></div></div>";
     } else {
-        directionHtml = "<div class='bus-direction'><span class='direction-wait' aria-hidden='true'></span><div><small>STATUS</small><strong>Not moving</strong></div></div>";
+        directionHtml = "<div class='bus-direction'><span class='direction-wait' aria-hidden='true'></span><div><small>DIRECTION</small><strong>Not enough recent movement data</strong></div></div>";
     }
 
     const route = getBusRoute(bus.bus_id);
-    const status = formatStatus(bus.vehicle_status);
-    const statusKey = String(bus.vehicle_status || "").toLowerCase();
-    const statusClass = statusKey === "stationary"
-        ? "stationary"
-        : statusKey === "no_signal"
+    const status = freshness.stale
+        ? "Location update delayed"
+        : movementState === "moving"
+        ? "Moving"
+        : movementState === "stationary"
+        ? "Stationary"
+        : movementState === "no_signal"
+        ? "No signal"
+        : "Status unavailable";
+    const statusClass = freshness.stale || movementState === "no_signal"
         ? "offline"
+        : movementState === "stationary"
+        ? "stationary"
         : "live";
-    const movement = bus.movement_km != null && Number.isFinite(Number(bus.movement_km)) ? Number(bus.movement_km).toFixed(2) : "Unavailable";
-    const history = bus.history_minutes != null && Number.isFinite(Number(bus.history_minutes)) ? Number(bus.history_minutes).toFixed(1) : "Unavailable";
-    const confidenceLabel = bus.confidence_label
-        ? " · " + escapeHtml(bus.confidence_label)
+
+    const rawLatitude = bus && bus.latitude;
+    const rawLongitude = bus && bus.longitude;
+    const latitude = rawLatitude !== undefined && rawLatitude !== null && rawLatitude !== "" ? Number(rawLatitude) : NaN;
+    const longitude = rawLongitude !== undefined && rawLongitude !== null && rawLongitude !== "" ? Number(rawLongitude) : NaN;
+    const locationText = Number.isFinite(latitude) && Number.isFinite(longitude)
+        ? latitude.toFixed(5) + ", " + longitude.toFixed(5)
+        : "Unavailable";
+    const rawDistance = bus && bus.distance_km;
+    const distance = rawDistance !== undefined && rawDistance !== null && rawDistance !== "" ? Number(rawDistance) : NaN;
+    const distanceText = Number.isFinite(distance) ? distance.toFixed(2) + " km" : "Unavailable";
+    const speedText = Number.isFinite(currentSpeed)
+        ? (Number.isInteger(currentSpeed) ? String(currentSpeed) : currentSpeed.toFixed(1)) + " km/h"
+        : "Unavailable";
+
+    const rawMovement = bus && bus.movement_km;
+    const movement = rawMovement !== undefined && rawMovement !== null && rawMovement !== "" ? Number(rawMovement) : NaN;
+    const rawHistory = bus && bus.history_minutes;
+    const history = rawHistory !== undefined && rawHistory !== null && rawHistory !== "" ? Number(rawHistory) : NaN;
+    const movementHtml = Number.isFinite(movement) && movement >= 0 && Number.isFinite(history) && history > 0
+        ? "<span class='bus-meta'>Movement " + movement.toFixed(2) + " km / " + history.toFixed(1) + " min</span>"
         : "";
-    const etaLabel = bus.eta_label || "ETA unavailable";
-    const lastStopText = bus.last_stop
-        ? escapeHtml(String(bus.last_stop)) + " · estimated"
-        : "Not enough route history";
-    const favorite = false;
-    const ageSeconds = Number(bus.gps_age_seconds);
-    const ageLabel = Number.isFinite(ageSeconds)
-        ? ageSeconds < 60
-            ? "Updated " + Math.max(0, Math.round(ageSeconds)) + "s ago"
-            : "Updated " + Math.round(ageSeconds / 60) + "m ago"
-        : "GPS age unavailable";
-    const sourceLabel = bus.data_stale ? "Last available GPS" : "Live GPS";
-    const predictionConfidence = Number(bus.prediction_confidence);
-    const predictionLabel =
-        bus.prediction_applied && Number.isFinite(predictionConfidence)
-            ? "AI corrected position · " + Math.round(predictionConfidence * 100) + "% confidence"
-            : bus.prediction_available && Number.isFinite(predictionConfidence)
-            ? "AI forecast · " + Math.round(predictionConfidence * 100) + "% confidence"
-            : "";
+
+    const rawLastStop = String(bus && bus.last_stop || "").trim();
+    const lastStopHtml = rawLastStop && !/not enough route history|unknownroute|^unknown$/i.test(rawLastStop)
+        ? "<div class='bus-terminal-stop'><small>LIKELY LAST STOP</small><strong>" + escapeHtml(rawLastStop) + " · estimated</strong></div>"
+        : "";
 
     card.innerHTML =
         "<div class='bus-card-top'>" +
@@ -1081,15 +1135,15 @@ function createBusCard(bus, rankIndex = 0) {
             "<span class='bus-rank'>#" + (rankIndex + 1) + "</span>" +
         "</div>" +
         directionHtml +
-        "<div class='bus-terminal-stop'><small>LIKELY LAST STOP</small><strong>" + lastStopText + "</strong></div>" +
+        lastStopHtml +
         "<div class='bus-meta-row'>" +
-            "<span class='bus-meta'>Distance " + (bus.distance_km ?? "—") + " km</span>" +
-            "<span class='bus-meta'>Speed " + (bus.speed ?? 0) + " km/h</span>" +
-            "<span class='bus-meta'>Movement " + movement + " km / " + history + " min</span>" +
+            "<span class='bus-meta'>Location " + escapeHtml(locationText) + "</span>" +
+            "<span class='bus-meta'>Distance " + escapeHtml(distanceText) + "</span>" +
+            "<span class='bus-meta'>Speed " + escapeHtml(speedText) + "</span>" +
+            movementHtml +
         "</div>" +
         "<p class='status status-" + statusClass + "'><span class='status-dot' aria-hidden='true'></span>" + escapeHtml(status) + "</p>" +
-        "<p class='updated'>" + escapeHtml(ageLabel) + " · " + sourceLabel + confidenceLabel + " · " + escapeHtml(etaLabel) + (predictionLabel ? " · " + predictionLabel : "") + "</p>" +
-        "<div class='trust-summary'><span>" + escapeHtml(bus.position_type || "unknown") + "</span><span>" + (Number.isFinite(Number(bus.route_match_distance_m)) ? "Route " + Math.round(Number(bus.route_match_distance_m)) + "m" : "Route match unavailable") + "</span></div>";
+        "<p class='updated'>" + escapeHtml(freshness.ageLabel) + " · " + escapeHtml(freshness.sourceLabel) + "</p>";
 
     card.setAttribute("role", "button");
     card.setAttribute("tabindex", "0");
@@ -1194,55 +1248,84 @@ function highlightBus(busId) {
 }
 
 function createPopupContent(bus) {
-    const popupSpeed = Number(bus.speed);
-    const popupMovement = bus.movement_km == null ? NaN : Number(bus.movement_km);
-    const movementStatus = String(bus.movement_status || "").toLowerCase();
-    const popupStatus = String(bus.vehicle_status || "").toLowerCase();
+    const movementState = getBusMovementState(bus);
+    const freshness = getBusFreshness(bus);
+    const rawSpeed = bus && bus.speed;
+    const popupSpeed = rawSpeed !== undefined && rawSpeed !== null && rawSpeed !== ""
+        ? Number(rawSpeed)
+        : NaN;
+    const rawMovement = bus && bus.movement_km;
+    const popupMovement = rawMovement !== undefined && rawMovement !== null && rawMovement !== ""
+        ? Number(rawMovement)
+        : NaN;
+    const rawHistory = bus && bus.history_minutes;
+    const historyMinutes = rawHistory !== undefined && rawHistory !== null && rawHistory !== ""
+        ? Number(rawHistory)
+        : NaN;
 
-    let movementText = "Movement unavailable";
-    if (movementStatus === "moving") {
-        movementText = bus.likely_towards
-            ? "Moving towards " + escapeHtml(bus.likely_towards)
-            : bus.direction
-            ? "Moving " + escapeHtml(bus.direction)
-            : "Moving";
-    } else if (popupStatus === "no_signal") {
-        movementText = bus.likely_towards
-            ? "Last known movement towards " + escapeHtml(bus.likely_towards) + " · No signal"
-            : bus.direction
-            ? "Last known movement " + escapeHtml(bus.direction) + " · No signal"
-            : "No signal · Movement unavailable";
-    } else if (popupStatus === "stationary" || (Number.isFinite(popupSpeed) && popupSpeed < 5)) {
-        movementText = "Stationary";
-    } else if (bus.direction) {
-        movementText = "Moving " + escapeHtml(bus.direction);
+    let movementText = "Direction unavailable";
+    if (movementState === "moving") {
+        const towards = bus.likely_towards || bus.direction;
+        movementText = towards
+            ? (freshness.stale ? "Last known movement towards " : "Moving towards ") + escapeHtml(String(towards))
+            : freshness.stale ? "Last known moving" : "Moving";
+    } else if (movementState === "no_signal") {
+        const towards = bus.likely_towards || bus.direction;
+        movementText = towards
+            ? "Last known movement towards " + escapeHtml(String(towards)) + " · No signal"
+            : "No signal";
+    } else if (movementState === "stationary") {
+        movementText = freshness.stale ? "Last known stationary" : "Stationary";
     }
 
-    const speedText = Number.isFinite(popupSpeed) ? popupSpeed + " km/h" : "Unavailable";
-    const distanceText = bus.distance_km != null ? escapeHtml(String(bus.distance_km)) + " km away" : "Distance unavailable";
-    const movementValue = Number.isFinite(popupMovement) ? popupMovement + " km" : "Unavailable";
-    const movementMinutes = bus.history_minutes != null && Number.isFinite(Number(bus.history_minutes)) ? String(bus.history_minutes) + " min" : "period unavailable";
-    const etaText = bus.eta_label ? escapeHtml(String(bus.eta_label)) : "Unavailable";
-    const lastStopText = bus.last_stop
-        ? escapeHtml(String(bus.last_stop)) + " · estimated"
-        : "Not enough route history";
+    const speedText = Number.isFinite(popupSpeed)
+        ? (Number.isInteger(popupSpeed) ? String(popupSpeed) : popupSpeed.toFixed(1)) + " km/h"
+        : "Unavailable";
+    const rawLatitude = bus && bus.latitude;
+    const rawLongitude = bus && bus.longitude;
+    const latitude = rawLatitude !== undefined && rawLatitude !== null && rawLatitude !== "" ? Number(rawLatitude) : NaN;
+    const longitude = rawLongitude !== undefined && rawLongitude !== null && rawLongitude !== "" ? Number(rawLongitude) : NaN;
+    const locationText = Number.isFinite(latitude) && Number.isFinite(longitude)
+        ? latitude.toFixed(5) + ", " + longitude.toFixed(5)
+        : "Unavailable";
+    const rawDistance = bus && bus.distance_km;
+    const distanceValue = rawDistance !== undefined && rawDistance !== null && rawDistance !== "" ? Number(rawDistance) : NaN;
+    const distanceText = Number.isFinite(distanceValue)
+        ? distanceValue.toFixed(2) + " km away"
+        : "Unavailable";
+    const movementStats = Number.isFinite(popupMovement) && popupMovement >= 0 && Number.isFinite(historyMinutes) && historyMinutes > 0
+        ? "<br>Movement: " + popupMovement.toFixed(2) + " km in " + historyMinutes.toFixed(1) + " min"
+        : "";
+    const rawLastStop = String(bus && bus.last_stop || "").trim();
+    const lastStopLine = rawLastStop && !/not enough route history|unknownroute|^unknown$/i.test(rawLastStop)
+        ? "<br>Likely last stop: " + escapeHtml(rawLastStop) + " · estimated"
+        : "";
+    const statusText = freshness.stale
+        ? "Location update delayed"
+        : movementState === "moving"
+        ? "Moving"
+        : movementState === "stationary"
+        ? "Stationary"
+        : movementState === "no_signal"
+        ? "No signal"
+        : "Status unavailable";
 
     return `
         <strong>${escapeHtml(bus.bus_id || "Unknown Bus")}</strong>
         <br><br>
         <span class="bus-inline-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 5.5h14a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-1v1.5a1.5 1.5 0 0 1-3 0V18H9v1.5a1.5 1.5 0 0 1-3 0V18H5a2 2 0 0 1-2-2V7.5a2 2 0 0 1 2-2Z"></path><path d="M6 8h12v4H6z"></path><circle cx="7" cy="15.5" r="1.2"></circle><circle cx="17" cy="15.5" r="1.2"></circle></svg></span> ${movementText}
         <br>
-        Likely last stop: ${lastStopText}
+        Location: ${escapeHtml(locationText)}
         <br>
-        Speed: ${speedText}
+        Speed: ${escapeHtml(speedText)}
         <br>
-        Distance: ${distanceText}
+        Distance: ${escapeHtml(distanceText)}
+        ${movementStats}
+        ${lastStopLine}
         <br>
-        Movement: ${movementValue} in ${movementMinutes}
+        Status: ${escapeHtml(statusText)}
         <br>
-        Status: ${formatStatus(bus.vehicle_status)}
-        <br>
-        ETA: ${etaText}
+        ${escapeHtml(freshness.ageLabel)} · ${escapeHtml(freshness.sourceLabel)}
     `;
 }
 
