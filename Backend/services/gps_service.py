@@ -330,7 +330,7 @@ def get_direct_live_buses(data=None, include_persisted_history=False):
         _direct_feed_state = "available" if buses else "empty"
 
     print(
-        f"Direct MARGDARSHI feed: buses={len(buses)}; prediction/history/route processing disabled",
+        f"Raw MARGDARSHI GPS parsed: buses={len(buses)}; history-backed movement analysis follows",
         flush=True,
     )
     return buses
