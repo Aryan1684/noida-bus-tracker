@@ -1816,6 +1816,22 @@ async function resolveSelectedBusPlace(bus) {
             String(selectedBusId || "") !== busId
         ) return;
         if (placeNode && data.label) placeNode.textContent = String(data.label);
+        const selected = currentBuses.find(item => String(item.bus_id) === busId);
+        const selectedDirectionNode = document.getElementById("selectedBusDirection");
+        const selectedDirectionLabel = document.getElementById("selectedBusDirectionLabel");
+        const selectedNextStop = String(selected && (selected.likely_next_stop || selected.likely_towards) || "").trim();
+        const hasMatchedNextStop = Boolean(
+            selectedNextStop &&
+            selected && (selected.route_path_id || selected.route_id) &&
+            selected.route_confidence &&
+            /^(high|medium)$/i.test(String(selected.route_confidence))
+        );
+        if (selected && selectedDirectionNode && getBusMovementState(selected) === "moving" && !hasMatchedNextStop) {
+            const direction = String(selected.direction || "").trim();
+            const safeDirection = /^(moving|stationary|unknown|direction unavailable)$/i.test(direction) ? "" : direction;
+            selectedDirectionNode.textContent = [String(data.label), safeDirection].filter(Boolean).join(" · ") || "Nearby location resolved";
+            if (selectedDirectionLabel) selectedDirectionLabel.textContent = "CURRENTLY MOVING THROUGH";
+        }
     } catch (error) {
         if (token === selectedPlaceLookupToken && placeNode && fallback) {
             placeNode.textContent = fallback;
@@ -1855,6 +1871,7 @@ function updateSelectedBusPanel(bus) {
         nextStop &&
         (bus.route_path_id || bus.route_id) &&
         bus.route_confidence &&
+        /^(high|medium)$/i.test(String(bus.route_confidence)) &&
         !/unknownroute|^unknown$/i.test(nextStop)
     );
     const place = String(bus.nearby_place || bus.location_label || "").trim();
