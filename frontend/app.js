@@ -308,42 +308,43 @@ function initializeTradeFairControls() {
 }
 
 function initializeWarningModal() {
-    const modal =
-        document.getElementById(
-            "warningModal"
-        );
-
+    const modal = document.getElementById("warningModal");
     if (!modal) return;
 
-    const acceptButton =
-        document.getElementById(
-            "warningAcceptBtn"
-        );
+    const acceptButton = document.getElementById("warningAcceptBtn");
+    const feedbackButton = document.getElementById("warningFeedbackBtn");
+    const acknowledgementKey = "trackerDisclosureAcknowledgedV1";
 
-    const acknowledged =
-        localStorage.getItem(
-            "movementWarningAcknowledged"
-        );
-
-    if (acknowledged === "true") {
-        modal.classList.add(
-            "hidden"
-        );
+    if (localStorage.getItem(acknowledgementKey) === "true") {
+        modal.classList.add("hidden");
     }
 
-    acceptButton.addEventListener(
-        "click",
-        () => {
-            localStorage.setItem(
-                "movementWarningAcknowledged",
-                "true"
-            );
+    function close() {
+        localStorage.setItem(acknowledgementKey, "true");
+        modal.classList.add("hidden");
+    }
 
-            modal.classList.add(
-                "hidden"
-            );
+    if (acceptButton) {
+        acceptButton.addEventListener("click", close);
+    }
+
+    if (feedbackButton) {
+        feedbackButton.addEventListener("click", () => {
+            close();
+            const siteFeedbackButton = document.getElementById("feedbackBtn");
+            if (siteFeedbackButton) siteFeedbackButton.click();
+        });
+    }
+
+    modal.addEventListener("click", event => {
+        if (event.target === modal) close();
+    });
+
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && !modal.classList.contains("hidden")) {
+            close();
         }
-    );
+    });
 }
 
 function initializeMap() {
