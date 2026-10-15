@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from dotenv import load_dotenv
 
-from services.gps_service import get_cached_direct_live_buses
+from services.gps_service import get_cached_direct_live_buses, refresh_direct_snapshot
 from services.prediction_collector import collector_running, start_collector, stop_collector
 from utils.distance import calculate_distance
 from services.direction_service import ROUTES, LANDMARKS
@@ -306,21 +306,30 @@ def admin_ingestion(
 def get_processed_buses():
     snapshot = get_direct_snapshot_status()
     buses = get_cached_direct_live_buses()
+
     if snapshot["state"] == "empty":
         return []
+
     if snapshot["state"] in {"warming", "expired"} or not buses:
+        try:
+            buses = refresh_direct_snapshot()
+        except Exception as error:
+            print(f"Direct GPS refresh failed: {error}", flush=True)
+            buses = get_cached_direct_live_buses()
+
+        if buses:
+            return buses
+
+        snapshot = get_direct_snapshot_status()
         raise HTTPException(
             status_code=503,
             detail={
                 "code": snapshot["state"],
-                "message": (
-                    "Bus data is warming up. Please retry shortly."
-                    if snapshot["state"] == "warming"
-                    else "The last bus snapshot has expired. Live data is temporarily unavailable."
-                ),
+                "message": "Live bus data is temporarily unavailable. Please retry shortly.",
                 "snapshot_age_seconds": snapshot["snapshot_age_seconds"],
             },
         )
+
     return buses
 
 @app.get("/api/buses")
