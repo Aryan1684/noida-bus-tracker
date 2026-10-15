@@ -1278,12 +1278,15 @@ function createPopupContent(bus) {
         ? Number(rawHistory)
         : NaN;
 
+    const nextStop = String(bus.likely_next_stop || bus.likely_towards || "").trim();
+    const lastPassedStop = String(bus.last_passed_stop || bus.last_stop || "").trim();
+    const routeMatched = Boolean(nextStop && (bus.route_path_id || bus.route_id) && bus.route_confidence);
+
     let movementText = "Direction unavailable";
     if (movementState === "moving") {
-        const towards = bus.likely_towards || bus.direction;
-        movementText = towards
-            ? (freshness.stale ? "Last known movement towards " : "Moving towards ") + escapeHtml(String(towards))
-            : freshness.stale ? "Last known moving" : "Moving";
+        movementText = routeMatched
+            ? "Moving towards " + escapeHtml(nextStop)
+            : "Currently moving" + (bus.direction && !/^(moving|stationary|unknown)$/i.test(String(bus.direction)) ? " " + escapeHtml(String(bus.direction)) : "");
     } else if (movementState === "no_signal") {
         const towards = bus.likely_towards || bus.direction;
         movementText = towards
@@ -1300,9 +1303,10 @@ function createPopupContent(bus) {
     const rawLongitude = bus && bus.longitude;
     const latitude = rawLatitude !== undefined && rawLatitude !== null && rawLatitude !== "" ? Number(rawLatitude) : NaN;
     const longitude = rawLongitude !== undefined && rawLongitude !== null && rawLongitude !== "" ? Number(rawLongitude) : NaN;
-    const locationText = Number.isFinite(latitude) && Number.isFinite(longitude)
+    const coordinates = Number.isFinite(latitude) && Number.isFinite(longitude)
         ? latitude.toFixed(5) + ", " + longitude.toFixed(5)
         : "Unavailable";
+    const locationText = String(bus.nearby_place || bus.location_label || coordinates);
     const rawDistance = bus && bus.distance_km;
     const distanceValue = rawDistance !== undefined && rawDistance !== null && rawDistance !== "" ? Number(rawDistance) : NaN;
     const distanceText = Number.isFinite(distanceValue)
@@ -1311,10 +1315,17 @@ function createPopupContent(bus) {
     const movementStats = Number.isFinite(popupMovement) && popupMovement >= 0 && Number.isFinite(historyMinutes) && historyMinutes > 0
         ? "<br>Movement: " + popupMovement.toFixed(2) + " km in " + historyMinutes.toFixed(1) + " min"
         : "";
-    const rawLastStop = String(bus && bus.last_stop || "").trim();
-    const lastStopLine = rawLastStop && !/not enough route history|unknownroute|^unknown$/i.test(rawLastStop)
-        ? "<br>Likely last stop: " + escapeHtml(rawLastStop) + " · estimated"
+    const historyPoints = Number(bus.history_points_used);
+    const historySummary = Number.isFinite(historyPoints) && historyPoints > 1
+        ? "<br>History: " + Math.round(historyPoints) + " recent points"
         : "";
+    const lastStopLine = lastPassedStop && !/not enough route history|unknownroute|^unknown$/i.test(lastPassedStop)
+        ? "<br>Last passed stop: " + escapeHtml(lastPassedStop)
+        : "";
+    const nextStopLine = nextStop && !/unknownroute|^unknown$/i.test(nextStop)
+        ? "<br>Upcoming stop: " + escapeHtml(nextStop) + (routeMatched ? "" : " · unconfirmed")
+        : "<br>Upcoming stop: Not route-matched yet";
+    const etaLine = "<br>ETA: " + escapeHtml(String(bus.eta_label || "Unavailable").replace(/^ETA:\s*/i, ""));
     const statusText = freshness.stale
         ? "Location update delayed"
         : movementState === "moving"
@@ -1323,20 +1334,25 @@ function createPopupContent(bus) {
         ? "Stationary"
         : movementState === "no_signal"
         ? "No signal"
-        : "Status unavailable";
+        : "Movement status unavailable";
 
     return `
         <strong>${escapeHtml(bus.bus_id || "Unknown Bus")}</strong>
         <br><br>
         <span class="bus-inline-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 5.5h14a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-1v1.5a1.5 1.5 0 0 1-3 0V18H9v1.5a1.5 1.5 0 0 1-3 0V18H5a2 2 0 0 1-2-2V7.5a2 2 0 0 1 2-2Z"></path><path d="M6 8h12v4H6z"></path><circle cx="7" cy="15.5" r="1.2"></circle><circle cx="17" cy="15.5" r="1.2"></circle></svg></span> ${movementText}
         <br>
-        Location: ${escapeHtml(locationText)}
+        Currently near: ${escapeHtml(locationText)}
+        <br>
+        GPS fix: ${escapeHtml(coordinates)}
         <br>
         Speed: ${escapeHtml(speedText)}
         <br>
         Distance: ${escapeHtml(distanceText)}
-        ${movementStats}
         ${lastStopLine}
+        ${nextStopLine}
+        ${movementStats}
+        ${historySummary}
+        ${etaLine}
         <br>
         Status: ${escapeHtml(statusText)}
         <br>
