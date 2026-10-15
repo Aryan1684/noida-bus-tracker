@@ -1196,3 +1196,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .tracker-disclosure-footnote{padding-top:12px;border-top:1px solid var(--line);font-size:10px!important}
 .selected-bus-last-stop{border-left:3px solid var(--accent);padding-left:10px}
 @media(max-width:520px){.tracker-disclosure-modal{padding:12px;align-items:flex-end}.tracker-disclosure-card{padding:19px;border-radius:18px 18px 14px 14px;max-height:calc(100dvh - 24px)}.tracker-disclosure-card p:not(.eyebrow){font-size:12px}.tracker-disclosure-actions{grid-template-columns:1fr}.tracker-disclosure-actions button{width:100%}}
+
+.bus-terminal-stop{display:flex;flex-direction:column;gap:3px;margin:8px 0;padding:9px 10px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:9px;background:var(--surface2)}
+.bus-terminal-stop small{font-size:8px;font-weight:900;letter-spacing:.08em;color:var(--muted)}
+.bus-terminal-stop strong{font-size:11px;line-height:1.35;color:var(--text)}
