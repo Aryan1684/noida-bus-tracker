@@ -1197,11 +1197,16 @@ function createPopupContent(bus) {
     const movementValue = Number.isFinite(popupMovement) ? popupMovement + " km" : "Unavailable";
     const movementMinutes = bus.history_minutes != null && Number.isFinite(Number(bus.history_minutes)) ? String(bus.history_minutes) + " min" : "period unavailable";
     const etaText = bus.eta_label ? escapeHtml(String(bus.eta_label)) : "Unavailable";
+    const lastStopText = bus.last_stop
+        ? escapeHtml(String(bus.last_stop)) + " · estimated"
+        : "Not enough route history";
 
     return `
         <strong>${escapeHtml(bus.bus_id || "Unknown Bus")}</strong>
         <br><br>
         <span class="bus-inline-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 5.5h14a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-1v1.5a1.5 1.5 0 0 1-3 0V18H9v1.5a1.5 1.5 0 0 1-3 0V18H5a2 2 0 0 1-2-2V7.5a2 2 0 0 1 2-2Z"></path><path d="M6 8h12v4H6z"></path><circle cx="7" cy="15.5" r="1.2"></circle><circle cx="17" cy="15.5" r="1.2"></circle></svg></span> ${movementText}
+        <br>
+        Likely last stop: ${lastStopText}
         <br>
         Speed: ${speedText}
         <br>
@@ -1650,6 +1655,7 @@ function updateSelectedBusPanel(bus) {
     const routeNode = document.getElementById("selectedBusRoute");
     const statusNode = document.getElementById("selectedBusStatus");
     const directionNode = document.getElementById("selectedBusDirection");
+    const lastStopNode = document.getElementById("selectedBusLastStop");
     const arrowNode = document.getElementById("selectedBusArrow");
     const distanceNode = document.getElementById("selectedBusDistance");
     const speedNode = document.getElementById("selectedBusSpeed");
@@ -1680,6 +1686,11 @@ function updateSelectedBusPanel(bus) {
     }
 
     if (directionNode) directionNode.textContent = direction;
+    if (lastStopNode) {
+        lastStopNode.textContent = bus.last_stop
+            ? String(bus.last_stop) + " · estimated"
+            : "Not enough route history";
+    }
     if (arrowNode) {
         const heading = Number(bus.heading);
         arrowNode.style.transform = Number.isFinite(heading)
