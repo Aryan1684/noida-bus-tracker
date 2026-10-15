@@ -266,9 +266,9 @@ def _record_direct_history(buses):
 
             if history:
                 previous = history[-1]
-                if event_time < previous["time"] - 1:
+                if now < previous["time"] - 1:
                     continue
-                if abs(event_time - previous["time"]) <= 1:
+                if abs(now - previous["time"]) <= 1:
                     history[-1] = point
                     continue
 
