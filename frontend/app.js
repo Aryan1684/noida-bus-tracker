@@ -728,7 +728,7 @@ async function loadNearbyBuses(
 
     try {
         const response =
-            await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache" } });
+            await fetch(url, { cache: "no-store", mode: "cors" });
 
         if (!response.ok) {
             let detail = null;
@@ -748,7 +748,7 @@ async function loadNearbyBuses(
                     throw new Error("BUS_DATA_EXPIRED");
                 }
             }
-            throw new Error(`HTTP ${response.status}`);
+            throw new Error(`HTTP ${response.status}${detail ? ": " + (typeof detail === "string" ? detail : JSON.stringify(detail)) : ""}`);
         }
 
         const data =
