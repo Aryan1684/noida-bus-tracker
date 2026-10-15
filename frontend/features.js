@@ -46,7 +46,7 @@
             ".feature-modal-card h3{font-size:18px;margin-bottom:8px}.feature-modal-card p{font-size:12px;color:var(--muted);line-height:1.5}"+
             ".feature-modal-card select{width:100%;margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text)}"+
             "@media(max-width:700px){#advancedFeatures{margin:10px 0 0;padding:10px;border-radius:14px}.feature-toolbar{grid-template-columns:1fr 1fr;gap:7px}.feature-toolbar button,.feature-actions button{min-height:44px;font-size:9px;padding:8px 6px}.feature-summary{grid-template-columns:1fr 1fr;gap:7px}.feature-summary div{min-height:58px;padding:9px 8px}.feature-actions{grid-template-columns:1fr 1fr;gap:7px}.feature-actions button{font-size:9px}.feature-route{font-size:9px;padding:9px}.report-modal{padding:10px}.report-modal-card{max-height:calc(100dvh - 20px);border-radius:16px;padding:16px}.report-field select,.report-field textarea{font-size:12px;min-height:44px}.report-form-actions{position:sticky;bottom:0;padding-top:10px;background:var(--surface)}}";
-        s.textContent += ".report-modal{position:fixed;inset:0;z-index:7000;background:rgba(11,13,16,.55);display:grid;place-items:center;padding:18px}.report-modal-card{width:min(520px,100%);max-height:min(700px,calc(100vh - 36px));overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 28px 70px rgba(0,0,0,.24)}.report-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.report-modal-head h3{font-size:18px}.report-close{width:30px;height:30px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--muted);font-size:18px}.report-field{display:grid;gap:5px;margin-top:13px}.report-field label,.report-consent{font-size:9px;font-weight:800;color:var(--text)}.report-field select,.report-field textarea{width:100%;border:1px solid var(--line);border-radius:10px;background:var(--surface2);color:var(--text);padding:10px;font-size:10px;outline:0}.report-field textarea{min-height:90px;resize:vertical}.report-help{font-size:8px;color:var(--muted);line-height:1.5}.report-consent{display:flex;align-items:flex-start;gap:8px;margin-top:13px;line-height:1.5}.report-consent input{margin-top:1px;accent-color:var(--accent);width:14px;height:14px}.report-form-actions{display:flex;gap:7px;margin-top:15px}.report-form-actions button{flex:1;min-height:38px;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:10px;font-weight:900;background:var(--surface);color:var(--text)}.report-form-actions button[type=\"submit\"]{background:var(--primary);border-color:var(--primary);color:var(--primaryText)}.report-status{margin-top:10px;font-size:9px;color:var(--muted)}.footer-links{display:flex;flex-wrap:wrap;justify-content:center;gap:5px 11px;margin-top:8px}.footer-links a{color:inherit;text-decoration:none}.footer-links a:hover{text-decoration:underline}";document.head.appendChild(s);
+        s.textContent += ".report-modal{position:fixed;inset:0;z-index:7000;background:rgba(11,13,16,.55);display:grid;place-items:center;padding:18px}.report-modal-card{width:min(520px,100%);max-height:min(700px,calc(100vh - 36px));overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 28px 70px rgba(0,0,0,.24)}.report-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.report-modal-head h3{font-size:18px}.report-close{width:30px;height:30px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--muted);font-size:18px}.report-field{display:grid;gap:5px;margin-top:13px}.report-field label,.report-consent{font-size:9px;font-weight:800;color:var(--text)}.report-field select,.report-field textarea{width:100%;border:1px solid var(--line);border-radius:10px;background:var(--surface2);color:var(--text);padding:10px;font-size:10px;outline:0}.report-field textarea{min-height:90px;resize:vertical}.report-help{font-size:8px;color:var(--muted);line-height:1.5}.report-consent{display:flex;align-items:flex-start;gap:8px;margin-top:13px;line-height:1.5}.report-consent input{margin-top:1px;accent-color:var(--accent);width:14px;height:14px}.report-form-actions{display:flex;gap:7px;margin-top:15px}.report-form-actions button{flex:1;min-height:38px;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:10px;font-weight:900;background:var(--surface);color:var(--text)}.report-form-actions button[type=\"submit\"]{background:var(--primary);border-color:var(--primary);color:var(--primaryText)}.report-status{margin-top:10px;font-size:10px;color:var(--muted);line-height:1.5}.report-status-error{color:#b42318;font-weight:700}.report-form-actions button:disabled{opacity:.62;cursor:wait}.footer-links{display:flex;flex-wrap:wrap;justify-content:center;gap:5px 11px;margin-top:8px}.footer-links a{color:inherit;text-decoration:none}.footer-links a:hover{text-decoration:underline}";s.textContent += ".feedback-result{text-align:center;padding:10px 2px 2px}.feedback-result-mark{width:58px;height:58px;margin:0 auto 16px;border-radius:50%;display:grid;place-items:center;background:#e8f5eb;color:#176b37}.feedback-result-mark svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.feedback-result .eyebrow{margin:0 0 8px}.feedback-result h3{font-size:22px;line-height:1.25;margin:0 0 10px;color:var(--text)}.feedback-result>p:not(.eyebrow){font-size:13px;line-height:1.6;color:var(--muted);margin:0 auto 16px;max-width:360px}.feedback-result-note{padding:10px 12px;margin:0 0 18px;border:1px solid var(--line);border-radius:10px;color:var(--muted);font-size:11px}.feedback-result-done{width:100%;min-height:44px;border:0;border-radius:11px;background:var(--primary);color:var(--primaryText);font-size:13px;font-weight:800;cursor:pointer}@media(prefers-reduced-motion:no-preference){.feedback-result-mark{animation:feedbackSuccessIn .25s ease-out both}@keyframes feedbackSuccessIn{from{transform:scale(.8);opacity:.4}to{transform:scale(1);opacity:1}}}";document.head.appendChild(s);
     }
 
     function readHistory() {
@@ -689,6 +689,9 @@
                 time:new Date().toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"})
             };
 
+            var submitButton=form.querySelector("button[type='submit']");
+            if(submitButton)submitButton.disabled=true;
+            status.classList.remove("report-status-error");
             status.textContent="Sending feedback...";
 
             fetch(WEB3FORMS_API,{
@@ -701,11 +704,29 @@
                     return data;
                 });
             }).then(function(){
-                status.textContent="Thanks. Your feedback was submitted.";
                 form.reset();
-                setTimeout(remove,1200);
+                modal.querySelector(".report-modal-card").innerHTML=
+                    "<div class='feedback-result' role='status' aria-live='polite'>"+
+                        "<div class='feedback-result-mark' aria-hidden='true'><svg viewBox='0 0 24 24' focusable='false'><path d='m5 12.5 4.2 4.2L19 7'></path></svg></div>"+
+                        "<p class='eyebrow'>FEEDBACK RECEIVED</p>"+
+                        "<h3>Thanks for helping us improve</h3>"+
+                        "<p>Your feedback was submitted successfully. We appreciate you taking the time to share it.</p>"+
+                        "<div class='feedback-result-note'>Submission confirmed by our feedback service.</div>"+
+                        "<button type='button' class='feedback-result-done'>Done</button>"+
+                    "</div>";
+                var doneButton=modal.querySelector(".feedback-result-done");
+                if(doneButton)doneButton.addEventListener("click",function(){
+                    document.removeEventListener("keydown",onKey);
+                    remove();
+                });
+                if(doneButton)doneButton.focus();
             }).catch(function(){
-                status.textContent="Could not send feedback right now. Please try again.";
+                status.classList.add("report-status-error");
+                status.textContent="Your feedback could not be submitted. Nothing has been confirmed as received. Please check your connection and try again.";
+                if(submitButton){
+                    submitButton.disabled=false;
+                    submitButton.textContent="Try again";
+                }
             });
         });
 
