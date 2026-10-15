@@ -727,40 +727,57 @@ async function loadNearbyBuses(
         `&_refresh=${Date.now()}`;
 
     try {
-        const response =
-            await fetch(url, { cache: "no-store", mode: "cors" });
-
-        if (!response.ok) {
-            let detail = null;
-            try {
-                const errorData = await response.json();
-                detail = errorData.detail;
-            } catch (parseError) {
-                detail = null;
+        let data;
+        try {
+            const response = await fetch(url, { cache: "no-store", mode: "cors" });
+            if (!response.ok) {
+                const detail = await response.text().catch(() => "");
+                throw new Error("Nearby API HTTP " + response.status + ": " + detail.slice(0, 250));
             }
-
-            if (detail && typeof detail === "object") {
-                const code = String(detail.code || "");
-                if (code === "warming") {
-                    throw new Error("BUS_DATA_WARMING");
-                }
-                if (code === "expired") {
-                    throw new Error("BUS_DATA_EXPIRED");
-                }
+            data = await response.json();
+        } catch (nearbyError) {
+            console.error("Nearby API failed; falling back to all-buses API:", nearbyError);
+            const fallbackResponse = await fetch(API_BASE_URL + "/api/buses?_refresh=" + Date.now(), {
+                cache: "no-store",
+                mode: "cors"
+            });
+            if (!fallbackResponse.ok) {
+                const detail = await fallbackResponse.text().catch(() => "");
+                throw new Error("Nearby and all-buses APIs failed. Fallback HTTP " + fallbackResponse.status + ": " + detail.slice(0, 250));
             }
-            throw new Error(`HTTP ${response.status}${detail ? ": " + (typeof detail === "string" ? detail : JSON.stringify(detail)) : ""}`);
+            const fallbackData = await fallbackResponse.json();
+            const allBuses = Array.isArray(fallbackData) ? fallbackData : (fallbackData.buses || []);
+            const toRadians = value => value * Math.PI / 180;
+            const distanceKm = (lat1, lon1, lat2, lon2) => {
+                const dLat = toRadians(lat2 - lat1);
+                const dLon = toRadians(lon2 - lon1);
+                const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) ** 2;
+                return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            };
+            data = {
+                buses: allBuses.filter(bus => {
+                    const lat = Number(bus.latitude);
+                    const lon = Number(bus.longitude);
+                    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
+                    const distance = distanceKm(location.lat, location.lon, lat, lon);
+                    if (distance > Number(radius)) return false;
+                    bus.distance_km = Math.round(distance * 100) / 100;
+                    return true;
+                }),
+                count: 0,
+                total_buses: allBuses.length,
+                fallback: true
+            };
+            data.count = data.buses.length;
+            console.warn("Using client-side nearby filtering fallback.", {total: data.total_buses, nearby: data.count});
         }
-
-        const data =
-            await response.json();
-
-        displayBuses(
-            data.buses || []
-        );
+        displayBuses(data.buses || []);
 
         updateLastRefreshed();
 
-        if (data.count === 0 && data.total_buses === 0) {
+        if (data.fallback) {
+            updateLocationMessage("Showing " + data.count + " nearby buses using the direct GPS feed.");
+        } else if (data.count === 0 && data.total_buses === 0) {
             updateLocationMessage("No Noida Electric buses are currently present in the live feed. The feed may be temporarily empty.");
         } else if (data.count === 0) {
             updateLocationMessage(`No electric buses found within ${radius} km. ${data.total_buses} buses are present in the wider feed.`);
