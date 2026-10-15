@@ -268,20 +268,29 @@
                             <span id="selectedBusStatus" class="selected-status">LIVE</span>
                         </div>
                         <div class="selected-direction">
-                            <span id="selectedBusArrow" class="selected-direction-arrow" aria-hidden="true"></span>
-                            <div><small>MOVING TOWARDS</small><strong id="selectedBusDirection">Determining...</strong></div>
+                            <span id="selectedBusArrow" class="selected-direction-arrow hidden" aria-hidden="true"></span>
+                            <div><small id="selectedBusDirectionLabel">TRAVEL DIRECTION</small><strong id="selectedBusDirection">Checking movement...</strong></div>
                         </div>
                         <div class="selected-metrics">
                             <span id="selectedBusDistance">— km away</span>
                             <span id="selectedBusSpeed">— km/h</span>
-                            <span id="selectedBusMovement">— km / 5 min</span>
+                            <span id="selectedBusMovement">History unavailable</span>
+                        </div>
+                        <div class="selected-bus-location-note">
+                            <span>Currently near</span>
+                            <strong id="selectedBusPlace">Finding nearby place...</strong>
+                            <small id="selectedBusCoordinates"></small>
                         </div>
                         <div class="selected-bus-location-note selected-bus-last-stop">
-                            <span>Route guidance</span>
+                            <span>Last passed stop</span>
                             <strong id="selectedBusLastStop">Not enough route history</strong>
                         </div>
                         <div class="selected-bus-location-note">
-                            <span>Current bus location</span>
+                            <span>Upcoming stop (estimate)</span>
+                            <strong id="selectedBusNextStop">No route-matched stop yet</strong>
+                        </div>
+                        <div class="selected-bus-location-note">
+                            <span>Estimated arrival</span>
                             <strong id="selectedBusEta">ETA unavailable</strong>
                         </div>
                         <div class="selected-actions">
@@ -328,7 +337,7 @@
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="app.js?v=30"></script>
+    <script src="app.js?v=31"></script>
     <script src="analytics.js?v=2"></script>
     <script src="features.js?v=24"></script>
     <script src="server-history.js?v=1"></script>
