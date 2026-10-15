@@ -1184,3 +1184,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 }
 .favorite-button.is-favorite{color:#E85D26;background:color-mix(in srgb,#E85D26 10%,var(--surface))}
 .results-section.is-refreshing .bus-grid,.results-section.is-refreshing .map-shell{opacity:.72}
+
+
+.tracker-disclosure-modal{position:fixed;inset:0;z-index:8000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(12,15,18,.68);backdrop-filter:blur(5px)}
+.tracker-disclosure-modal.hidden{display:none!important}
+.tracker-disclosure-card{width:min(520px,100%);max-height:min(720px,calc(100dvh - 36px));overflow:auto;padding:24px;border:1px solid var(--line);border-radius:20px;background:var(--surface);color:var(--text);box-shadow:0 24px 80px rgba(0,0,0,.3)}
+.tracker-disclosure-card h2{font-size:clamp(21px,4vw,28px);line-height:1.15;letter-spacing:-.035em;margin:7px 0 14px}
+.tracker-disclosure-card p:not(.eyebrow){font-size:13px;line-height:1.65;color:var(--muted);margin:10px 0}
+.tracker-disclosure-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:18px}
+.tracker-disclosure-actions button{min-height:46px;font-size:12px}
+.tracker-disclosure-footnote{padding-top:12px;border-top:1px solid var(--line);font-size:10px!important}
+.selected-bus-last-stop{border-left:3px solid var(--accent);padding-left:10px}
+@media(max-width:520px){.tracker-disclosure-modal{padding:12px;align-items:flex-end}.tracker-disclosure-card{padding:19px;border-radius:18px 18px 14px 14px;max-height:calc(100dvh - 24px)}.tracker-disclosure-card p:not(.eyebrow){font-size:12px}.tracker-disclosure-actions{grid-template-columns:1fr}.tracker-disclosure-actions button{width:100%}}
