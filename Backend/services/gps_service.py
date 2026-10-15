@@ -731,47 +731,8 @@ def refresh_noida_electric_buses():
 
 def refresh_direct_snapshot():
     data = _fetch_live_data()
-    buses = get_direct_live_buses(data, include_persisted_history=False)
+    return get_direct_live_buses(data, include_persisted_history=False)
 
-    try:
-        from services.direction_service import update_bus_history
-        from services.ml_prediction_service import analyze_buses, prepare_histories
-
-        histories = prepare_histories(buses)
-        predictions = analyze_buses(buses, histories=histories)
-
-        for bus in buses:
-            bus_id = str(bus.get("bus_id") or "").strip().upper()
-            history = histories.get(bus_id, [])
-            movement = update_bus_history(bus, history)
-            if movement:
-                bus.update(movement)
-            analysis = predictions.get(bus_id)
-            if analysis:
-                bus.update(analysis)
-            bus["last_stop"] = bus.get("last_stop") or bus.get("likely_destination")
-            bus["last_stop_confidence"] = bus.get("last_stop_confidence") or bus.get("route_confidence")
-            bus["prediction_enabled"] = True
-            bus["prediction_history_points"] = len(history)
-            bus["prediction_source"] = bus.get("prediction_source") or "GPS_HISTORY_AND_ROUTE"
-        print(
-            f"Movement analysis completed for {len(buses)} buses; history-backed={sum(1 for bus in buses if bus.get('prediction_history_points', 0) >= 2)}",
-            flush=True,
-        )
-    except Exception as error:
-        print(f"Movement analysis unavailable; serving raw GPS: {error}", flush=True)
-        for bus in buses:
-            bus.setdefault("prediction_enabled", False)
-            bus.setdefault("last_stop", None)
-            bus.setdefault("last_stop_confidence", None)
-
-    with _cache_lock:
-        _direct_snapshot = copy.deepcopy(buses)
-        _direct_snapshot_at = time.time()
-        _direct_feed_checked_at = _direct_snapshot_at
-        _direct_feed_state = "available" if buses else "empty"
-
-    return buses
 
 def get_latest_raw_electric_buses():
     with _cache_lock:
