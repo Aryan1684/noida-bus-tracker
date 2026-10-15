@@ -319,50 +319,53 @@ def record_ingestion_log(
 
 
 def _prune_positions(connection, bus_ids):
-    for bus_id in bus_ids:
-        if DATABASE_URL:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    "DELETE FROM bus_positions WHERE bus_id = %s AND event_time > EXTRACT(EPOCH FROM NOW()) + 120",
-                    (bus_id,),
-                )
-        else:
-            connection.execute(
-                "DELETE FROM bus_positions WHERE bus_id = ? AND event_time > CAST(strftime('%s', 'now') AS REAL) + 120",
-                (bus_id,),
-            )
+    if not bus_ids:
+        return
 
-        if DATABASE_URL:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    DELETE FROM bus_positions
-                    WHERE bus_id = %s
-                      AND id NOT IN (
-                          SELECT id
-                          FROM bus_positions
-                          WHERE bus_id = %s
-                          ORDER BY event_time DESC, id DESC
-                          LIMIT %s
-                      )
-                    """,
-                    (bus_id, bus_id, MAX_HISTORY),
-                )
-        else:
-            connection.execute(
-                """
-                DELETE FROM bus_positions
-                WHERE bus_id = ?
-                  AND id NOT IN (
-                      SELECT id
-                      FROM bus_positions
-                      WHERE bus_id = ?
-                      ORDER BY event_time DESC, id DESC
-                      LIMIT ?
-                  )
-                """,
-                (bus_id, bus_id, MAX_HISTORY),
+    if DATABASE_URL:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM bus_positions WHERE bus_id = ANY(%s) AND event_time > EXTRACT(EPOCH FROM NOW()) + 120",
+                (bus_ids,),
             )
+            cursor.execute(
+                """
+                WITH ranked AS (
+                    SELECT id, ROW_NUMBER() OVER (
+                        PARTITION BY bus_id
+                        ORDER BY event_time DESC, id DESC
+                    ) AS position_rank
+                    FROM bus_positions
+                    WHERE bus_id = ANY(%s)
+                )
+                DELETE FROM bus_positions
+                WHERE id IN (
+                    SELECT id FROM ranked WHERE position_rank > %s
+                )
+                """,
+                (bus_ids, MAX_HISTORY),
+            )
+        return
+
+    for bus_id in bus_ids:
+        connection.execute(
+            "DELETE FROM bus_positions WHERE bus_id = ? AND event_time > CAST(strftime('%s', 'now') AS REAL) + 120",
+            (bus_id,),
+        )
+        connection.execute(
+            """
+            DELETE FROM bus_positions
+            WHERE bus_id = ?
+              AND id NOT IN (
+                  SELECT id
+                  FROM bus_positions
+                  WHERE bus_id = ?
+                  ORDER BY event_time DESC, id DESC
+                  LIMIT ?
+              )
+            """,
+            (bus_id, bus_id, MAX_HISTORY),
+        )
 
 
 def _latest_event_time(connection, bus_id):
@@ -573,28 +576,55 @@ def record_positions(buses):
 
 
 def load_histories(bus_ids):
+    normalized_ids = sorted({
+        str(bus_id).strip().upper()
+        for bus_id in bus_ids
+        if str(bus_id).strip()
+    })
+    histories = {bus_id: [] for bus_id in normalized_ids}
+
+    if not normalized_ids:
+        return histories
+
     connection = _connect()
-    histories = {}
 
     try:
-        for bus_id in bus_ids:
-            normalized_id = str(bus_id).strip().upper()
-
-            if DATABASE_URL:
-                with connection.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT event_time, latitude, longitude, speed
+        if DATABASE_URL:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    WITH ranked AS (
+                        SELECT
+                            bus_id,
+                            event_time,
+                            latitude,
+                            longitude,
+                            speed,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY bus_id
+                                ORDER BY event_time DESC, id DESC
+                            ) AS position_rank
                         FROM bus_positions
-                        WHERE bus_id = %s
+                        WHERE bus_id = ANY(%s)
                           AND event_time <= EXTRACT(EPOCH FROM NOW()) + 120
-                        ORDER BY event_time DESC, id DESC
-                        LIMIT %s
-                        """,
-                        (normalized_id, MAX_HISTORY),
                     )
-                    rows = cursor.fetchall()
-            else:
+                    SELECT bus_id, event_time, latitude, longitude, speed
+                    FROM ranked
+                    WHERE position_rank <= %s
+                    ORDER BY bus_id, event_time ASC
+                    """,
+                    (normalized_ids, MAX_HISTORY),
+                )
+                rows = cursor.fetchall()
+            for row in rows:
+                histories[row[0]].append({
+                    "time": float(row[1]),
+                    "latitude": float(row[2]),
+                    "longitude": float(row[3]),
+                    "speed": float(row[4] or 0.0),
+                })
+        else:
+            for bus_id in normalized_ids:
                 rows = connection.execute(
                     """
                     SELECT event_time, latitude, longitude, speed
@@ -604,20 +634,18 @@ def load_histories(bus_ids):
                     ORDER BY event_time DESC, id DESC
                     LIMIT ?
                     """,
-                    (normalized_id, MAX_HISTORY),
+                    (bus_id, MAX_HISTORY),
                 ).fetchall()
-
-            rows.reverse()
-
-            histories[normalized_id] = [
-                {
-                    "time": float(row[0]),
-                    "latitude": float(row[1]),
-                    "longitude": float(row[2]),
-                    "speed": float(row[3] or 0.0),
-                }
-                for row in rows
-            ]
+                rows.reverse()
+                histories[bus_id] = [
+                    {
+                        "time": float(row[0]),
+                        "latitude": float(row[1]),
+                        "longitude": float(row[2]),
+                        "speed": float(row[3] or 0.0),
+                    }
+                    for row in rows
+                ]
     finally:
         connection.close()
 
