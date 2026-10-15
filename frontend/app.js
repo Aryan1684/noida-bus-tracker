@@ -1006,7 +1006,6 @@ function updateOrCreateBusMarker(bus) {
         if (body) body.style.transform = "rotate(" + Number(bus.heading) + "deg)";
     }
 
-    existing.setPopupContent(createPopupContent(bus));
     const markerNode = document.getElementById("marker-" + bus.bus_id);
     if (markerNode) {
         markerNode.classList.remove("confidence-high", "confidence-medium", "confidence-low");
@@ -1037,12 +1036,9 @@ function createBusMarker(bus) {
         { icon: icon }
     ).addTo(map);
 
-    marker.bindPopup(createPopupContent(bus));
-
     marker.on("click", event => {
         L.DomEvent.stopPropagation(event);
         selectBus(bus.bus_id);
-        marker.openPopup();
     });
 
     marker.busId = bus.bus_id;
@@ -1152,8 +1148,6 @@ function createBusCard(bus, rankIndex = 0) {
         selectBus(bus.bus_id);
         const position = getBusDisplayPosition(bus);
         map.setView([position.latitude, position.longitude], 16, {animate:true,duration:.35});
-        const marker = busMarkers.find(item => String(item.busId) === String(bus.bus_id));
-        if (marker) marker.openPopup();
     };
 
     card.addEventListener("click", openBus);
