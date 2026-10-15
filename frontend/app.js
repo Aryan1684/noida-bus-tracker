@@ -1064,7 +1064,7 @@ function createBusCard(bus, rankIndex = 0) {
     card.dataset.moving = isCurrentlyMoving ? "true" : "false";
 
     const direction = String(bus.likely_towards || bus.direction || "").trim();
-    let directionHtml;
+    let directionHtml = "";
 
     if (isCurrentlyMoving) {
         const directionLabel = freshness.stale
@@ -1076,8 +1076,6 @@ function createBusCard(bus, rankIndex = 0) {
         directionHtml = "<div class='bus-direction'><span class='direction-wait' aria-hidden='true'></span><div><small>LAST KNOWN MOVEMENT</small><strong>" + escapeHtml(direction || "No signal") + "</strong></div></div>";
     } else if (movementState === "stationary") {
         directionHtml = "<div class='bus-direction'><span class='direction-wait stationary' aria-hidden='true'></span><div><small>STATUS</small><strong>" + (freshness.stale ? "Last known stationary" : "Stationary") + "</strong></div></div>";
-    } else {
-        directionHtml = "";
     }
 
     const route = getBusRoute(bus.bus_id);
@@ -1089,7 +1087,7 @@ function createBusCard(bus, rankIndex = 0) {
         ? "Stationary"
         : movementState === "no_signal"
         ? "No signal"
-        : "Status unavailable";
+        : "Movement status unavailable";
     const statusClass = freshness.stale || movementState === "no_signal"
         ? "offline"
         : movementState === "stationary"
@@ -1118,10 +1116,21 @@ function createBusCard(bus, rankIndex = 0) {
         ? "<span class='bus-meta'>Movement " + movement.toFixed(2) + " km / " + history.toFixed(1) + " min</span>"
         : "";
 
-    const rawLastStop = String(bus && bus.last_stop || "").trim();
-    const lastStopHtml = rawLastStop && !/not enough route history|unknownroute|^unknown$/i.test(rawLastStop)
-        ? "<div class='bus-terminal-stop'><small>LIKELY LAST STOP</small><strong>" + escapeHtml(rawLastStop) + " · estimated</strong></div>"
+    const nextStop = String(bus && bus.likely_towards || "").trim();
+    const routeMatched = Boolean(bus && bus.route_path_id && nextStop && bus.route_confidence);
+    const nextStopLabel = routeMatched ? "LIKELY NEXT STOP" : "LIKELY TOWARDS";
+    const nextStopHtml = nextStop && !/unknownroute|^unknown$/i.test(nextStop)
+        ? "<div class='bus-terminal-stop'><small>" + nextStopLabel + "</small><strong>" + escapeHtml(nextStop) + "</strong></div>"
         : "";
+    const etaValue = String(bus && bus.eta_label || "").trim();
+    const etaLabel = /disabled/i.test(etaValue)
+        ? "ETA unavailable while estimates refresh"
+        : etaValue || "ETA unavailable";
+    const historyCount = Number(bus && bus.history_points_used);
+    const historyHtml = Number.isFinite(historyCount) && historyCount > 0
+        ? "<span class='bus-meta'>History " + Math.round(historyCount) + " recent points</span>"
+        : "";
+    const etaHtml = "<p class='bus-eta'>" + escapeHtml(etaLabel) + "</p>";
 
     card.innerHTML =
         "<div class='bus-card-top'>" +
@@ -1131,14 +1140,16 @@ function createBusCard(bus, rankIndex = 0) {
             "<span class='bus-rank'>#" + (rankIndex + 1) + "</span>" +
         "</div>" +
         directionHtml +
-        lastStopHtml +
+        nextStopHtml +
         "<div class='bus-meta-row'>" +
             "<span class='bus-meta'>Location " + escapeHtml(locationText) + "</span>" +
             "<span class='bus-meta'>Distance " + escapeHtml(distanceText) + "</span>" +
             "<span class='bus-meta'>Speed " + escapeHtml(speedText) + "</span>" +
             movementHtml +
+            historyHtml +
         "</div>" +
         "<p class='status status-" + statusClass + "'><span class='status-dot' aria-hidden='true'></span>" + escapeHtml(status) + "</p>" +
+        etaHtml +
         "<p class='updated'>" + escapeHtml(freshness.ageLabel) + " · " + escapeHtml(freshness.sourceLabel) + "</p>";
 
     card.setAttribute("role", "button");
@@ -1766,9 +1777,10 @@ function updateSelectedBusPanel(bus) {
     const etaNode = document.getElementById("selectedBusEta");
     const followButton = document.getElementById("selectedFollowBtn");
 
-    const moving = isBusMoving(bus);
-    const status = String(bus.vehicle_status || "").toLowerCase();
-    const direction = bus.likely_towards || bus.direction || (moving ? "Moving" : "Stationary");
+    const movementState = getBusMovementState(bus);
+    const freshness = getBusFreshness(bus);
+    const moving = movementState === "moving";
+    const direction = String(bus.likely_towards || bus.direction || "").trim();
 
     if (idNode) idNode.textContent = bus.bus_id || "Unknown Bus";
 
@@ -1779,21 +1791,33 @@ function updateSelectedBusPanel(bus) {
     }
 
     if (statusNode) {
-        statusNode.textContent = status === "no_signal"
+        statusNode.textContent = freshness.stale
+            ? "LOCATION DELAYED"
+            : movementState === "no_signal"
             ? "NO SIGNAL"
-            : status === "stationary"
+            : movementState === "stationary"
             ? "STATIONARY"
             : moving
             ? "MOVING"
-            : "LIVE";
+            : "STATUS UNKNOWN";
     }
 
-    if (directionNode) directionNode.textContent = direction;
+    if (directionNode) directionNode.textContent = direction || (moving ? "Moving" : movementState === "stationary" ? "Stationary" : "Direction unavailable");
+
     if (lastStopNode) {
-        lastStopNode.textContent = bus.last_stop
-            ? String(bus.last_stop) + " · estimated"
-            : "Not enough route history";
+        const nextStop = String(bus.likely_towards || "").trim();
+        const matchedNextStop = Boolean(nextStop && bus.route_path_id && bus.route_confidence);
+        const destination = String(bus.likely_destination || bus.last_stop || "").trim();
+        const value = matchedNextStop
+            ? "Next stop: " + nextStop
+            : nextStop
+            ? "Likely towards: " + nextStop
+            : destination && !/not enough route history|unknownroute|^unknown$/i.test(destination)
+            ? "Likely destination: " + destination
+            : "Next stop unavailable";
+        lastStopNode.textContent = value;
     }
+
     if (arrowNode) {
         const heading = Number(bus.heading);
         arrowNode.style.transform = Number.isFinite(heading)
@@ -1803,32 +1827,33 @@ function updateSelectedBusPanel(bus) {
     }
 
     if (distanceNode) {
-        distanceNode.textContent = bus.distance_km != null
-            ? String(bus.distance_km) + " km away"
+        const distance = bus.distance_km != null && bus.distance_km !== "" ? Number(bus.distance_km) : NaN;
+        distanceNode.textContent = Number.isFinite(distance)
+            ? distance.toFixed(2) + " km away"
             : "Distance unavailable";
     }
 
     if (speedNode) {
-        const speed = Number(bus.speed);
+        const speed = bus.speed != null && bus.speed !== "" ? Number(bus.speed) : NaN;
         speedNode.textContent = Number.isFinite(speed)
-            ? String(bus.speed) + " km/h"
+            ? (Number.isInteger(speed) ? String(speed) : speed.toFixed(1)) + " km/h"
             : "Speed unavailable";
     }
 
     if (movementNode) {
-        const movement = Number(bus.movement_km);
-        const minutes = Number(bus.history_minutes);
-
-        movementNode.textContent =
-            (Number.isFinite(movement) ? String(bus.movement_km) : "0") +
-            " km / " +
-            (Number.isFinite(minutes) ? String(bus.history_minutes) : "recent") +
-            " min";
+        const movement = bus.movement_km != null && bus.movement_km !== "" ? Number(bus.movement_km) : NaN;
+        const minutes = bus.history_minutes != null && bus.history_minutes !== "" ? Number(bus.history_minutes) : NaN;
+        movementNode.textContent = Number.isFinite(movement) && movement >= 0 && Number.isFinite(minutes) && minutes > 0
+            ? movement.toFixed(2) + " km / " + minutes.toFixed(1) + " min"
+            : "Movement history unavailable";
     }
 
     if (etaNode) {
-        etaNode.textContent = bus.eta_label
-            ? "ETA: " + String(bus.eta_label)
+        const eta = String(bus.eta_label || "").trim();
+        etaNode.textContent = /disabled/i.test(eta)
+            ? "ETA unavailable while estimates refresh"
+            : eta
+            ? "ETA: " + eta
             : "ETA unavailable";
     }
 
