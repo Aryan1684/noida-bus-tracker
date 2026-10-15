@@ -1756,11 +1756,53 @@ async function showAddress(latitude, longitude) {
 }
 
 
+let selectedPlaceLookupToken = 0;
+
+async function resolveSelectedBusPlace(bus) {
+    const token = ++selectedPlaceLookupToken;
+    const busId = String(bus && bus.bus_id || "");
+    const placeNode = document.getElementById("selectedBusPlace");
+    const coordinateNode = document.getElementById("selectedBusCoordinates");
+    const rawLatitude = bus && bus.latitude;
+    const rawLongitude = bus && bus.longitude;
+    const latitude = rawLatitude !== undefined && rawLatitude !== null && rawLatitude !== "" ? Number(rawLatitude) : NaN;
+    const longitude = rawLongitude !== undefined && rawLongitude !== null && rawLongitude !== "" ? Number(rawLongitude) : NaN;
+
+    if (coordinateNode) {
+        coordinateNode.textContent = Number.isFinite(latitude) && Number.isFinite(longitude)
+            ? "GPS fix " + latitude.toFixed(5) + ", " + longitude.toFixed(5)
+            : "GPS coordinates unavailable";
+    }
+
+    const fallback = String(bus && (bus.nearby_place || bus.location_label) || "").trim();
+    if (placeNode) placeNode.textContent = fallback || "Finding nearest landmark...";
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+
+    try {
+        const response = await fetch(
+            API_BASE_URL + "/api/location-label?lat=" + encodeURIComponent(latitude) + "&lon=" + encodeURIComponent(longitude),
+            {cache:"no-store"}
+        );
+        if (!response.ok) return;
+        const data = await response.json();
+        if (
+            token !== selectedPlaceLookupToken ||
+            String(selectedBusId || "") !== busId
+        ) return;
+        if (placeNode && data.label) placeNode.textContent = String(data.label);
+    } catch (error) {
+        if (token === selectedPlaceLookupToken && placeNode && fallback) {
+            placeNode.textContent = fallback;
+        }
+    }
+}
+
 function updateSelectedBusPanel(bus) {
     const panel = document.getElementById("selectedBusPanel");
     if (!panel) return;
 
     if (!bus) {
+        selectedPlaceLookupToken += 1;
         panel.classList.add("hidden");
         return;
     }
@@ -1769,7 +1811,9 @@ function updateSelectedBusPanel(bus) {
     const routeNode = document.getElementById("selectedBusRoute");
     const statusNode = document.getElementById("selectedBusStatus");
     const directionNode = document.getElementById("selectedBusDirection");
+    const directionLabelNode = document.getElementById("selectedBusDirectionLabel");
     const lastStopNode = document.getElementById("selectedBusLastStop");
+    const nextStopNode = document.getElementById("selectedBusNextStop");
     const arrowNode = document.getElementById("selectedBusArrow");
     const distanceNode = document.getElementById("selectedBusDistance");
     const speedNode = document.getElementById("selectedBusSpeed");
@@ -1780,13 +1824,24 @@ function updateSelectedBusPanel(bus) {
     const movementState = getBusMovementState(bus);
     const freshness = getBusFreshness(bus);
     const moving = movementState === "moving";
-    const direction = String(bus.likely_towards || bus.direction || "").trim();
+    const nextStop = String(bus.likely_next_stop || bus.likely_towards || "").trim();
+    const matchedNextStop = Boolean(
+        nextStop &&
+        (bus.route_path_id || bus.route_id) &&
+        bus.route_confidence &&
+        !/unknownroute|^unknown$/i.test(nextStop)
+    );
+    const place = String(bus.nearby_place || bus.location_label || "").trim();
+    const cardinalDirection = String(bus.direction || "").trim();
+    const normalizedDirection = /^(moving|stationary|unknown|direction unavailable)$/i.test(cardinalDirection)
+        ? ""
+        : cardinalDirection;
 
     if (idNode) idNode.textContent = bus.bus_id || "Unknown Bus";
 
     if (routeNode) {
-        const route = getBusRoute(bus.bus_id);
-        routeNode.textContent = route || "";
+        const route = getBusRoute(bus.bus_id) || bus.route_id || "";
+        routeNode.textContent = route;
         routeNode.classList.toggle("hidden", !route);
     }
 
@@ -1802,31 +1857,40 @@ function updateSelectedBusPanel(bus) {
             : "STATUS UNKNOWN";
     }
 
-    if (directionNode) directionNode.textContent = direction || (moving ? "Moving" : movementState === "stationary" ? "Stationary" : "Direction unavailable");
+    if (directionLabelNode) {
+        directionLabelNode.textContent = moving && matchedNextStop
+            ? "MOVING TOWARDS"
+            : moving
+            ? "CURRENTLY MOVING THROUGH"
+            : movementState === "stationary"
+            ? "CURRENT STATUS"
+            : "TRAVEL DIRECTION";
+    }
+    if (directionNode) {
+        directionNode.textContent = moving && matchedNextStop
+            ? nextStop
+            : moving
+            ? [place, normalizedDirection].filter(Boolean).join(" · ") || "Nearby location being resolved"
+            : movementState === "stationary"
+            ? place ? "Stationary near " + place.replace(/^Near /i, "") : "Stationary"
+            : normalizedDirection || "Direction unavailable";
+    }
 
     if (lastStopNode) {
-        const labelNode = lastStopNode.parentElement?.querySelector("span");
-        const nextStop = String(bus.likely_towards || "").trim();
-        const matchedNextStop = Boolean(nextStop && bus.route_path_id && bus.route_confidence);
-        const destination = String(bus.likely_destination || bus.last_stop || "").trim();
+        const lastStop = String(bus.last_passed_stop || bus.last_stop || "").trim();
+        lastStopNode.textContent = lastStop && !/not enough route history|unknownroute|^unknown$/i.test(lastStop)
+            ? lastStop
+            : "No stop confirmed from recent history";
+    }
 
-        if (matchedNextStop) {
-            if (labelNode) labelNode.textContent = "Likely next stop";
-            lastStopNode.textContent = nextStop;
-        } else if (nextStop && !/unknownroute|^unknown$/i.test(nextStop)) {
-            if (labelNode) labelNode.textContent = "Likely towards";
-            lastStopNode.textContent = nextStop;
-        } else if (destination && !/not enough route history|unknownroute|^unknown$/i.test(destination)) {
-            if (labelNode) labelNode.textContent = "Likely destination";
-            lastStopNode.textContent = destination;
-        } else {
-            if (labelNode) labelNode.textContent = "Route guidance";
-            lastStopNode.textContent = "Unavailable";
-        }
+    if (nextStopNode) {
+        nextStopNode.textContent = matchedNextStop
+            ? nextStop
+            : "No route-matched stop yet";
     }
 
     if (arrowNode) {
-        const heading = Number(bus.heading);
+        const heading = bus.heading != null && bus.heading !== "" ? Number(bus.heading) : NaN;
         arrowNode.style.transform = Number.isFinite(heading)
             ? "rotate(" + heading + "deg)"
             : "rotate(0deg)";
@@ -1848,22 +1912,25 @@ function updateSelectedBusPanel(bus) {
     }
 
     if (movementNode) {
-        const movement = bus.movement_km != null && bus.movement_km !== "" ? Number(bus.movement_km) : NaN;
-        const minutes = bus.history_minutes != null && bus.history_minutes !== "" ? Number(bus.history_minutes) : NaN;
-        movementNode.textContent = Number.isFinite(movement) && movement >= 0 && Number.isFinite(minutes) && minutes > 0
-            ? movement.toFixed(2) + " km / " + minutes.toFixed(1) + " min"
-            : "Movement history unavailable";
+        const historyCount = bus.history_points_used != null && bus.history_points_used !== ""
+            ? Number(bus.history_points_used)
+            : NaN;
+        const historyMinutes = bus.history_span_minutes != null && bus.history_span_minutes !== ""
+            ? Number(bus.history_span_minutes)
+            : NaN;
+        movementNode.textContent = Number.isFinite(historyCount) && historyCount >= 2
+            ? "History " + Math.round(historyCount) + " points" + (Number.isFinite(historyMinutes) && historyMinutes > 0 ? " · " + historyMinutes.toFixed(1) + " min" : "")
+            : "Collecting movement history";
     }
 
     if (etaNode) {
         const eta = String(bus.eta_label || "").trim();
-        etaNode.textContent = /disabled/i.test(eta)
-            ? "ETA unavailable while estimates refresh"
-            : eta
-            ? "ETA: " + eta
-            : "ETA unavailable";
+        etaNode.textContent = eta
+            ? eta.replace(/^ETA:\s*/i, "")
+            : "Waiting for a reliable route match";
     }
 
+    resolveSelectedBusPlace(bus);
     if (followButton) followButton.textContent = "Follow bus";
     panel.classList.remove("hidden");
 }
