@@ -1130,7 +1130,7 @@ function createBusCard(bus, rankIndex = 0) {
     const historyHtml = Number.isFinite(historyCount) && historyCount > 0
         ? "<span class='bus-meta'>History " + Math.round(historyCount) + " recent points</span>"
         : "";
-    const etaHtml = "<p class='bus-eta'>" + escapeHtml(etaLabel) + "</p>";
+    const etaHtml = "<p class='updated bus-eta'>" + escapeHtml(etaLabel) + "</p>";
 
     card.innerHTML =
         "<div class='bus-card-top'>" +
