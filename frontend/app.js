@@ -819,7 +819,7 @@ async function loadNearbyBuses(
                 ? "Bus data is warming up after a restart. Please retry in a few seconds."
                 : error.message === "BUS_DATA_EXPIRED"
                 ? "Live bus data has not refreshed in time. The upstream feed may be unavailable; please retry shortly."
-                : "Unable to load bus data right now. Please retry in a few seconds.";
+                : (error && error.message ? "Unable to load bus data: " + error.message : "Unable to load bus data right now. Please retry in a few seconds.");
             showErrorState(message);
         }
     } finally {
