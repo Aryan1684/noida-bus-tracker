@@ -1805,17 +1805,24 @@ function updateSelectedBusPanel(bus) {
     if (directionNode) directionNode.textContent = direction || (moving ? "Moving" : movementState === "stationary" ? "Stationary" : "Direction unavailable");
 
     if (lastStopNode) {
+        const labelNode = lastStopNode.parentElement?.querySelector("span");
         const nextStop = String(bus.likely_towards || "").trim();
         const matchedNextStop = Boolean(nextStop && bus.route_path_id && bus.route_confidence);
         const destination = String(bus.likely_destination || bus.last_stop || "").trim();
-        const value = matchedNextStop
-            ? "Next stop: " + nextStop
-            : nextStop
-            ? "Likely towards: " + nextStop
-            : destination && !/not enough route history|unknownroute|^unknown$/i.test(destination)
-            ? "Likely destination: " + destination
-            : "Next stop unavailable";
-        lastStopNode.textContent = value;
+
+        if (matchedNextStop) {
+            if (labelNode) labelNode.textContent = "Likely next stop";
+            lastStopNode.textContent = nextStop;
+        } else if (nextStop && !/unknownroute|^unknown$/i.test(nextStop)) {
+            if (labelNode) labelNode.textContent = "Likely towards";
+            lastStopNode.textContent = nextStop;
+        } else if (destination && !/not enough route history|unknownroute|^unknown$/i.test(destination)) {
+            if (labelNode) labelNode.textContent = "Likely destination";
+            lastStopNode.textContent = destination;
+        } else {
+            if (labelNode) labelNode.textContent = "Route guidance";
+            lastStopNode.textContent = "Unavailable";
+        }
     }
 
     if (arrowNode) {
