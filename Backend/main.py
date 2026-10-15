@@ -106,8 +106,10 @@ def root():
         "features": {
             "nearby_buses": True,
             "gps_freshness": True,
-            "route_matching": False,
+            "route_matching": True,
             "eta_estimates": False,
+            "movement_prediction": True,
+            "last_stop_estimates": True,
             "location_search": True,
             "feedback": bool(WEB3FORMS_FEEDBACK_KEY),
             "bus_reports": bool(WEB3FORMS_REPORT_KEY),
@@ -369,7 +371,7 @@ def get_nearby_buses(
         "feed_state": get_direct_snapshot_status()["state"],
         "radius_km": radius,
         "data_source": "MARGDARSHI",
-        "prediction_enabled": False,
+        "prediction_enabled": True,
         "buses": nearby_buses
     }
 
