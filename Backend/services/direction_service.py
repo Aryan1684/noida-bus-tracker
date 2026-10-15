@@ -437,14 +437,23 @@ def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=
     else:
         confidence = "Low"
 
+    previous_stop = segment["from"]
+    next_stop = segment["to"]
+    route_stops = best_route["points"]
+    terminal_stop = route_stops[-1]
+
     return {
         "route_id": "R1" if best_route["id"].startswith("N-R01") else (
             "GR01" if best_route["id"].startswith("GR01") else best_route["id"]
         ),
         "route_path_id": best_route["id"],
-        "likely_towards": segment["to"],
-        "likely_destination": best_route["points"][-1],
-        "last_stop": best_route["points"][-1],
+        "route_segment_from": previous_stop,
+        "route_segment_to": next_stop,
+        "last_passed_stop": previous_stop,
+        "last_stop": previous_stop,
+        "likely_next_stop": next_stop,
+        "likely_towards": next_stop,
+        "likely_destination": terminal_stop,
         "last_stop_confidence": confidence,
         "route": best_route["name"],
         "route_confidence": confidence,
