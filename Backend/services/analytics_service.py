@@ -4,6 +4,7 @@ import queue
 import secrets
 import sqlite3
 import threading
+from urllib.parse import urlparse
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 
@@ -48,7 +49,14 @@ EVENT_COLUMNS = {
 
 
 def storage_mode():
-    return "postgresql" if DATABASE_URL else "sqlite-ephemeral"
+    if not DATABASE_URL:
+        return "sqlite-ephemeral"
+
+    host = (urlparse(DATABASE_URL).hostname or "").lower()
+    if host.endswith(".supabase.co") or host.endswith(".pooler.supabase.com"):
+        return "supabase-postgresql"
+
+    return "postgresql"
 
 
 def _connect():
@@ -401,9 +409,10 @@ def record_consented_location(
     )
 
 
-def _read_rows(days):
+def _read_rows(days=30, hours=None):
     _init_db()
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    now = datetime.now(timezone.utc)
+    cutoff = now - (timedelta(hours=hours) if hours is not None else timedelta(days=days))
 
     connection = _connect()
 
@@ -514,13 +523,37 @@ def _parse_time(value):
     return parsed.astimezone(timezone.utc)
 
 
-def _daily_counts(rows, days):
-    today = datetime.now(INDIA_TIMEZONE).date()
-    buckets = {}
+def _traffic_series(rows, days=30, hours=None):
+    now = datetime.now(timezone.utc)
+    span = timedelta(hours=hours) if hours is not None else timedelta(days=days)
+    cutoff = now - span
 
-    for offset in range(days - 1, -1, -1):
-        day = today - timedelta(days=offset)
-        buckets[day.isoformat()] = {
+    if hours is not None:
+        local_start = cutoff.astimezone(INDIA_TIMEZONE).replace(minute=0, second=0, microsecond=0)
+        local_end = now.astimezone(INDIA_TIMEZONE).replace(minute=0, second=0, microsecond=0)
+        bucket_count = int((local_end - local_start).total_seconds() // 3600) + 1
+        step = timedelta(hours=1)
+        granularity = "hour"
+        labels = [
+            (local_start + step * index).strftime("%H:%M")
+            for index in range(bucket_count)
+        ]
+        starts = [local_start + step * index for index in range(bucket_count)]
+    elif days > 60:
+        bucket_count = (days + 6) // 7
+        step = timedelta(days=7)
+        granularity = "week"
+        starts = [cutoff + step * index for index in range(bucket_count)]
+        labels = [value.astimezone(INDIA_TIMEZONE).strftime("%d %b") for value in starts]
+    else:
+        bucket_count = days
+        step = timedelta(days=1)
+        granularity = "day"
+        starts = [cutoff + step * index for index in range(bucket_count)]
+        labels = [value.astimezone(INDIA_TIMEZONE).strftime("%d %b") for value in starts]
+
+    buckets = [
+        {
             "events": 0,
             "visitors": set(),
             "sessions": set(),
@@ -528,17 +561,22 @@ def _daily_counts(rows, days):
             "refreshes": 0,
             "selections": 0,
         }
+        for _ in range(bucket_count)
+    ]
 
     for row in rows:
         parsed = _parse_time(row["event_time"])
-        if not parsed:
+        if not parsed or parsed < cutoff or parsed > now:
+            continue
+        local_time = parsed.astimezone(INDIA_TIMEZONE)
+        if granularity == "hour":
+            index = int((local_time - starts[0]).total_seconds() // step.total_seconds())
+        else:
+            index = int((parsed - cutoff).total_seconds() // step.total_seconds())
+        if index < 0 or index >= bucket_count:
             continue
 
-        key = parsed.astimezone(INDIA_TIMEZONE).date().isoformat()
-        bucket = buckets.get(key)
-        if not bucket:
-            continue
-
+        bucket = buckets[index]
         bucket["events"] += 1
         visitor = row["visitor_id"] or ("legacy-" + row["session_id"] if row["session_id"] else "")
         if visitor:
@@ -554,7 +592,8 @@ def _daily_counts(rows, days):
 
     return [
         {
-            "date": date,
+            "date": starts[index].astimezone(INDIA_TIMEZONE).date().isoformat(),
+            "label": labels[index],
             "events": values["events"],
             "visitors": len(values["visitors"]),
             "sessions": len(values["sessions"]),
@@ -562,7 +601,7 @@ def _daily_counts(rows, days):
             "refreshes": values["refreshes"],
             "selections": values["selections"],
         }
-        for date, values in buckets.items()
+        for index, values in enumerate(buckets)
     ]
 
 
@@ -618,8 +657,11 @@ def _distribution(rows, key, limit=12):
     ]
 
 
-def dashboard(days=30):
-    rows = _read_rows(days)
+def dashboard(days=30, hours=None):
+    rows = _read_rows(days=days, hours=hours)
+    period_label = f"Last {hours} hours" if hours is not None else f"Last {days} days"
+    latest_event_at = rows[-1]["event_time"] if rows else None
+    series_granularity = "hour" if hours is not None else "week" if days > 60 else "day"
 
     event_counts = Counter(row["event_name"] for row in rows)
     sessions = {row["session_id"] for row in rows if row["session_id"]}
@@ -770,6 +812,12 @@ def dashboard(days=30):
 
     return {
         "storage": storage_mode(),
+        "database_provider": "Supabase" if storage_mode() == "supabase-postgresql" else "PostgreSQL" if storage_mode() == "postgresql" else "Temporary SQLite",
+        "period_label": period_label,
+        "window_hours": hours,
+        "window_days": days if hours is None else None,
+        "series_granularity": series_granularity,
+        "latest_event_at": latest_event_at,
         "days": days,
         "total_events": len(rows),
         "unique_visitors": len(visitor_keys),
@@ -825,7 +873,7 @@ def dashboard(days=30):
         "devices": _distribution(rows, "device_type"),
         "languages": _distribution(rows, "language"),
         "app_versions": _distribution(rows, "app_version"),
-        "daily": _daily_counts(rows, min(days, 31)),
+        "daily": _traffic_series(rows, days=days, hours=hours),
         "hourly": _hourly_counts(rows),
         "location_cells": safe_locations[:100],
         "recent_events": recent,

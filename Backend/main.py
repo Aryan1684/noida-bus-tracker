@@ -251,13 +251,27 @@ def analytics_location(payload: AnalyticsLocation):
 
 @app.get("/api/admin/analytics")
 def admin_analytics(
-    days: int = Query(30, ge=1, le=365),
+    period: str | None = Query(default=None, max_length=5),
+    days: int | None = Query(default=None, ge=1, le=365),
     x_admin_token: str | None = Header(default=None),
 ):
     if not verify_admin_token(x_admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
 
-    return get_analytics_dashboard(days)
+    hour_windows = {"12h": 12, "24h": 24, "36h": 36, "48h": 48}
+    day_windows = {"7d": 7, "15d": 15, "30d": 30, "180d": 180, "365d": 365}
+
+    if period in hour_windows:
+        return get_analytics_dashboard(hours=hour_windows[period])
+    if period in day_windows:
+        return get_analytics_dashboard(days=day_windows[period])
+    if period is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported reporting window. Use 12h, 24h, 36h, 48h, 7d, 15d, 30d, 180d or 365d.",
+        )
+
+    return get_analytics_dashboard(days=days or 30)
 
 
 @app.get("/api/admin/fleet")

@@ -117,3 +117,19 @@ button:disabled{opacity:.6;cursor:wait}
   .chart-legend{gap:10px}
   .warning{font-size:10px}
 }
+
+.day-bars{height:150px;display:flex;align-items:flex-end;justify-content:center;gap:2px;width:100%}
+.day-bars .day-bar{display:block;flex:0 1 7px;width:22%;max-width:7px;min-height:2px;border-radius:3px 3px 0 0;opacity:1}
+.day-bars .bar-visitors{background:#be123c}
+.day-bars .bar-sessions{background:#c6aa68}
+.day-bars .bar-events{background:#52525b}
+.day-col{min-width:0}
+.day-col span{transform:none;height:17px;white-space:nowrap;font-size:7px}
+.bar-chart.hourly-series .day-col span[hidden]{display:none}
+.storage-warning{color:#9b2f27!important;font-weight:900}
+#refresh:disabled{opacity:.6;cursor:wait}
+@media(max-width:620px){
+ .day-bars{gap:1px}
+ .day-bars .day-bar{max-width:4px}
+ .bar-chart.hourly-series .day-col span{font-size:6px}
+}

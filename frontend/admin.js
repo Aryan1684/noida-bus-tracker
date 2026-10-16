@@ -95,12 +95,18 @@ function dailyChart(items) {
     const box = document.getElementById("dailyChart");
     box.innerHTML = "";
     const data = items || [];
+    if (!data.length) {
+        emptyState(box, "No traffic recorded in this reporting window.");
+        return;
+    }
     const max = Math.max(1, ...data.map(x => Math.max(
         Number(x.visitors) || 0,
         Number(x.sessions) || 0,
         Number(x.events) || 0
     )));
-    data.forEach(x => {
+    const hourly = data.length > 0 && /^\d{2}:\d{2}$/.test(String(data[0].label || ""));
+    box.classList.toggle("hourly-series", hourly);
+    data.forEach((x, index) => {
         const col = document.createElement("div");
         col.className = "day-col";
         const bars = document.createElement("div");
@@ -114,18 +120,18 @@ function dailyChart(items) {
             const bar = document.createElement("i");
             bar.className = "day-bar " + className;
             bar.style.height = Math.max(2, Math.round(value / max * 145)) + "px";
-            bar.title = (x.date || "") + " · " + value + " " + label;
+            bar.title = (x.date || "") + " · " + (x.label || "") + " · " + value + " " + label;
             bars.appendChild(bar);
         });
         const date = document.createElement("span");
-        date.textContent = (x.date || "").slice(5);
+        date.textContent = x.label || (x.date || "").slice(5);
         date.title = x.date || "";
+        if (hourly && data.length > 24 && index % 4 !== 0 && index !== data.length - 1) date.hidden = true;
         col.appendChild(bars);
         col.appendChild(date);
         box.appendChild(col);
     });
 }
-
 function hourlyChart(items) {
     const box = document.getElementById("hourlyChart");
     box.innerHTML = "";
@@ -244,7 +250,7 @@ async function load() {
         try {
             const days = document.getElementById("days").value;
             const results = await Promise.allSettled([
-                request("/api/admin/analytics?days=" + days),
+                request("/api/admin/analytics?period=" + encodeURIComponent(days)),
                 request("/api/admin/fleet")
             ]);
 
@@ -270,15 +276,37 @@ async function load() {
             document.getElementById("feedback").textContent = analytics.feedback_submitted ?? "0";
             document.getElementById("reports").textContent = analytics.reports_submitted ?? "0";
 
-            document.getElementById("storage").textContent = "Storage: " + analytics.storage;
-            document.getElementById("lastLoaded").textContent = "Loaded in " + (Date.now() - started) + " ms";
+            const storageLabels = {
+                "supabase-postgresql": "Supabase PostgreSQL",
+                "postgresql": "PostgreSQL",
+                "sqlite-ephemeral": "SQLite (temporary)"
+            };
+            document.getElementById("storage").textContent =
+                "Storage: " + (storageLabels[analytics.storage] || analytics.storage || "unknown");
 
-            if (analytics.storage !== "postgresql") {
-                warningBox.textContent = "Analytics is using temporary SQLite storage. Events can disappear after a service restart or redeploy. Configure DATABASE_URL for persistent history.";
+            const latestEvent = analytics.latest_event_at
+                ? new Date(analytics.latest_event_at).toLocaleString([], {dateStyle:"medium",timeStyle:"short"})
+                : "No events in this window";
+            document.getElementById("lastLoaded").textContent =
+                (analytics.period_label || days) + " · Latest event: " + latestEvent +
+                " · Loaded in " + (Date.now() - started) + " ms";
+
+            if (analytics.storage === "sqlite-ephemeral") {
+                warningBox.textContent = "Analytics is using temporary SQLite storage. Events can disappear after a service restart or redeploy. Configure DATABASE_URL for persistent Supabase/PostgreSQL history.";
+                warningBox.hidden = false;
+            } else if (analytics.storage === "postgresql") {
+                warningBox.textContent = "The backend is connected to PostgreSQL, but its hostname was not recognized as Supabase. If you expected Supabase, check Render's DATABASE_URL host. The connection string is not displayed here.";
                 warningBox.hidden = false;
             }
 
-            platformTable(analytics.platforms);
+            const title = document.getElementById("trafficTitle");
+            if (title) {
+                title.textContent = analytics.series_granularity === "hour"
+                    ? "Hourly visitors, sessions and events"
+                    : analytics.series_granularity === "week"
+                    ? "Weekly visitors, sessions and events"
+                    : "Daily visitors, sessions and events";
+            }
             dailyChart(analytics.daily);
             hourlyChart(analytics.hourly);
             tableRows("eventTable", analytics.event_breakdown, "event");
@@ -330,7 +358,7 @@ function login() {
     }
     sessionStorage.setItem(KEY, value);
     token = value;
-    request("/api/admin/analytics?days=7").then(() => {
+    request("/api/admin/analytics?period=7d").then(() => {
         document.getElementById("login").hidden = true;
         document.getElementById("dash").hidden = false;
         load();
