@@ -1580,6 +1580,11 @@ function initializePlaceSearch() {
         if (searchController) searchController.abort();
 
         if (query.length < 2) {
+            if (searchController) {
+                searchController.abort();
+                searchController = null;
+            }
+            input.setAttribute("aria-busy", "false");
             suggestions.classList.add("hidden");
             suggestions.innerHTML = "";
             return;
@@ -1645,6 +1650,8 @@ function renderPlaceSuggestions(results, input, suggestions, emptyMessage = "No 
     if (!results.length) {
         const empty = document.createElement("div");
         empty.className = searching ? "search-empty search-loading" : "search-empty";
+        empty.setAttribute("role", "status");
+        empty.setAttribute("aria-live", "polite");
         empty.textContent = emptyMessage;
         suggestions.appendChild(empty);
         return;
@@ -1696,6 +1703,8 @@ function renderPlaceSuggestions(results, input, suggestions, emptyMessage = "No 
     if (searching) {
         const loading = document.createElement("div");
         loading.className = "search-empty search-loading";
+        loading.setAttribute("role", "status");
+        loading.setAttribute("aria-live", "polite");
         loading.textContent = "Searching for more places…";
         suggestions.appendChild(loading);
     }
@@ -1748,7 +1757,14 @@ async function searchPlaces(query) {
             backendFailed = true;
         }
 
-        if (!externalResults.length && !controller.signal.aborted) {
+        const normalizedQuery = cleanQuery.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+        const queryTokens = normalizedQuery.split(/\s+/).filter(token => token.length > 1);
+        const hasRelevantExternalResult = externalResults.some(result => {
+            const normalizedName = String(result.name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ");
+            return queryTokens.length > 0 && queryTokens.every(token => normalizedName.includes(token));
+        });
+
+        if ((!externalResults.length || externalResults.length < 3 || !hasRelevantExternalResult) && !controller.signal.aborted) {
             try {
                 const fallbackResponse = await fetch(
                     "https://nominatim.openstreetmap.org/search?format=jsonv2&q=" +
