@@ -1218,6 +1218,7 @@ function selectBus(busId) {
 
 function clearBusSelection() {
     selectedBusId = null;
+    updateSelectedBusPanel(null);
     if (selectedRouteLayer) {
         map.removeLayer(selectedRouteLayer);
         selectedRouteLayer = null;
@@ -1606,22 +1607,46 @@ function initializePlaceSearch() {
 }
 
 const LOCAL_PLACES = [
-    { name: "Botanical Garden, Noida", latitude: 28.5672, longitude: 77.3346 },
-    { name: "Sector 37, Noida", latitude: 28.5650, longitude: 77.3440 },
-    { name: "Noida City Center", latitude: 28.5740, longitude: 77.3560 },
-    { name: "Sector 52, Noida", latitude: 28.5850, longitude: 77.3700 },
-    { name: "Parthala, Noida", latitude: 28.6075, longitude: 77.3755 },
-    { name: "Chaar Murti, Greater Noida West", latitude: 28.6020, longitude: 77.4180 },
-    { name: "Ek Murti, Greater Noida West", latitude: 28.6063, longitude: 77.4337 },
-    { name: "Surajpur, Greater Noida", latitude: 28.5185, longitude: 77.4990 },
-    { name: "Pari Chowk, Greater Noida", latitude: 28.4652, longitude: 77.5080 }
+    { name: "Botanical Garden Metro Station, Noida", latitude: 28.5672, longitude: 77.3346, aliases: ["botanical garden", "botanical metro"] },
+    { name: "Sector 37, Noida", latitude: 28.5650, longitude: 77.3440, aliases: ["sec 37"] },
+    { name: "Noida City Center Metro Station", latitude: 28.5740, longitude: 77.3560, aliases: ["noida city center", "sector 32 metro", "city centre"] },
+    { name: "Sector 52 Metro Station, Noida", latitude: 28.5850, longitude: 77.3700, aliases: ["sector 52", "sec 52", "sector 52 metro", "noida sector 52"] },
+    { name: "Parthala Flyover, Noida", latitude: 28.6075, longitude: 77.3755, aliases: ["parthala", "parthala flyover"] },
+    { name: "Chaar Murti, Greater Noida West", latitude: 28.6020, longitude: 77.4180, aliases: ["char murti", "chaarmurti", "gaur chowk"] },
+    { name: "Ek Murti Chowk, Greater Noida West", latitude: 28.6063, longitude: 77.4337, aliases: ["ek murti", "ekmurti"] },
+    { name: "Jagat Farm Market, Gamma I, Greater Noida", latitude: 28.4812, longitude: 77.4996, aliases: ["jagat farm", "jagat farm market", "gamma i market"] },
+    { name: "Surajpur, Greater Noida", latitude: 28.5185, longitude: 77.4990, aliases: ["surajpur"] },
+    { name: "Pari Chowk, Greater Noida", latitude: 28.4652, longitude: 77.5080, aliases: ["pari chowk", "pari chowk metro"] }
 ];
 
-function renderPlaceSuggestions(results, input, suggestions) {
+function getLocalPlaceMatches(query) {
+    const normalizedQuery = String(query || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    if (!normalizedQuery) return [];
+    const terms = normalizedQuery.split(/\s+/).filter(Boolean);
+
+    return LOCAL_PLACES.filter(place => {
+        const searchable = [place.name, ...(place.aliases || [])]
+            .join(" ")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, " ");
+        return searchable.includes(normalizedQuery) || terms.every(term => searchable.includes(term));
+    }).sort((a, b) => {
+        const aName = String(a.name || "").toLowerCase();
+        const bName = String(b.name || "").toLowerCase();
+        const aExact = aName.includes(normalizedQuery) ? 0 : 1;
+        const bExact = bName.includes(normalizedQuery) ? 0 : 1;
+        return aExact - bExact || aName.length - bName.length;
+    }).slice(0, 5);
+}
+
+function renderPlaceSuggestions(results, input, suggestions, emptyMessage = "No matching place found", searching = false) {
     suggestions.innerHTML = "";
 
     if (!results.length) {
-        suggestions.innerHTML = "<div class='search-empty'>No matching place found</div>";
+        const empty = document.createElement("div");
+        empty.className = searching ? "search-empty search-loading" : "search-empty";
+        empty.textContent = emptyMessage;
+        suggestions.appendChild(empty);
         return;
     }
 
@@ -1667,6 +1692,13 @@ function renderPlaceSuggestions(results, input, suggestions) {
 
         suggestions.appendChild(item);
     });
+
+    if (searching) {
+        const loading = document.createElement("div");
+        loading.className = "search-empty search-loading";
+        loading.textContent = "Searching for more places…";
+        suggestions.appendChild(loading);
+    }
 }
 
 async function searchPlaces(query) {
@@ -1674,71 +1706,116 @@ async function searchPlaces(query) {
     const suggestions = document.getElementById("searchSuggestions");
     if (!input || !suggestions) return;
 
+    const cleanQuery = String(query || "").trim();
+    if (cleanQuery.length < 2) return;
+
     if (searchController) searchController.abort();
-    searchController = new AbortController();
+    const controller = new AbortController();
+    searchController = controller;
 
     input.setAttribute("aria-busy", "true");
 
-    const q = query.toLowerCase();
-    const localResults = [];
-
-    renderPlaceSuggestions(localResults, input, suggestions);
+    const localResults = getLocalPlaceMatches(cleanQuery);
+    renderPlaceSuggestions(
+        localResults,
+        input,
+        suggestions,
+        "Searching places…",
+        true
+    );
     suggestions.classList.remove("hidden");
 
-    const timeoutId = setTimeout(() => searchController.abort(), 4500);
+    const timeoutId = setTimeout(() => controller.abort(), 18000);
 
     try {
-        const response = await fetch(
-            API_BASE_URL + "/api/search-location?q=" + encodeURIComponent(query),
-            { signal: searchController.signal }
-        );
-
         let externalResults = [];
+        let backendFailed = false;
 
-        if (response.ok) {
-            const data = await response.json();
-            externalResults = Array.isArray(data.results) ? data.results : [];
-        }
-
-        if (!externalResults.length) {
-            const fallbackResponse = await fetch(
-                "https://nominatim.openstreetmap.org/search?format=jsonv2&q=" +
-                encodeURIComponent(query) +
-                "&countrycodes=in&limit=5&addressdetails=1",
-                {
-                    signal: searchController.signal,
-                    headers: { "Accept": "application/json" }
-                }
+        try {
+            const response = await fetch(
+                API_BASE_URL + "/api/search-location?q=" + encodeURIComponent(cleanQuery),
+                { signal: controller.signal, cache: "no-store" }
             );
 
-            if (fallbackResponse.ok) {
-                const fallbackData = await fallbackResponse.json();
-                externalResults = fallbackData.map(item => ({
-                    name: item.display_name,
-                    latitude: Number(item.lat),
-                    longitude: Number(item.lon)
-                }));
+            if (response.ok) {
+                const data = await response.json();
+                externalResults = Array.isArray(data.results) ? data.results : [];
+            } else {
+                backendFailed = true;
+            }
+        } catch (error) {
+            if (error.name === "AbortError") throw error;
+            backendFailed = true;
+        }
+
+        if (!externalResults.length && !controller.signal.aborted) {
+            try {
+                const fallbackResponse = await fetch(
+                    "https://nominatim.openstreetmap.org/search?format=jsonv2&q=" +
+                    encodeURIComponent(cleanQuery) +
+                    "&countrycodes=in&limit=7&addressdetails=1",
+                    {
+                        signal: controller.signal,
+                        headers: { "Accept": "application/json" },
+                        cache: "no-store"
+                    }
+                );
+
+                if (fallbackResponse.ok) {
+                    const fallbackData = await fallbackResponse.json();
+                    externalResults = fallbackData.map(item => ({
+                        name: item.display_name,
+                        latitude: Number(item.lat),
+                        longitude: Number(item.lon)
+                    }));
+                }
+            } catch (error) {
+                if (error.name === "AbortError") throw error;
             }
         }
 
+        if (controller.signal.aborted || input.value.trim() !== cleanQuery) return;
+
         const seen = new Set();
         const merged = [...localResults, ...externalResults].filter(result => {
-            const key = String(result.name || "").toLowerCase();
+            const latitude = Number(result.latitude);
+            const longitude = Number(result.longitude);
+            if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return false;
+            const key = String(result.name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
             if (!key || seen.has(key)) return false;
             seen.add(key);
             return true;
         });
 
-        renderPlaceSuggestions(merged, input, suggestions);
+        renderPlaceSuggestions(
+            merged,
+            input,
+            suggestions,
+            backendFailed && !merged.length
+                ? "Search is temporarily unavailable. Please try again."
+                : "No matching place found. Try a sector, metro station, or nearby landmark.",
+            false
+        );
         suggestions.classList.remove("hidden");
     } catch (error) {
-        if (error.name !== "AbortError" && !localResults.length) {
-            suggestions.innerHTML = "<div class='search-empty'>Search is temporarily unavailable</div>";
+        if (input.value.trim() === cleanQuery) {
+            renderPlaceSuggestions(
+                localResults,
+                input,
+                suggestions,
+                error.name === "AbortError"
+                    ? "Search timed out. Please try again."
+                    : "Search is temporarily unavailable. Please try again.",
+                false
+            );
             suggestions.classList.remove("hidden");
         }
     } finally {
         clearTimeout(timeoutId);
-        input.setAttribute("aria-busy", "false");
+        if (searchController === controller) {
+            searchController = null;
+            input.setAttribute("aria-busy", "false");
+        }
     }
 }
 
@@ -1987,7 +2064,5 @@ function updateSelectedBusPanel(bus) {
 }
 
 function closeSelectedBusPanel() {
-    selectedBusId = null;
-    updateSelectedBusPanel(null);
     clearBusSelection();
 }
