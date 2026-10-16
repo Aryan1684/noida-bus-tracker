@@ -428,7 +428,7 @@ def _read_rows(days=30, hours=None):
                         metadata, coarse_lat, coarse_lon
                     FROM analytics_events
                     WHERE event_time >= %s
-                    ORDER BY event_time ASC
+                    ORDER BY event_time DESC
                     LIMIT 100000
                     """,
                     (cutoff,),
@@ -444,7 +444,7 @@ def _read_rows(days=30, hours=None):
                     metadata, coarse_lat, coarse_lon
                 FROM analytics_events
                 WHERE event_time >= ?
-                ORDER BY event_time ASC
+                ORDER BY event_time DESC
                 LIMIT 100000
                 """,
                 (cutoff.isoformat(),),
@@ -452,6 +452,7 @@ def _read_rows(days=30, hours=None):
     finally:
         connection.close()
 
+    rows.reverse()
     normalized = []
 
     for row in rows:
