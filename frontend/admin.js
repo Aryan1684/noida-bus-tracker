@@ -350,6 +350,56 @@ async function load() {
     })();
 }
 
+
+async function loadMaintenance() {
+    const state = document.getElementById("maintenanceState");
+    const message = document.getElementById("maintenanceMessage");
+    const status = document.getElementById("maintenanceStatus");
+    try {
+        const data = await request("/api/admin/maintenance");
+        state.textContent = data.enabled ? "ENABLED" : "DISABLED";
+        state.classList.toggle("maintenance-on", data.enabled);
+        message.value = data.message || "We are making a few improvements. Please check back shortly.";
+        document.getElementById("maintenanceToggle").disabled = data.enabled;
+        document.getElementById("maintenanceDisable").disabled = !data.enabled;
+        status.textContent = data.enabled ? "Visitors currently see the maintenance page." : "The tracker is visible to visitors.";
+    } catch (error) {
+        state.textContent = "Unavailable";
+        status.textContent = error.message;
+    }
+}
+
+async function setMaintenance(enabled) {
+    const status = document.getElementById("maintenanceStatus");
+    const toggle = document.getElementById("maintenanceToggle");
+    const disable = document.getElementById("maintenanceDisable");
+    toggle.disabled = true;
+    disable.disabled = true;
+    status.textContent = enabled ? "Enabling maintenance mode…" : "Restoring the tracker…";
+    try {
+        const response = await fetch(API + "/api/admin/maintenance", {
+            method: "POST",
+            headers: { ...auth(), "Content-Type": "application/json" },
+            cache: "no-store",
+            body: JSON.stringify({
+                enabled,
+                message: document.getElementById("maintenanceMessage").value.trim()
+            })
+        });
+        if (response.status === 401) throw new Error("Invalid admin token.");
+        if (!response.ok) throw new Error("Could not update maintenance mode (HTTP " + response.status + ").");
+        await loadMaintenance();
+        status.textContent = enabled ? "Maintenance mode is now enabled." : "Maintenance mode is now disabled.";
+    } catch (error) {
+        status.textContent = error.message;
+        toggle.disabled = false;
+        disable.disabled = false;
+    }
+}
+
+document.getElementById("maintenanceToggle").addEventListener("click", () => setMaintenance(true));
+document.getElementById("maintenanceDisable").addEventListener("click", () => setMaintenance(false));
+
 function login() {
     const value = document.getElementById("token").value.trim();
     if (!value) {
@@ -362,6 +412,7 @@ function login() {
         document.getElementById("login").hidden = true;
         document.getElementById("dash").hidden = false;
         load();
+        loadMaintenance();
     }).catch(error => {
         sessionStorage.removeItem(KEY);
         token = "";
@@ -384,4 +435,5 @@ if (token) {
     document.getElementById("login").hidden = true;
     document.getElementById("dash").hidden = false;
     load();
+    loadMaintenance();
 }
