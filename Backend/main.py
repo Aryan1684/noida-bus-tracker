@@ -128,49 +128,74 @@ def root():
 
 
 
+
 class MaintenanceUpdate(BaseModel):
     enabled: bool
     message: str | None = Field(default=None, max_length=300)
+    duration_minutes: int | None = Field(default=60, ge=1, le=10080)
 
 
-def read_maintenance_settings():
+def _ensure_maintenance_table(connection):
+    if ANALYTICS_DATABASE_URL:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS maintenance_settings (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+                    message VARCHAR(300) NOT NULL DEFAULT 'We are making a few improvements. Please check back shortly.',
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    expires_at BIGINT
+                )
+            """)
+            cursor.execute("ALTER TABLE maintenance_settings ADD COLUMN IF NOT EXISTS expires_at BIGINT")
+            cursor.execute("""
+                INSERT INTO maintenance_settings (id, enabled)
+                VALUES (1, FALSE) ON CONFLICT (id) DO NOTHING
+            """)
+    else:
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS maintenance_settings (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                enabled INTEGER NOT NULL DEFAULT 0,
+                message TEXT NOT NULL DEFAULT 'We are making a few improvements. Please check back shortly.',
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                expires_at INTEGER
+            )
+        """)
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(maintenance_settings)").fetchall()}
+        if "expires_at" not in columns:
+            connection.execute("ALTER TABLE maintenance_settings ADD COLUMN expires_at INTEGER")
+        connection.execute("INSERT OR IGNORE INTO maintenance_settings (id, enabled) VALUES (1, 0)")
+
+
+def _maintenance_row():
     init_analytics_db()
     connection = analytics_connect()
     try:
-        with connection.cursor() if ANALYTICS_DATABASE_URL else _sqlite_cursor(connection) as cursor:
-            if ANALYTICS_DATABASE_URL:
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS maintenance_settings (
-                        id INTEGER PRIMARY KEY CHECK (id = 1),
-                        enabled BOOLEAN NOT NULL DEFAULT FALSE,
-                        message VARCHAR(300) NOT NULL DEFAULT 'We are making a few improvements. Please check back shortly.',
-                        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                    )
-                """)
-                cursor.execute("""
-                    INSERT INTO maintenance_settings (id, enabled)
-                    VALUES (1, FALSE) ON CONFLICT (id) DO NOTHING
-                """)
-                cursor.execute("SELECT enabled, message, updated_at FROM maintenance_settings WHERE id = 1")
-                row = cursor.fetchone()
-            else:
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS maintenance_settings (
-                        id INTEGER PRIMARY KEY CHECK (id = 1),
-                        enabled INTEGER NOT NULL DEFAULT 0,
-                        message TEXT NOT NULL DEFAULT 'We are making a few improvements. Please check back shortly.',
-                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    )
-                """)
-                cursor.execute("""
-                    INSERT OR IGNORE INTO maintenance_settings (id, enabled) VALUES (1, 0)
-                """)
-                cursor.execute("SELECT enabled, message, updated_at FROM maintenance_settings WHERE id = 1")
-                row = cursor.fetchone()
+        _ensure_maintenance_table(connection)
         connection.commit()
-        return {"enabled": bool(row[0]), "message": row[1], "updated_at": str(row[2])}
+        with connection.cursor() if ANALYTICS_DATABASE_URL else _sqlite_cursor(connection) as cursor:
+            cursor.execute("SELECT enabled, message, updated_at, expires_at FROM maintenance_settings WHERE id = 1")
+            row = cursor.fetchone()
+        if row is None:
+            return {"enabled": False, "message": "We are making a few improvements. Please check back shortly.", "updated_at": None, "expires_at": None}
+        enabled, message, updated_at, expires_at = bool(row[0]), row[1], row[2], row[3]
+        now_ms = int(time.time() * 1000)
+        if enabled and expires_at is not None and int(expires_at) <= now_ms:
+            if ANALYTICS_DATABASE_URL:
+                with connection.cursor() as cursor:
+                    cursor.execute("UPDATE maintenance_settings SET enabled = FALSE, updated_at = NOW() WHERE id = 1")
+            else:
+                connection.execute("UPDATE maintenance_settings SET enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE id = 1")
+            connection.commit()
+            enabled = False
+        return {"enabled": enabled, "message": message, "updated_at": str(updated_at), "expires_at": int(expires_at) if expires_at is not None else None}
     finally:
         connection.close()
+
+
+def read_maintenance_settings():
+    return _maintenance_row()
 
 
 class _sqlite_cursor:
@@ -183,52 +208,40 @@ class _sqlite_cursor:
         self.cursor.close()
 
 
-def write_maintenance_settings(enabled: bool, message: str | None):
+def write_maintenance_settings(enabled: bool, message: str | None, duration_minutes: int | None = 60):
     init_analytics_db()
     connection = analytics_connect()
     clean_message = (message or "We are making a few improvements. Please check back shortly.").strip()[:300]
     if not clean_message:
         clean_message = "We are making a few improvements. Please check back shortly."
+    expires_at = int(time.time() * 1000) + int(duration_minutes or 60) * 60 * 1000 if enabled else None
     try:
+        _ensure_maintenance_table(connection)
         if ANALYTICS_DATABASE_URL:
             with connection.cursor() as cursor:
                 cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS maintenance_settings (
-                        id INTEGER PRIMARY KEY CHECK (id = 1),
-                        enabled BOOLEAN NOT NULL DEFAULT FALSE,
-                        message VARCHAR(300) NOT NULL DEFAULT 'We are making a few improvements. Please check back shortly.',
-                        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                    )
-                """)
-                cursor.execute("""
-                    INSERT INTO maintenance_settings (id, enabled, message)
-                    VALUES (1, %s, %s)
+                    INSERT INTO maintenance_settings (id, enabled, message, updated_at, expires_at)
+                    VALUES (1, %s, %s, NOW(), %s)
                     ON CONFLICT (id) DO UPDATE SET
                         enabled = EXCLUDED.enabled,
                         message = EXCLUDED.message,
-                        updated_at = NOW()
-                """, (enabled, clean_message))
+                        updated_at = NOW(),
+                        expires_at = EXCLUDED.expires_at
+                """, (enabled, clean_message, expires_at))
         else:
-            with connection:
-                connection.execute("""
-                    CREATE TABLE IF NOT EXISTS maintenance_settings (
-                        id INTEGER PRIMARY KEY CHECK (id = 1),
-                        enabled INTEGER NOT NULL DEFAULT 0,
-                        message TEXT NOT NULL DEFAULT 'We are making a few improvements. Please check back shortly.',
-                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    )
-                """)
-                connection.execute("""
-                    INSERT INTO maintenance_settings (id, enabled, message, updated_at)
-                    VALUES (1, ?, ?, CURRENT_TIMESTAMP)
-                    ON CONFLICT(id) DO UPDATE SET
-                        enabled = excluded.enabled,
-                        message = excluded.message,
-                        updated_at = CURRENT_TIMESTAMP
-                """, (1 if enabled else 0, clean_message))
-        return read_maintenance_settings()
+            connection.execute("""
+                INSERT INTO maintenance_settings (id, enabled, message, updated_at, expires_at)
+                VALUES (1, ?, ?, CURRENT_TIMESTAMP, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    enabled = excluded.enabled,
+                    message = excluded.message,
+                    updated_at = CURRENT_TIMESTAMP,
+                    expires_at = excluded.expires_at
+            """, (1 if enabled else 0, clean_message, expires_at))
+        connection.commit()
     finally:
         connection.close()
+    return read_maintenance_settings()
 
 
 @app.get("/api/maintenance")
@@ -247,8 +260,7 @@ def admin_maintenance_status(x_admin_token: str | None = Header(default=None)):
 def admin_update_maintenance(payload: MaintenanceUpdate, x_admin_token: str | None = Header(default=None)):
     if not verify_admin_token(x_admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
-    return write_maintenance_settings(payload.enabled, payload.message)
-
+    return write_maintenance_settings(payload.enabled, payload.message, payload.duration_minutes)
 
 @app.get("/api/livez")
 async def api_livez():
