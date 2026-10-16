@@ -1209,3 +1209,21 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .bus-terminal-stop{display:flex;flex-direction:column;gap:3px;margin:8px 0;padding:9px 10px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:9px;background:var(--surface2)}
 .bus-terminal-stop small{font-size:8px;font-weight:900;letter-spacing:.08em;color:var(--muted)}
 .bus-terminal-stop strong{font-size:11px;line-height:1.35;color:var(--text)}
+
+
+/* Clear place-search feedback and selected-bus focus */
+.search-empty[aria-live="polite"]{display:flex;align-items:center;gap:8px;min-height:42px;font-size:11px;line-height:1.45}
+.search-empty.search-loading:before{content:"";width:12px;height:12px;flex:0 0 12px;border:2px solid var(--line);border-top-color:var(--success);border-radius:50%;animation:placeSearchSpin .7s linear infinite}
+@keyframes placeSearchSpin{to{transform:rotate(360deg)}}
+.search-suggestions{max-height:min(48dvh,340px);overflow-y:auto;overscroll-behavior:contain}
+.bus-card.selected{border:2px solid #21885d!important;border-left:6px solid #21885d!important;background:#edf8f0!important;box-shadow:0 0 0 3px rgba(33,136,93,.2),0 8px 22px rgba(15,75,48,.12)!important;transform:none!important}
+.bus-card.selected .bus-card-top h3{color:#155e3a}
+.bus-card.selected:after{content:"SELECTED";position:absolute;top:9px;right:10px;padding:4px 6px;border-radius:5px;background:#21885d;color:#fff;font-size:7px;font-weight:950;letter-spacing:.07em}
+.bus-card.selected .bus-card-top{padding-right:67px}
+body.dark .bus-card.selected{background:#142d22!important;border-color:#43b581!important;border-left-color:#43b581!important;box-shadow:0 0 0 3px rgba(67,181,129,.18)!important}
+body.dark .bus-card.selected .bus-card-top h3{color:#a8edc7}
+body.dark .bus-card.selected:after{background:#43b581;color:#10251a}
+.selected-bus-panel{max-height:min(62%,430px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-top:42px}
+.selected-bus-close{position:sticky;float:right;top:0;right:auto;margin-top:-32px;margin-right:-3px;width:34px;height:34px;display:grid;place-items:center;z-index:5;background:var(--surface);color:var(--text);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.1);font-size:22px;cursor:pointer}
+.selected-bus-close:focus-visible{outline:2px solid #21885d;outline-offset:2px}
+@media(max-width:700px){.selected-bus-panel{left:10px;right:10px;bottom:10px;width:auto;max-height:min(58%,330px);padding:38px 12px 12px}.selected-bus-close{position:absolute;top:7px;right:7px;margin:0;float:none}}
