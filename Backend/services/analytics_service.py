@@ -529,16 +529,14 @@ def _traffic_series(rows, days=30, hours=None):
     cutoff = now - span
 
     if hours is not None:
-        local_start = cutoff.astimezone(INDIA_TIMEZONE).replace(minute=0, second=0, microsecond=0)
-        local_end = now.astimezone(INDIA_TIMEZONE).replace(minute=0, second=0, microsecond=0)
-        bucket_count = int((local_end - local_start).total_seconds() // 3600) + 1
+        bucket_count = hours
         step = timedelta(hours=1)
         granularity = "hour"
+        starts = [cutoff + step * index for index in range(bucket_count)]
         labels = [
-            (local_start + step * index).strftime("%H:%M")
-            for index in range(bucket_count)
+            value.astimezone(INDIA_TIMEZONE).strftime("%H:%M")
+            for value in starts
         ]
-        starts = [local_start + step * index for index in range(bucket_count)]
     elif days > 60:
         bucket_count = (days + 6) // 7
         step = timedelta(days=7)
@@ -570,7 +568,7 @@ def _traffic_series(rows, days=30, hours=None):
             continue
         local_time = parsed.astimezone(INDIA_TIMEZONE)
         if granularity == "hour":
-            index = int((local_time - starts[0]).total_seconds() // step.total_seconds())
+            index = int((parsed - starts[0].astimezone(timezone.utc)).total_seconds() // step.total_seconds())
         else:
             index = int((parsed - cutoff).total_seconds() // step.total_seconds())
         if index < 0 or index >= bucket_count:
