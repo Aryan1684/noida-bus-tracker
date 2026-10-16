@@ -152,6 +152,7 @@ function hourlyChart(items) {
 }
 
 function demandMap(cells) {
+    const summary = document.getElementById("heatmapSummary");
     if (!map) {
         map = L.map("map").setView([28.5355, 77.3910], 11);
         L.tileLayer("https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=zDrcI9pwHS3FLOHuWQm3", {
@@ -163,18 +164,54 @@ function demandMap(cells) {
     }
     layer.clearLayers();
     const points = [];
-    (cells || []).forEach(x => {
+    const valid = (cells || []).filter(x => {
         const lat = Number(x.latitude);
         const lon = Number(x.longitude);
-        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
-        points.push([lat, lon]);
-        L.circle([lat, lon], {
-            radius: 450,
-            weight: 1,
-            fillOpacity: 0.25
-        }).bindPopup("Approximate demand area · " + x.shares + " shares").addTo(layer);
+        const shares = Number(x.shares);
+        return Number.isFinite(lat) && Number.isFinite(lon) && Number.isFinite(shares) && shares >= 3;
     });
-    if (points.length) map.fitBounds(points, { padding: [20, 20], maxZoom: 13 });
+    const maxShares = Math.max(1, ...valid.map(x => Number(x.shares)));
+    valid.forEach(x => {
+        const lat = Number(x.latitude);
+        const lon = Number(x.longitude);
+        const shares = Number(x.shares);
+        const intensity = Math.max(0.25, shares / maxShares);
+        points.push([lat, lon]);
+        if (typeof L.heatLayer !== "function") {
+            L.circle([lat, lon], {
+                radius: 350 + Math.min(800, shares * 25),
+                weight: 1,
+                fillOpacity: 0.2 + intensity * 0.3
+            }).bindPopup("Approximate area · " + shares + " consented location shares").addTo(layer);
+        } else {
+            L.circleMarker([lat, lon], {
+                radius: Math.min(18, 5 + Math.sqrt(shares) * 2),
+                weight: 1,
+                fillOpacity: 0.18,
+                opacity: 0.35
+            }).bindPopup("Approximate area · " + shares + " consented location shares").addTo(layer);
+        }
+    });
+    if (typeof L.heatLayer === "function" && valid.length) {
+        L.heatLayer(valid.map(x => [
+            Number(x.latitude),
+            Number(x.longitude),
+            Math.max(0.2, Number(x.shares) / maxShares)
+        ]), {
+            radius: 34,
+            blur: 26,
+            maxZoom: 13,
+            max: 1,
+            minOpacity: 0.28
+        }).addTo(map);
+    }
+    if (points.length) {
+        map.fitBounds(points, { padding: [20, 20], maxZoom: 13 });
+        if (summary) summary.textContent = valid.length + " high-level areas shown. Stronger hotspots indicate more consented location shares in the selected reporting window.";
+    } else if (summary) {
+        summary.textContent = "No area has reached 3 consented location shares in this reporting window yet. The map will populate as more visitors opt in.";
+    }
+    window.setTimeout(() => map && map.invalidateSize(), 100);
 }
 
 function fleet(data) {
