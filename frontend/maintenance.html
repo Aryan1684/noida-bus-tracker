@@ -14,7 +14,7 @@ main{width:min(100%,560px);text-align:center;background:rgba(255,255,255,.88);bo
 .visual{width:112px;height:112px;margin:0 auto 26px;display:grid;place-items:center;border-radius:32px;background:#e7f6f0;border:1px solid #d3eee4;color:var(--teal)}
 h1{font-size:clamp(30px,6vw,42px);line-height:1.1;letter-spacing:-.045em;margin:0 0 16px}p{font-size:16px;line-height:1.75;color:var(--muted);margin:0 auto;max-width:420px}
 .status{display:inline-flex;align-items:center;gap:8px;margin:26px 0 0;padding:9px 13px;border:1px solid var(--line);border-radius:99px;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#52645f}.dot{width:7px;height:7px;background:#d19a39;border-radius:50%;box-shadow:0 0 0 4px #d19a391c}
-footer{margin-top:34px;padding-top:22px;border-top:1px solid var(--line);font-size:12px;color:#84918d}
+.countdown{margin:27px 0 0;padding:18px 12px 14px;background:#f2faf6;border:1px solid #dcefe6;border-radius:18px}.countdown-label{font-size:10px;font-weight:800;letter-spacing:.14em;color:#5c7770}.timer{display:flex;align-items:center;justify-content:center;gap:clamp(8px,3vw,18px);margin:14px 0 8px;font-variant-numeric:tabular-nums}.timer span{display:flex;flex-direction:column;gap:4px;min-width:52px}.timer b{font-size:clamp(27px,7vw,40px);letter-spacing:-.04em;color:var(--teal)}.timer small{font-size:9px;font-weight:800;letter-spacing:.1em;color:#7c918b}.timer i{font-style:normal;font-size:26px;color:#b0c9c0;align-self:flex-start;margin-top:2px}.countdown #countdownNote{font-size:12px;margin-top:10px}.visual{animation:float 3s ease-in-out infinite}.visual svg{animation:spin 18s linear infinite}@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}@keyframes spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;scroll-behavior:auto!important}}footer{margin-top:34px;padding-top:22px;border-top:1px solid var(--line);font-size:12px;color:#84918d}
 @media(max-width:420px){body{padding:14px}main{border-radius:22px}.brand{margin-bottom:30px}}
 </style>
 </head>
@@ -24,11 +24,39 @@ footer{margin-top:34px;padding-top:22px;border-top:1px solid var(--line);font-si
   <div class="visual" aria-hidden="true"><svg width="60" height="60" viewBox="0 0 60 60" fill="none"><path d="M30 7v5M30 48v5M7 30h5M48 30h5M13.7 13.7l3.6 3.6m25.4 25.4 3.6 3.6m0-32.6-3.6 3.6M17.3 42.7l-3.6 3.6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="30" cy="30" r="16" stroke="currentColor" stroke-width="2.5"/><path d="M30 20v11l7 4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
   <h1>We’ll be back soon.</h1>
   <p id="message">We are making a few improvements. Please check back shortly.</p>
-  <div class="status"><span class="dot"></span> Temporary service pause</div>
+  <div class="countdown" aria-live="polite"><span class="countdown-label">EXPECTED RETURN IN</span><div class="timer" id="countdown"><span><b id="hours">00</b><small>HOURS</small></span><i>:</i><span><b id="minutes">00</b><small>MINUTES</small></span><i>:</i><span><b id="seconds">00</b><small>SECONDS</small></span></div><p id="countdownNote">We’ll automatically restore service when the timer ends.</p></div><div class="status"><span class="dot"></span> Temporary service pause</div>
   <footer>Thank you for your patience.<br>Noida · Greater Noida</footer>
 </main>
 <script>
-fetch("https://noida-bus-tracker.onrender.com/api/maintenance",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(s=>{if(s&&s.message)document.getElementById("message").textContent=s.message}).catch(()=>{});
+(function(){
+  var endpoint="https://noida-bus-tracker.onrender.com/api/maintenance";
+  var endAt=null;
+  var timer=document.getElementById("countdown");
+  var note=document.getElementById("countdownNote");
+  function pad(n){return String(n).padStart(2,"0")}
+  function tick(){
+    if(!endAt){timer.hidden=true;note.textContent="Our team is working to bring the tracker back as soon as possible.";return}
+    var ms=Math.max(0,endAt-Date.now());
+    var total=Math.floor(ms/1000);
+    document.getElementById("hours").textContent=pad(Math.floor(total/3600));
+    document.getElementById("minutes").textContent=pad(Math.floor(total%3600/60));
+    document.getElementById("seconds").textContent=pad(total%60);
+    if(total<=0){note.textContent="The scheduled maintenance window has ended. Refreshing service status…";checkStatus();return}
+    note.textContent="Service is scheduled to return when this countdown reaches zero.";
+  }
+  function checkStatus(){
+    fetch(endpoint,{cache:"no-store"}).then(function(r){if(!r.ok)throw new Error("status unavailable");return r.json()}).then(function(s){
+      if(!s.enabled){location.reload();return}
+      if(s.message)document.getElementById("message").textContent=s.message;
+      endAt=s.expires_at||null;
+      timer.hidden=!endAt;
+      tick();
+    }).catch(function(){note.textContent="We’re still working on it. This page will check again shortly.";});
+  }
+  checkStatus();
+  setInterval(tick,1000);
+  setInterval(checkStatus,15000);
+})();
 </script>
 </body>
 </html>
