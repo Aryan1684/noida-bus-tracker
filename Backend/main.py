@@ -4,7 +4,7 @@ import requests
 import threading
 import time
 
-from fastapi import FastAPI, Query, HTTPException, Header, Response
+from fastapi import FastAPI, Query, HTTPException, Header, Response, Request
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -26,8 +26,44 @@ _location_label_cache_lock = threading.Lock()
 _last_nominatim_lookup_at = 0.0
 LOCATION_LABEL_CACHE_SECONDS = 1800
 LOCATION_LABEL_CACHE_LIMIT = 300
+_ip_area_cache = {}
+_ip_area_cache_lock = threading.Lock()
+IP_AREA_CACHE_SECONDS = 6 * 60 * 60
 WEB3FORMS_FEEDBACK_KEY = os.getenv("WEB3FORMS_FEEDBACK_KEY")
 WEB3FORMS_REPORT_KEY = os.getenv("WEB3FORMS_REPORT_KEY")
+
+
+def approximate_ip_area(ip_address: str | None):
+    if not ip_address or ip_address in {"127.0.0.1", "::1", "unknown"}:
+        return None
+    now = time.time()
+    with _ip_area_cache_lock:
+        cached = _ip_area_cache.get(ip_address)
+        if cached and now - cached[0] < IP_AREA_CACHE_SECONDS:
+            return cached[1]
+    try:
+        response = requests.get(
+            "https://ipapi.co/" + requests.utils.quote(ip_address, safe="") + "/json/",
+            headers={"User-Agent": "NoidaBusTracker/1.0"},
+            timeout=2.5,
+        )
+        if not response.ok:
+            return None
+        data = response.json()
+        if data.get("error") or not data.get("latitude") or not data.get("longitude"):
+            return None
+        latitude = round(float(data["latitude"]), 2)
+        longitude = round(float(data["longitude"]), 2)
+        if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+            return None
+        area = (latitude, longitude)
+        with _ip_area_cache_lock:
+            if len(_ip_area_cache) > 1000:
+                _ip_area_cache.clear()
+            _ip_area_cache[ip_address] = (now, area)
+        return area
+    except (requests.RequestException, ValueError, TypeError):
+        return None
 
 
 class FeedbackSubmission(BaseModel):
@@ -347,7 +383,12 @@ class AnalyticsLocation(BaseModel):
 
 
 @app.post("/api/analytics/event")
-def analytics_event(payload: AnalyticsEvent):
+def analytics_event(payload: AnalyticsEvent, request: Request):
+    approximate_area = None
+    if payload.event_name in {"page_view", "app_open"}:
+        forwarded_for = request.headers.get("x-forwarded-for", "")
+        client_ip = forwarded_for.split(",")[0].strip() if forwarded_for else (request.client.host if request.client else None)
+        approximate_area = approximate_ip_area(client_ip)
     accepted = record_event(
         payload.event_name,
         path=payload.path,
@@ -363,6 +404,8 @@ def analytics_event(payload: AnalyticsEvent):
         screen_height=payload.screen_height,
         app_version=payload.app_version,
         metadata=payload.metadata,
+        coarse_lat=approximate_area[0] if approximate_area else None,
+        coarse_lon=approximate_area[1] if approximate_area else None,
     )
     return {"success": accepted}
 
