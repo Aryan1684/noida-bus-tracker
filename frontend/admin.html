@@ -29,9 +29,10 @@
   <section class="panel maintenance-panel" id="maintenancePanel">
     <div class="panel-head"><div><span class="eyebrow">SITE CONTROL</span><h2>Maintenance mode</h2></div><span id="maintenanceState" class="badge">Checking status…</span></div>
     <p>Temporarily replace the tracker for visitors without changing the live deployment. Your admin dashboard remains accessible.</p>
-    <label for="maintenanceMessage">Visitor message</label>
+    <div class="maintenance-duration"><div><label for="maintenanceHours">Duration</label><div class="duration-inputs"><input id="maintenanceHours" type="number" min="0" max="168" value="1" aria-label="Hours"><span>hours</span><input id="maintenanceMinutes" type="number" min="0" max="59" value="0" aria-label="Minutes"><span>minutes</span></div><small>Automatically turns off when the countdown reaches zero.</small></div></div>
+    <label for="maintenanceMessage">Message shown to visitors</label>
     <textarea id="maintenanceMessage" maxlength="300" rows="3" placeholder="We are making a few improvements. Please check back shortly.">We are making a few improvements. Please check back shortly.</textarea>
-    <div class="maintenance-actions"><button id="maintenanceToggle" type="button">Enable maintenance</button><button id="maintenanceDisable" type="button" class="secondary">Disable maintenance</button></div>
+    <div class="maintenance-actions"><button id="maintenanceToggle" type="button">Enable maintenance</button><button id="maintenanceDisable" type="button" class="secondary">Disable now</button></div>
     <p id="maintenanceStatus" role="status" aria-live="polite"></p>
   </section>
 
