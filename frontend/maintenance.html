@@ -25,6 +25,22 @@ h1{font-size:clamp(30px,6vw,42px);line-height:1.1;letter-spacing:-.045em;margin:
   <h1>We’ll be back soon.</h1>
   <p id="message">We are making a few improvements. Please check back shortly.</p>
   <div class="countdown" aria-live="polite"><span class="countdown-label">EXPECTED RETURN IN</span><div class="timer" id="countdown"><span><b id="hours">00</b><small>HOURS</small></span><i>:</i><span><b id="minutes">00</b><small>MINUTES</small></span><i>:</i><span><b id="seconds">00</b><small>SECONDS</small></span></div><p id="countdownNote">We’ll automatically restore service when the timer ends.</p></div><div class="status"><span class="dot"></span> Temporary service pause</div>
+  <section class="feedback-note" aria-labelledby="feedbackHeading">
+    <strong id="feedbackHeading">We’re working on your feedback.</strong>
+    <p>Your suggestions help us improve bus locations, travel directions, last-stop details, and the overall tracker experience. You can still send feedback while maintenance is in progress.</p>
+    <button class="feedback-button" id="feedbackToggle" type="button" aria-expanded="false" aria-controls="maintenanceFeedbackForm">Feedback &amp; suggestions</button>
+    <form class="feedback-form" id="maintenanceFeedbackForm">
+      <label for="feedbackRating">How would you rate the tracker?</label>
+      <select id="feedbackRating" required><option value="">Choose a rating</option><option value="5">5 · Excellent</option><option value="4">4 · Good</option><option value="3">3 · Okay</option><option value="2">2 · Poor</option><option value="1">1 · Very poor</option></select>
+      <label for="feedbackType">What is your feedback about?</label>
+      <select id="feedbackType" required><option value="">Choose a category</option><option value="general">General</option><option value="bus-data">Bus data / accuracy</option><option value="location">Location / map</option><option value="performance">Speed / performance</option><option value="design">Design / usability</option><option value="bug">Bug or problem</option><option value="other">Other</option></select>
+      <label for="feedbackMessage">Your feedback or suggestion</label>
+      <textarea id="feedbackMessage" maxlength="1000" required placeholder="What should we improve?"></textarea>
+      <p class="help">Please do not include personal information such as your phone number or address.</p>
+      <button class="feedback-submit" id="feedbackSubmit" type="submit">Send feedback</button>
+      <p class="feedback-status" id="feedbackStatus" aria-live="polite"></p>
+    </form>
+  </section>
   <footer>Thank you for your patience.<br>Noida · Greater Noida</footer>
 </main>
 <script>
@@ -46,13 +62,13 @@ h1{font-size:clamp(30px,6vw,42px);line-height:1.1;letter-spacing:-.045em;margin:
   }
   function tick(){
     if(!endAt){timer.hidden=true;note.textContent="Our team is working to bring the tracker back as soon as possible.";return}
-    var ms=Math.max(0,endAt-Date.now());
-    var total=Math.floor(ms/1000);
+    timer.hidden=false;
+    var total=Math.max(0,Math.floor((endAt-Date.now())/1000));
     document.getElementById("hours").textContent=pad(Math.floor(total/3600));
     document.getElementById("minutes").textContent=pad(Math.floor(total%3600/60));
     document.getElementById("seconds").textContent=pad(total%60);
     if(total<=0){
-      note.textContent="The scheduled maintenance window has ended. Returning to the tracker…";
+      note.textContent="Maintenance window ended. Returning to the tracker…";
       checkStatus();
       return;
     }
@@ -61,50 +77,56 @@ h1{font-size:clamp(30px,6vw,42px);line-height:1.1;letter-spacing:-.045em;margin:
   function checkStatus(){
     if(statusCheckInFlight||redirecting)return;
     statusCheckInFlight=true;
-    fetch(endpoint,{cache:"no-store"}).then(function(r){if(!r.ok)throw new Error("status unavailable");return r.json()}).then(function(s){
-      if(!s.enabled){returnToTracker();return}
-      if(s.message)document.getElementById("message").textContent=s.message;
-      endAt=s.expires_at||null;
+    fetch(endpoint,{cache:"no-store"}).then(function(response){
+      if(!response.ok)throw new Error("status unavailable");
+      return response.json();
+    }).then(function(state){
+      if(!state.enabled){returnToTracker();return}
+      document.getElementById("message").textContent=state.message||"We are making a few improvements. Please check back shortly.";
+      endAt=state.expires_at==null?null:Number(state.expires_at);
+      if(!Number.isFinite(endAt))endAt=null;
       timer.hidden=!endAt;
       tick();
-    }).catch(function(){note.textContent="We’re still working on it. This page will check again shortly.";}).finally(function(){statusCheckInFlight=false;});
+    }).catch(function(){
+      note.textContent="We’re still working on it. We’ll keep checking service status.";
+    }).finally(function(){statusCheckInFlight=false;});
   }
   var feedbackToggle=document.getElementById("feedbackToggle");
   var feedbackForm=document.getElementById("maintenanceFeedbackForm");
   var feedbackStatus=document.getElementById("feedbackStatus");
   var feedbackSubmit=document.getElementById("feedbackSubmit");
-  feedbackToggle.addEventListener("click",function(){
-    var open=feedbackForm.classList.toggle("open");
-    feedbackToggle.setAttribute("aria-expanded",String(open));
-    feedbackToggle.textContent=open?"Hide feedback form":"Feedback & suggestions";
-    if(open)document.getElementById("feedbackRating").focus();
-  });
-  feedbackForm.addEventListener("submit",function(event){
-    event.preventDefault();
-    if(!feedbackForm.reportValidity())return;
-    feedbackSubmit.disabled=true;
-    feedbackStatus.textContent="Sending your feedback…";
-    var payload={
-      access_key:feedbackAccessKey,
-      subject:"Noida Bus Tracker - Feedback (Maintenance Page)",
-      from_name:"Noida Bus Tracker",
-      rating:document.getElementById("feedbackRating").value,
-      feedback_type:document.getElementById("feedbackType").value,
-      message:document.getElementById("feedbackMessage").value.trim(),
-      time:new Date().toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"})
-    };
-    fetch(feedbackEndpoint,{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(payload)})
-      .then(function(response){return response.json().then(function(data){if(!response.ok||!data.success)throw new Error(data.message||"failed");return data;});})
-      .then(function(){
-        feedbackForm.reset();
-        feedbackStatus.textContent="Feedback received. Thank you for helping us improve the tracker.";
-        feedbackSubmit.textContent="Feedback sent";
-      })
-      .catch(function(){
-        feedbackStatus.textContent="Could not send feedback right now. Please try again later.";
-      })
-      .finally(function(){feedbackSubmit.disabled=false;});
-  });
+  if(feedbackToggle&&feedbackForm){
+    feedbackToggle.addEventListener("click",function(){
+      var open=feedbackForm.classList.toggle("open");
+      feedbackToggle.setAttribute("aria-expanded",String(open));
+      feedbackToggle.textContent=open?"Hide feedback form":"Feedback & suggestions";
+      if(open)document.getElementById("feedbackRating").focus();
+    });
+    feedbackForm.addEventListener("submit",function(event){
+      event.preventDefault();
+      if(!feedbackForm.reportValidity())return;
+      feedbackSubmit.disabled=true;
+      feedbackStatus.textContent="Sending your feedback…";
+      var payload={
+        access_key:feedbackAccessKey,
+        subject:"Noida Bus Tracker - Feedback (Maintenance Page)",
+        from_name:"Noida Bus Tracker",
+        rating:document.getElementById("feedbackRating").value,
+        feedback_type:document.getElementById("feedbackType").value,
+        message:document.getElementById("feedbackMessage").value.trim(),
+        time:new Date().toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"})
+      };
+      fetch(feedbackEndpoint,{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(payload)})
+        .then(function(response){return response.json().then(function(data){if(!response.ok||!data.success)throw new Error(data.message||"failed");return data;});})
+        .then(function(){
+          feedbackForm.reset();
+          feedbackStatus.textContent="Feedback received. Thank you for helping us improve the tracker.";
+          feedbackSubmit.textContent="Feedback sent";
+        })
+        .catch(function(){feedbackStatus.textContent="Could not send feedback right now. Please try again later.";})
+        .finally(function(){feedbackSubmit.disabled=false;});
+    });
+  }
   checkStatus();
   setInterval(tick,1000);
   setInterval(checkStatus,5000);
