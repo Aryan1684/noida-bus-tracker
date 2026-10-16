@@ -117,9 +117,11 @@
   </section>
 
   <section class="panel">
-    <div class="panel-head"><div><span class="eyebrow">DEMAND MAP</span><h2>Approximate areas people shared</h2></div></div>
-    <p>Only consented areas with at least 3 shares are shown. Locations are rounded before storage.</p>
+    <div class="panel-head"><div><span class="eyebrow">DEMAND MAP</span><h2>Visitor area heat map</h2></div></div>
+    <p>Hotter areas indicate more visitors who explicitly shared an approximate location. Coordinates are rounded to about 1 km and areas with fewer than 3 shares are hidden. This is an opt-in demand map, not silent GPS tracking.</p>
+    <div class="heatmap-legend"><span class="heat-low"></span> Fewer shares <span class="heat-high"></span> More shares</div>
     <div id="map"></div>
+    <p id="heatmapSummary" class="muted">Waiting for location-sharing data…</p>
   </section>
 
   <section class="panel">
@@ -151,6 +153,7 @@
 </section>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="admin.js?v=5"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="admin.js?v=6"></script>
 </body>
 </html>
