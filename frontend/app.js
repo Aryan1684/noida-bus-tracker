@@ -1066,22 +1066,6 @@ function createBusCard(bus, rankIndex = 0) {
     const rawDirection = String(bus.direction || "").trim();
     const cardinalDirection = /^(moving|stationary|unknown|direction unavailable)$/i.test(rawDirection) ? "" : rawDirection;
     const currentPlace = String(bus.nearby_place || "").trim();
-    let directionHtml = "";
-
-    if (isCurrentlyMoving) {
-        const directionLabel = freshness.stale
-            ? hasMatchedNextStop ? "LAST KNOWN MOVEMENT TOWARDS" : "LAST KNOWN LOCATION"
-            : hasMatchedNextStop ? "MOVING TOWARDS" : "CURRENTLY MOVING THROUGH";
-        const directionText = hasMatchedNextStop
-            ? nextStopValue
-            : [currentPlace, cardinalDirection].filter(Boolean).join(" · ") || "Nearby location being resolved";
-        directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'></span><div><small>" + directionLabel + "</small><strong>" + escapeHtml(directionText) + "</strong></div></div>";
-    } else if (movementState === "no_signal") {
-        directionHtml = "<div class='bus-direction'><span class='direction-wait' aria-hidden='true'></span><div><small>LAST KNOWN MOVEMENT</small><strong>" + escapeHtml(direction || "No signal") + "</strong></div></div>";
-    } else if (movementState === "stationary") {
-        directionHtml = "<div class='bus-direction'><span class='direction-wait stationary' aria-hidden='true'></span><div><small>STATUS</small><strong>" + (freshness.stale ? "Last known stationary" : "Stationary") + "</strong></div></div>";
-    }
-
     const route = getBusRoute(bus.bus_id) || bus.route_id || "";
     const status = freshness.stale
         ? "Location delayed"
