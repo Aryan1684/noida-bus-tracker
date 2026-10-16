@@ -19,12 +19,27 @@
 
     function sourceName() {
         try {
+            const ua = window.navigator.userAgent || "";
+            if (window.Android || window.AndroidBridge || window.ReactNativeWebView || /\\bwv\\b/i.test(ua)) {
+                return "android";
+            }
             const standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
                 window.navigator.standalone === true;
             return standalone ? "installed_app" : "web";
         } catch (_) {
             return "web";
         }
+    }
+
+    function clientVersionLabel(source) {
+        let requested = "";
+        try {
+            requested = new URLSearchParams(location.search).get("app_version") || "";
+        } catch (_) {}
+        if (requested) return requested.slice(0, 40);
+        if (source === "android") return "Android app · version not reported";
+        if (source === "installed_app") return "Installed PWA";
+        return "Web browser";
     }
 
     function referrerHost() {
@@ -99,12 +114,14 @@
     }
 
     function sharedContext() {
+        const source = sourceName();
         return {
             event_name: "",
             path: location.pathname,
             session_id: sessionId(),
             visitor_id: visitorId(),
-            source: sourceName(),
+            source: source,
+            app_version: clientVersionLabel(source),
             device_type: deviceType(),
             browser: browserName(),
             os: osName(),
