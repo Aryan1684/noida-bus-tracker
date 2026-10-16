@@ -24,6 +24,22 @@
       "operatingSystem":"Web"
     }
     </script>
+    <script>
+      (function () {
+        if (location.pathname.endsWith("/maintenance.html")) return;
+        document.documentElement.style.visibility = "hidden";
+        fetch("https://noida-bus-tracker.onrender.com/api/maintenance", { cache: "no-store" })
+          .then(function (response) { return response.ok ? response.json() : { enabled: false }; })
+          .then(function (state) {
+            if (state.enabled) {
+              location.replace("./maintenance.html");
+              return;
+            }
+            document.documentElement.style.visibility = "";
+          })
+          .catch(function () { document.documentElement.style.visibility = ""; });
+      })();
+    </script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="style.css?v=12">
 </head>
