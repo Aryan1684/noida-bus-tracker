@@ -1779,11 +1779,11 @@ async function searchPlaces(query) {
 
                 if (fallbackResponse.ok) {
                     const fallbackData = await fallbackResponse.json();
-                    externalResults = fallbackData.map(item => ({
+                    externalResults = externalResults.concat(fallbackData.map(item => ({
                         name: item.display_name,
                         latitude: Number(item.lat),
                         longitude: Number(item.lon)
-                    }));
+                    })));
                 }
             } catch (error) {
                 if (error.name === "AbortError") throw error;
