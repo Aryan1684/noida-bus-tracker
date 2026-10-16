@@ -20,7 +20,7 @@
     function sourceName() {
         try {
             const ua = window.navigator.userAgent || "";
-            if (window.Android || window.AndroidBridge || window.ReactNativeWebView || /\\bwv\\b/i.test(ua)) {
+            if (window.Android || window.AndroidBridge || window.ReactNativeWebView || /\bwv\b/i.test(ua)) {
                 return "android";
             }
             const standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
