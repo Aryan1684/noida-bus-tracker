@@ -1572,3 +1572,210 @@ body.dark .selected-status{
   .bus-card-tools .bus-rank{width:22px;height:22px}
   .selected-bus-panel{width:calc(100% - 18px)}
 }
+
+
+/* Detailed but tighter ranked bus cards */
+.bus-card{
+  padding:10px;
+  border-radius:13px;
+}
+.bus-card-top{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding-right:0;
+}
+.bus-card-identity{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  flex:1;
+  min-width:0;
+}
+.bus-card-identity h3{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:13px;
+  line-height:1.25;
+}
+.bus-card-identity .route-badge{
+  flex:none;
+  margin:0;
+}
+.bus-card-tools{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex:none;
+}
+.bus-card-tools .favorite-button{
+  width:28px;
+  height:28px;
+  margin:0;
+  border-radius:8px;
+}
+.bus-card-tools .bus-rank{
+  position:static;
+  width:24px;
+  height:24px;
+  border-radius:7px;
+  font-size:8px;
+}
+.bus-card .bus-direction{
+  margin:8px 0 7px;
+  padding:8px;
+  gap:8px;
+  background:var(--move-indicator-soft);
+}
+.bus-card .direction-arrow{
+  width:29px;
+  height:29px;
+  border-radius:9px;
+  background:var(--move-indicator-fill);
+  color:var(--move-indicator-ink);
+  display:grid;
+  place-items:center;
+  flex:none;
+  font-size:15px;
+}
+.bus-card .direction-arrow::before{
+  content:"↑";
+}
+.bus-card .direction-wait{
+  width:29px;
+  height:29px;
+  border-radius:9px;
+  background:var(--move-indicator-fill);
+  color:var(--move-indicator-ink);
+}
+.bus-card .bus-direction small{
+  font-size:7px;
+  color:var(--move-indicator-text);
+  letter-spacing:.7px;
+}
+.bus-card .bus-direction strong{
+  font-size:11px;
+  line-height:1.35;
+  color:var(--text);
+}
+.bus-card .bus-terminal-stop{
+  margin:6px 0;
+  padding:7px 8px;
+  gap:2px;
+  border-left-color:var(--move-indicator-fill);
+}
+.bus-card .bus-terminal-stop small{font-size:7px}
+.bus-card .bus-terminal-stop strong{font-size:10px}
+.bus-card .bus-meta-row{
+  gap:5px;
+}
+.bus-card .bus-meta{
+  padding:4px 6px;
+  border-radius:6px;
+  font-size:8px;
+  line-height:1.3;
+}
+.bus-card .status{
+  margin-top:6px;
+  font-size:8px;
+}
+.bus-card .status .status-dot{
+  width:6px;
+  height:6px;
+  background:currentColor;
+  box-shadow:none;
+}
+.bus-card .updated{
+  margin-top:6px;
+  padding-top:6px;
+  font-size:8px;
+}
+.bus-card .bus-eta{
+  margin-top:6px;
+  padding-top:6px;
+}
+.bus-card .feature-meta{
+  margin-top:6px;
+  font-size:9px!important;
+}
+.bus-card .feature-route{
+  margin-top:6px;
+  padding:7px 8px;
+  border-left:3px solid var(--move-indicator-fill);
+  font-size:9px;
+}
+.bus-card .feature-actions{
+  gap:6px;
+  margin-top:8px;
+}
+.bus-card .feature-actions button{
+  min-height:35px;
+  border-radius:9px;
+  font-size:9px;
+  background:var(--surface2);
+  color:var(--text);
+  border:1px solid var(--line);
+}
+.bus-card .feature-actions button:first-child{
+  background:var(--move-indicator-fill);
+  border-color:var(--move-indicator-fill);
+  color:var(--move-indicator-ink);
+}
+.bus-card.rank-1:not(.selected) .bus-rank{
+  background:var(--move-indicator-fill);
+  color:var(--move-indicator-ink);
+}
+body.dark .bus-card .bus-direction,
+body.dark .bus-card .bus-meta-state{
+  background:#3a3835;
+}
+body.dark .bus-card .bus-direction strong{
+  color:#f5edda;
+}
+body.dark .bus-card .bus-direction small{
+  color:#c6aa68;
+}
+@media(max-width:700px){
+  .bus-card{padding:9px}
+  .bus-card-identity h3{font-size:12px}
+  .bus-card .bus-direction{padding:7px}
+  .bus-card .bus-meta{font-size:8px}
+  .bus-card .feature-actions button{min-height:36px}
+}
+@media(max-width:430px){
+  .bus-card-tools{gap:5px}
+  .bus-card-tools .favorite-button{width:26px;height:26px}
+}
+
+/* Correct popup anchoring: its bottom tip sits just above the selected marker */
+.selected-bus-panel{
+  width:min(300px,calc(100% - 20px));
+  padding:10px 11px 9px;
+  overflow:visible;
+}
+.selected-bus-panel .selected-bus-location-note{
+  display:none!important;
+}
+.selected-bus-panel .selected-metrics #selectedBusMovement{
+  display:none;
+}
+.selected-bus-panel.panel-below::before{
+  top:-10px;
+  bottom:auto;
+  border-top:0;
+  border-bottom:10px solid var(--bus-marker-fill);
+}
+.selected-bus-panel.panel-below::after{
+  top:-8px;
+  bottom:auto;
+  border-top:0;
+  border-bottom:8px solid rgba(255,255,255,.98);
+}
+body.dark .selected-bus-panel.panel-below::after{
+  border-bottom-color:rgba(41,40,39,.98);
+}
+@media(max-width:700px){
+  .selected-bus-panel{width:min(300px,calc(100% - 18px));padding:9px 10px 8px}
+}

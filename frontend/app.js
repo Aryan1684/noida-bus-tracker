@@ -1066,47 +1066,83 @@ function createBusCard(bus, rankIndex = 0) {
     const rawDirection = String(bus.direction || "").trim();
     const cardinalDirection = /^(moving|stationary|unknown|direction unavailable)$/i.test(rawDirection) ? "" : rawDirection;
     const currentPlace = String(bus.nearby_place || "").trim();
-    const route = getBusRoute(bus.bus_id) || bus.route_id || "";
+    let directionHtml = "";
+
+    if (isCurrentlyMoving) {
+        const directionLabel = freshness.stale
+            ? hasMatchedNextStop ? "LAST KNOWN MOVEMENT TOWARDS" : "LAST KNOWN LOCATION"
+            : hasMatchedNextStop ? "MOVING TOWARDS" : "CURRENTLY MOVING THROUGH";
+        const directionText = hasMatchedNextStop
+            ? nextStopValue
+            : [currentPlace, cardinalDirection].filter(Boolean).join(" · ") || "Nearby location being resolved";
+        directionHtml = "<div class='bus-direction'><span class='direction-arrow' style='transform:rotate(" + heading + "deg)'></span><div><small>" + directionLabel + "</small><strong>" + escapeHtml(directionText) + "</strong></div></div>";
+    } else if (movementState === "no_signal") {
+        directionHtml = "<div class='bus-direction'><span class='direction-wait' aria-hidden='true'></span><div><small>LAST KNOWN MOVEMENT</small><strong>" + escapeHtml(cardinalDirection || "No signal") + "</strong></div></div>";
+    } else if (movementState === "stationary") {
+        directionHtml = "<div class='bus-direction'><span class='direction-wait stationary' aria-hidden='true'></span><div><small>STATUS</small><strong>" + (freshness.stale ? "Last known stationary" : "Stationary") + "</strong></div></div>";
+    }
+
+    const route = getBusRoute(bus.bus_id);
     const status = freshness.stale
-        ? "Location delayed"
+        ? "Location update delayed"
         : movementState === "moving"
         ? "Moving"
         : movementState === "stationary"
         ? "Stationary"
         : movementState === "no_signal"
         ? "No signal"
-        : "Status unavailable";
+        : "Movement status unavailable";
     const statusClass = freshness.stale || movementState === "no_signal"
         ? "offline"
         : movementState === "stationary"
         ? "stationary"
         : "live";
+
+    const rawLatitude = bus && bus.latitude;
+    const rawLongitude = bus && bus.longitude;
+    const latitude = rawLatitude !== undefined && rawLatitude !== null && rawLatitude !== "" ? Number(rawLatitude) : NaN;
+    const longitude = rawLongitude !== undefined && rawLongitude !== null && rawLongitude !== "" ? Number(rawLongitude) : NaN;
+    const locationText = Number.isFinite(latitude) && Number.isFinite(longitude)
+        ? latitude.toFixed(5) + ", " + longitude.toFixed(5)
+        : "Unavailable";
     const rawDistance = bus && bus.distance_km;
     const distance = rawDistance !== undefined && rawDistance !== null && rawDistance !== "" ? Number(rawDistance) : NaN;
-    const distanceText = Number.isFinite(distance) ? distance.toFixed(2) + " km" : "Distance unavailable";
+    const distanceText = Number.isFinite(distance) ? distance.toFixed(2) + " km" : "Unavailable";
     const speedText = Number.isFinite(currentSpeed)
         ? (Number.isInteger(currentSpeed) ? String(currentSpeed) : currentSpeed.toFixed(1)) + " km/h"
-        : "Speed unavailable";
-    const cleanPlace = currentPlace.replace(/^Near\s+/i, "").trim();
-    const compactValue = isCurrentlyMoving && hasMatchedNextStop
-        ? nextStopValue
-        : cleanPlace || (movementState === "stationary" ? "Stationary" : movementState === "no_signal" ? "Last known position" : "Location updating");
-    const compactLabel = freshness.stale
-        ? "LAST KNOWN POSITION"
-        : isCurrentlyMoving && hasMatchedNextStop
-        ? "LIKELY TOWARDS"
-        : isCurrentlyMoving
-        ? "CURRENT LOCATION"
-        : movementState === "stationary"
-        ? "STATIONARY"
-        : movementState === "no_signal"
-        ? "NO RECENT SIGNAL"
-        : "MOVEMENT STATUS";
-    const compactSubtext = isCurrentlyMoving && hasMatchedNextStop
-        ? cleanPlace ? "Near " + cleanPlace : "Route-based estimate"
-        : isCurrentlyMoving && cardinalDirection
-        ? cardinalDirection
-        : freshness.ageLabel;
+        : "Unavailable";
+
+    const rawMovement = bus && bus.movement_km;
+    const movement = rawMovement !== undefined && rawMovement !== null && rawMovement !== "" ? Number(rawMovement) : NaN;
+    const rawHistory = bus && bus.history_minutes;
+    const history = rawHistory !== undefined && rawHistory !== null && rawHistory !== "" ? Number(rawHistory) : NaN;
+    const movementHtml = Number.isFinite(movement) && movement >= 0 && Number.isFinite(history) && history > 0
+        ? "<span class='bus-meta'>Movement " + movement.toFixed(2) + " km / " + history.toFixed(1) + " min</span>"
+        : "";
+
+    const nextStop = String(bus && (bus.likely_next_stop || bus.likely_towards) || "").trim();
+    const routeMatched = Boolean(bus && (bus.route_path_id || bus.route_id) && nextStop && bus.route_confidence);
+    const routeStopLabel = routeMatched && /^(high|medium)$/i.test(String(bus.route_confidence))
+        ? "LIKELY NEXT STOP"
+        : routeMatched
+        ? "POSSIBLE NEXT STOP"
+        : "LIKELY TOWARDS";
+    const nextStopHtml = nextStop && !/unknownroute|^unknown$/i.test(nextStop)
+        ? "<div class='bus-terminal-stop'><small>" + routeStopLabel + "</small><strong>" + escapeHtml(nextStop) + "</strong></div>"
+        : "";
+    const lastPassedStop = String(bus && (bus.last_passed_stop || bus.last_stop) || "").trim();
+    const lastStopHtml = lastPassedStop && !/not enough route history|unknownroute|^unknown$/i.test(lastPassedStop)
+        ? "<div class='bus-terminal-stop'><small>LAST PASSED STOP</small><strong>" + escapeHtml(lastPassedStop) + "</strong></div>"
+        : "";
+    const etaValue = String(bus && bus.eta_label || "").trim();
+    const etaLabel = /disabled/i.test(etaValue)
+        ? "ETA unavailable while estimates refresh"
+        : etaValue || "ETA unavailable";
+    const historyCount = Number(bus && bus.history_points_used);
+    const historyHtml = Number.isFinite(historyCount) && historyCount > 0
+        ? "<span class='bus-meta'>History " + Math.round(historyCount) + " recent points</span>"
+        : "";
+    const etaHtml = "<p class='updated bus-eta'>" + escapeHtml(etaLabel) + "</p>";
 
     card.innerHTML =
         "<div class='bus-card-top'>" +
@@ -1119,28 +1155,25 @@ function createBusCard(bus, rankIndex = 0) {
                 "<span class='bus-rank'>#" + (rankIndex + 1) + "</span>" +
             "</div>" +
         "</div>" +
-        "<div class='bus-card-summary'>" +
-            "<span class='direction-arrow' aria-hidden='true' style='transform:rotate(" + heading + "deg)'>↑</span>" +
-            "<div class='bus-card-summary-copy'>" +
-                "<small>" + escapeHtml(compactLabel) + "</small>" +
-                "<strong title='" + escapeHtml(compactValue) + "'>" + escapeHtml(compactValue) + "</strong>" +
-                (compactSubtext ? "<span>" + escapeHtml(compactSubtext) + "</span>" : "") +
-            "</div>" +
+        directionHtml +
+        lastStopHtml +
+        nextStopHtml +
+        "<div class='bus-meta-row'>" +
+            "<span class='bus-meta'>Location " + escapeHtml(String(bus.nearby_place || locationText)) + "</span>" +
+            "<span class='bus-meta'>Distance " + escapeHtml(distanceText) + "</span>" +
+            "<span class='bus-meta'>Speed " + escapeHtml(speedText) + "</span>" +
+            movementHtml +
+            historyHtml +
         "</div>" +
-        "<div class='bus-card-details'>" +
-            "<span class='bus-meta'>" + escapeHtml(distanceText) + "</span>" +
-            "<span class='bus-meta'>" + escapeHtml(speedText) + "</span>" +
-            "<span class='bus-meta bus-meta-state status-" + statusClass + "'>" + escapeHtml(status) + "</span>" +
-        "</div>" +
-        "<p class='bus-card-updated'>" + escapeHtml(freshness.ageLabel) + " · " + escapeHtml(freshness.sourceLabel) + "</p>";
+        "<p class='status status-" + statusClass + "'><span class='status-dot' aria-hidden='true'></span>" + escapeHtml(status) + "</p>" +
+        etaHtml +
+        "<p class='updated'>" + escapeHtml(freshness.ageLabel) + " · " + escapeHtml(freshness.sourceLabel) + "</p>";
 
     card.setAttribute("role", "button");
     card.setAttribute("tabindex", "0");
     card.setAttribute("aria-label", "Bus " + (bus.bus_id || "unknown") + " at " + (bus.distance_km ?? "unknown") + " kilometres");
     const openBus = () => {
         selectBus(bus.bus_id);
-        const position = getBusDisplayPosition(bus);
-        map.setView([position.latitude, position.longitude], 16, {animate:true,duration:.35});
     };
 
     card.addEventListener("click", openBus);
@@ -1182,6 +1215,12 @@ function selectBus(busId) {
 
     const bus = currentBuses.find(item => String(item.bus_id) === String(busId));
     updateSelectedBusPanel(bus);
+    if (bus && map) {
+        const position = getBusDisplayPosition(bus);
+        if (Number.isFinite(position.latitude) && Number.isFinite(position.longitude)) {
+            map.panTo([position.latitude, position.longitude], {animate:true,duration:.3});
+        }
+    }
     highlightSelectedRoute(bus);
 
     if (selectedCard) {
@@ -2081,7 +2120,7 @@ function positionSelectedBusPanel() {
     const below = aboveTop < 8;
     const top = below
         ? Math.min(shellHeight - panelHeight - 8, anchorY + 36)
-        : aboveTop;
+        : anchorY - 36;
 
     panel.classList.toggle("panel-below", below);
     panel.style.left = left + "px";
