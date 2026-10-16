@@ -133,3 +133,5 @@ button:disabled{opacity:.6;cursor:wait}
  .day-bars .day-bar{max-width:4px}
  .bar-chart.hourly-series .day-col span{font-size:6px}
 }
+
+.maintenance-panel{border:1px solid #d4e9e2;background:linear-gradient(135deg,#fff 0%,#f3fbf7 100%)}.maintenance-panel>p{color:var(--muted,#64748b);line-height:1.6}.maintenance-panel label{display:block;font-size:.85rem;font-weight:700;margin:14px 0 7px}.maintenance-panel textarea{width:100%;resize:vertical;min-height:78px;padding:12px;border:1px solid #d5e2dd;border-radius:10px;font:inherit;background:#fff;color:#172b28}.maintenance-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.maintenance-actions .secondary{background:#fff;color:#334155;border:1px solid #d5e2dd}.badge.maintenance-on{background:#fff0e8;color:#a34216}
