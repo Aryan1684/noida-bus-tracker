@@ -14,7 +14,7 @@ from services.gps_service import get_cached_direct_live_buses, get_direct_bus_hi
 from services.prediction_collector import collector_running, start_collector, stop_collector
 from utils.distance import calculate_distance
 from services.direction_service import ROUTES, LANDMARKS, update_bus_history
-from services.analytics_service import dashboard as get_analytics_dashboard, record_consented_location, record_event, verify_admin_token
+from services.analytics_service import dashboard as get_analytics_dashboard, record_consented_location, record_event, verify_admin_token, _connect as analytics_connect, _init_db as init_analytics_db, DATABASE_URL as ANALYTICS_DATABASE_URL
 from services.gps_service import get_ingestion_stats, get_direct_snapshot_status
 
 load_dotenv()
@@ -125,6 +125,129 @@ def root():
             "admin_analytics": bool(os.getenv("ADMIN_TOKEN")),
         },
     }
+
+
+
+class MaintenanceUpdate(BaseModel):
+    enabled: bool
+    message: str | None = Field(default=None, max_length=300)
+
+
+def read_maintenance_settings():
+    init_analytics_db()
+    connection = analytics_connect()
+    try:
+        with connection.cursor() if ANALYTICS_DATABASE_URL else _sqlite_cursor(connection) as cursor:
+            if ANALYTICS_DATABASE_URL:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS maintenance_settings (
+                        id INTEGER PRIMARY KEY CHECK (id = 1),
+                        enabled BOOLEAN NOT NULL DEFAULT FALSE,
+                        message VARCHAR(300) NOT NULL DEFAULT 'We are making a few improvements. Please check back shortly.',
+                        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    )
+                """)
+                cursor.execute("""
+                    INSERT INTO maintenance_settings (id, enabled)
+                    VALUES (1, FALSE) ON CONFLICT (id) DO NOTHING
+                """)
+                cursor.execute("SELECT enabled, message, updated_at FROM maintenance_settings WHERE id = 1")
+                row = cursor.fetchone()
+            else:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS maintenance_settings (
+                        id INTEGER PRIMARY KEY CHECK (id = 1),
+                        enabled INTEGER NOT NULL DEFAULT 0,
+                        message TEXT NOT NULL DEFAULT 'We are making a few improvements. Please check back shortly.',
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cursor.execute("""
+                    INSERT OR IGNORE INTO maintenance_settings (id, enabled) VALUES (1, 0)
+                """)
+                cursor.execute("SELECT enabled, message, updated_at FROM maintenance_settings WHERE id = 1")
+                row = cursor.fetchone()
+        connection.commit()
+        return {"enabled": bool(row[0]), "message": row[1], "updated_at": str(row[2])}
+    finally:
+        connection.close()
+
+
+class _sqlite_cursor:
+    def __init__(self, connection):
+        self.connection = connection
+    def __enter__(self):
+        self.cursor = self.connection.cursor()
+        return self.cursor
+    def __exit__(self, exc_type, exc, tb):
+        self.cursor.close()
+
+
+def write_maintenance_settings(enabled: bool, message: str | None):
+    init_analytics_db()
+    connection = analytics_connect()
+    clean_message = (message or "We are making a few improvements. Please check back shortly.").strip()[:300]
+    if not clean_message:
+        clean_message = "We are making a few improvements. Please check back shortly."
+    try:
+        if ANALYTICS_DATABASE_URL:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS maintenance_settings (
+                        id INTEGER PRIMARY KEY CHECK (id = 1),
+                        enabled BOOLEAN NOT NULL DEFAULT FALSE,
+                        message VARCHAR(300) NOT NULL DEFAULT 'We are making a few improvements. Please check back shortly.',
+                        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    )
+                """)
+                cursor.execute("""
+                    INSERT INTO maintenance_settings (id, enabled, message)
+                    VALUES (1, %s, %s)
+                    ON CONFLICT (id) DO UPDATE SET
+                        enabled = EXCLUDED.enabled,
+                        message = EXCLUDED.message,
+                        updated_at = NOW()
+                """, (enabled, clean_message))
+        else:
+            with connection:
+                connection.execute("""
+                    CREATE TABLE IF NOT EXISTS maintenance_settings (
+                        id INTEGER PRIMARY KEY CHECK (id = 1),
+                        enabled INTEGER NOT NULL DEFAULT 0,
+                        message TEXT NOT NULL DEFAULT 'We are making a few improvements. Please check back shortly.',
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                connection.execute("""
+                    INSERT INTO maintenance_settings (id, enabled, message, updated_at)
+                    VALUES (1, ?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT(id) DO UPDATE SET
+                        enabled = excluded.enabled,
+                        message = excluded.message,
+                        updated_at = CURRENT_TIMESTAMP
+                """, (1 if enabled else 0, clean_message))
+        return read_maintenance_settings()
+    finally:
+        connection.close()
+
+
+@app.get("/api/maintenance")
+def public_maintenance_status():
+    return read_maintenance_settings()
+
+
+@app.get("/api/admin/maintenance")
+def admin_maintenance_status(x_admin_token: str | None = Header(default=None)):
+    if not verify_admin_token(x_admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    return read_maintenance_settings()
+
+
+@app.post("/api/admin/maintenance")
+def admin_update_maintenance(payload: MaintenanceUpdate, x_admin_token: str | None = Header(default=None)):
+    if not verify_admin_token(x_admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    return write_maintenance_settings(payload.enabled, payload.message)
 
 
 @app.get("/api/livez")
