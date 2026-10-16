@@ -230,6 +230,9 @@ document.addEventListener(
             }
         );
 
+        map.on("move zoomend resize", positionSelectedBusPanel);
+        window.addEventListener("resize", positionSelectedBusPanel, {passive:true});
+
         initializePlaceSearch();
         initializePinControl();
 
@@ -970,6 +973,7 @@ function animateBusMarker(marker, targetPosition) {
             start.lat + (target.lat - start.lat) * eased,
             start.lng + (target.lng - start.lng) * eased
         ]);
+        if (String(selectedBusId || "") === String(marker.busId || "")) positionSelectedBusPanel();
 
         if (progress < 1) {
             const frame = requestAnimationFrame(tick);
@@ -1078,88 +1082,73 @@ function createBusCard(bus, rankIndex = 0) {
         directionHtml = "<div class='bus-direction'><span class='direction-wait stationary' aria-hidden='true'></span><div><small>STATUS</small><strong>" + (freshness.stale ? "Last known stationary" : "Stationary") + "</strong></div></div>";
     }
 
-    const route = getBusRoute(bus.bus_id);
+    const route = getBusRoute(bus.bus_id) || bus.route_id || "";
     const status = freshness.stale
-        ? "Location update delayed"
+        ? "Location delayed"
         : movementState === "moving"
         ? "Moving"
         : movementState === "stationary"
         ? "Stationary"
         : movementState === "no_signal"
         ? "No signal"
-        : "Movement status unavailable";
+        : "Status unavailable";
     const statusClass = freshness.stale || movementState === "no_signal"
         ? "offline"
         : movementState === "stationary"
         ? "stationary"
         : "live";
-
-    const rawLatitude = bus && bus.latitude;
-    const rawLongitude = bus && bus.longitude;
-    const latitude = rawLatitude !== undefined && rawLatitude !== null && rawLatitude !== "" ? Number(rawLatitude) : NaN;
-    const longitude = rawLongitude !== undefined && rawLongitude !== null && rawLongitude !== "" ? Number(rawLongitude) : NaN;
-    const locationText = Number.isFinite(latitude) && Number.isFinite(longitude)
-        ? latitude.toFixed(5) + ", " + longitude.toFixed(5)
-        : "Unavailable";
     const rawDistance = bus && bus.distance_km;
     const distance = rawDistance !== undefined && rawDistance !== null && rawDistance !== "" ? Number(rawDistance) : NaN;
-    const distanceText = Number.isFinite(distance) ? distance.toFixed(2) + " km" : "Unavailable";
+    const distanceText = Number.isFinite(distance) ? distance.toFixed(2) + " km" : "Distance unavailable";
     const speedText = Number.isFinite(currentSpeed)
         ? (Number.isInteger(currentSpeed) ? String(currentSpeed) : currentSpeed.toFixed(1)) + " km/h"
-        : "Unavailable";
-
-    const rawMovement = bus && bus.movement_km;
-    const movement = rawMovement !== undefined && rawMovement !== null && rawMovement !== "" ? Number(rawMovement) : NaN;
-    const rawHistory = bus && bus.history_minutes;
-    const history = rawHistory !== undefined && rawHistory !== null && rawHistory !== "" ? Number(rawHistory) : NaN;
-    const movementHtml = Number.isFinite(movement) && movement >= 0 && Number.isFinite(history) && history > 0
-        ? "<span class='bus-meta'>Movement " + movement.toFixed(2) + " km / " + history.toFixed(1) + " min</span>"
-        : "";
-
-    const nextStop = String(bus && (bus.likely_next_stop || bus.likely_towards) || "").trim();
-    const routeMatched = Boolean(bus && (bus.route_path_id || bus.route_id) && nextStop && bus.route_confidence);
-    const routeStopLabel = routeMatched && /^(high|medium)$/i.test(String(bus.route_confidence))
-        ? "LIKELY NEXT STOP"
-        : routeMatched
-        ? "POSSIBLE NEXT STOP"
-        : "LIKELY TOWARDS";
-    const nextStopHtml = nextStop && !/unknownroute|^unknown$/i.test(nextStop)
-        ? "<div class='bus-terminal-stop'><small>" + routeStopLabel + "</small><strong>" + escapeHtml(nextStop) + "</strong></div>"
-        : "";
-    const lastPassedStop = String(bus && (bus.last_passed_stop || bus.last_stop) || "").trim();
-    const lastStopHtml = lastPassedStop && !/not enough route history|unknownroute|^unknown$/i.test(lastPassedStop)
-        ? "<div class='bus-terminal-stop'><small>LAST PASSED STOP</small><strong>" + escapeHtml(lastPassedStop) + "</strong></div>"
-        : "";
-    const etaValue = String(bus && bus.eta_label || "").trim();
-    const etaLabel = /disabled/i.test(etaValue)
-        ? "ETA unavailable while estimates refresh"
-        : etaValue || "ETA unavailable";
-    const historyCount = Number(bus && bus.history_points_used);
-    const historyHtml = Number.isFinite(historyCount) && historyCount > 0
-        ? "<span class='bus-meta'>History " + Math.round(historyCount) + " recent points</span>"
-        : "";
-    const etaHtml = "<p class='updated bus-eta'>" + escapeHtml(etaLabel) + "</p>";
+        : "Speed unavailable";
+    const cleanPlace = currentPlace.replace(/^Near\s+/i, "").trim();
+    const compactValue = isCurrentlyMoving && hasMatchedNextStop
+        ? nextStopValue
+        : cleanPlace || (movementState === "stationary" ? "Stationary" : movementState === "no_signal" ? "Last known position" : "Location updating");
+    const compactLabel = freshness.stale
+        ? "LAST KNOWN POSITION"
+        : isCurrentlyMoving && hasMatchedNextStop
+        ? "LIKELY TOWARDS"
+        : isCurrentlyMoving
+        ? "CURRENT LOCATION"
+        : movementState === "stationary"
+        ? "STATIONARY"
+        : movementState === "no_signal"
+        ? "NO RECENT SIGNAL"
+        : "MOVEMENT STATUS";
+    const compactSubtext = isCurrentlyMoving && hasMatchedNextStop
+        ? cleanPlace ? "Near " + cleanPlace : "Route-based estimate"
+        : isCurrentlyMoving && cardinalDirection
+        ? cardinalDirection
+        : freshness.ageLabel;
 
     card.innerHTML =
         "<div class='bus-card-top'>" +
-            "<h3>" + escapeHtml(bus.bus_id || "Unknown Bus") + "</h3>" +
-            (route ? "<span class='route-badge'>" + escapeHtml(route) + "</span>" : "") +
-            "<button class='favorite-button' type='button' disabled aria-disabled='true' aria-label='Favorites coming soon'><span class='favorite-icon' aria-hidden='true'><svg viewBox='0 0 24 24' focusable='false'><path d='M6 3.5h12a1 1 0 0 1 1 1v16l-7-4.4-7 4.4v-16a1 1 0 0 1 1-1-1Z'></path></svg></span></button>" +
-            "<span class='bus-rank'>#" + (rankIndex + 1) + "</span>" +
+            "<div class='bus-card-identity'>" +
+                "<h3>" + escapeHtml(bus.bus_id || "Unknown Bus") + "</h3>" +
+                (route ? "<span class='route-badge'>" + escapeHtml(route) + "</span>" : "") +
+            "</div>" +
+            "<div class='bus-card-tools'>" +
+                "<button class='favorite-button' type='button' disabled aria-disabled='true' aria-label='Favorites coming soon'><span class='favorite-icon' aria-hidden='true'><svg viewBox='0 0 24 24' focusable='false'><path d='M6 3.5h12a1 1 0 0 1 1 1v16l-7-4.4-7 4.4v-16a1 1 0 0 1 1-1-1Z'></path></svg></span></button>" +
+                "<span class='bus-rank'>#" + (rankIndex + 1) + "</span>" +
+            "</div>" +
         "</div>" +
-        directionHtml +
-        lastStopHtml +
-        nextStopHtml +
-        "<div class='bus-meta-row'>" +
-            "<span class='bus-meta'>Location " + escapeHtml(String(bus.nearby_place || locationText)) + "</span>" +
-            "<span class='bus-meta'>Distance " + escapeHtml(distanceText) + "</span>" +
-            "<span class='bus-meta'>Speed " + escapeHtml(speedText) + "</span>" +
-            movementHtml +
-            historyHtml +
+        "<div class='bus-card-summary'>" +
+            "<span class='direction-arrow' aria-hidden='true' style='transform:rotate(" + heading + "deg)'>↑</span>" +
+            "<div class='bus-card-summary-copy'>" +
+                "<small>" + escapeHtml(compactLabel) + "</small>" +
+                "<strong title='" + escapeHtml(compactValue) + "'>" + escapeHtml(compactValue) + "</strong>" +
+                (compactSubtext ? "<span>" + escapeHtml(compactSubtext) + "</span>" : "") +
+            "</div>" +
         "</div>" +
-        "<p class='status status-" + statusClass + "'><span class='status-dot' aria-hidden='true'></span>" + escapeHtml(status) + "</p>" +
-        etaHtml +
-        "<p class='updated'>" + escapeHtml(freshness.ageLabel) + " · " + escapeHtml(freshness.sourceLabel) + "</p>";
+        "<div class='bus-card-details'>" +
+            "<span class='bus-meta'>" + escapeHtml(distanceText) + "</span>" +
+            "<span class='bus-meta'>" + escapeHtml(speedText) + "</span>" +
+            "<span class='bus-meta bus-meta-state status-" + statusClass + "'>" + escapeHtml(status) + "</span>" +
+        "</div>" +
+        "<p class='bus-card-updated'>" + escapeHtml(freshness.ageLabel) + " · " + escapeHtml(freshness.sourceLabel) + "</p>";
 
     card.setAttribute("role", "button");
     card.setAttribute("tabindex", "0");
@@ -2004,12 +1993,13 @@ function updateSelectedBusPanel(bus) {
             : "TRAVEL DIRECTION";
     }
     if (directionNode) {
+        const compactPlace = place.replace(/^Near /i, "").trim();
         directionNode.textContent = moving && matchedNextStop
-            ? (freshness.stale ? "Last known towards " : "") + nextStop
+            ? (freshness.stale ? "Last known towards " : "") + nextStop + (compactPlace ? " · Near " + compactPlace : "")
             : moving
-            ? [freshness.stale ? "Last seen near " + place.replace(/^Near /i, "") : place, normalizedDirection].filter(Boolean).join(" · ") || "Nearby location being resolved"
+            ? [freshness.stale ? "Last seen near " + compactPlace : place, normalizedDirection].filter(Boolean).join(" · ") || "Nearby location is being resolved"
             : movementState === "stationary"
-            ? place ? "Stationary near " + place.replace(/^Near /i, "") : "Stationary"
+            ? compactPlace ? "Stationary near " + compactPlace : "Stationary"
             : normalizedDirection || "Direction unavailable";
     }
 
@@ -2077,6 +2067,43 @@ function updateSelectedBusPanel(bus) {
     resolveSelectedBusPlace(bus);
     if (followButton) followButton.textContent = "Follow bus";
     panel.classList.remove("hidden");
+    requestAnimationFrame(positionSelectedBusPanel);
+}
+
+function positionSelectedBusPanel() {
+    const panel = document.getElementById("selectedBusPanel");
+    if (!panel || panel.classList.contains("hidden") || !selectedBusId || !map) return;
+
+    const marker = busMarkers.find(item => String(item.busId) === String(selectedBusId));
+    const shell = panel.parentElement;
+    if (!marker || !shell) return;
+
+    const mapNode = map.getContainer();
+    const point = map.latLngToContainerPoint(marker.getLatLng());
+    const shellRect = shell.getBoundingClientRect();
+    const mapRect = mapNode.getBoundingClientRect();
+    const anchorX = mapRect.left - shellRect.left + point.x;
+    const anchorY = mapRect.top - shellRect.top + point.y;
+    const shellWidth = shell.clientWidth;
+    const shellHeight = shell.clientHeight;
+    const panelWidth = panel.offsetWidth;
+    const panelHeight = panel.offsetHeight;
+
+    const left = Math.min(
+        shellWidth - panelWidth / 2 - 8,
+        Math.max(panelWidth / 2 + 8, anchorX)
+    );
+    const aboveTop = anchorY - panelHeight - 36;
+    const below = aboveTop < 8;
+    const top = below
+        ? Math.min(shellHeight - panelHeight - 8, anchorY + 36)
+        : aboveTop;
+
+    panel.classList.toggle("panel-below", below);
+    panel.style.left = left + "px";
+    panel.style.top = Math.max(8, top) + "px";
+    panel.style.bottom = "auto";
+    panel.style.transform = below ? "translate(-50%, 0)" : "translate(-50%, -100%)";
 }
 
 function closeSelectedBusPanel() {

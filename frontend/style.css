@@ -1228,3 +1228,347 @@ body.dark .bus-card.selected .bus-direction strong{color:#f5edda}
 .selected-bus-close{position:sticky;float:right;top:0;right:auto;margin-top:-32px;margin-right:-3px;width:34px;height:34px;display:grid;place-items:center;z-index:5;background:var(--surface);color:var(--text);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.1);font-size:22px;cursor:pointer}
 .selected-bus-close:focus-visible{outline:2px solid #21885d;outline-offset:2px}
 @media(max-width:700px){.selected-bus-panel{left:10px;right:10px;bottom:10px;width:auto;max-height:min(58%,330px);padding:38px 12px 12px}.selected-bus-close{position:absolute;top:7px;right:7px;margin:0;float:none}}
+
+
+
+/* Compact selected bus and fleet cards */
+:root{
+  --bus-marker-fill:#be123c;
+  --bus-marker-glow:rgba(190,18,60,.34);
+  --bus-marker-ink:#fff;
+  --move-indicator-fill:#be123c;
+  --move-indicator-soft:#fff1f2;
+  --move-indicator-ink:#fff;
+  --move-indicator-text:#881337;
+}
+body.dark{
+  --bus-marker-fill:#c6aa68;
+  --bus-marker-glow:rgba(198,170,104,.4);
+  --bus-marker-ink:#29251d;
+  --move-indicator-fill:#c6aa68;
+  --move-indicator-soft:#3a3835;
+  --move-indicator-ink:#29251d;
+  --move-indicator-text:#f5edda;
+}
+.bus-card{
+  padding:9px 10px;
+  border-radius:12px;
+}
+.bus-card-top{
+  padding-right:0;
+  gap:8px;
+}
+.bus-card-identity{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-width:0;
+  flex:1;
+}
+.bus-card-identity h3{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:12px;
+}
+.bus-card-identity .route-badge{
+  flex:none;
+  margin:0;
+  height:18px;
+  font-size:7px;
+}
+.bus-card-tools{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  flex:none;
+}
+.bus-card-tools .favorite-button{
+  width:25px;
+  height:25px;
+  margin:0;
+  border-radius:8px;
+  font-size:15px;
+}
+.bus-card-tools .bus-rank{
+  position:static;
+  width:23px;
+  height:23px;
+  border-radius:7px;
+  font-size:8px;
+}
+.bus-card-summary{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  margin-top:8px;
+  padding:7px 8px;
+  border-radius:9px;
+  background:var(--move-indicator-soft);
+}
+.bus-card .direction-arrow{
+  display:grid;
+  width:26px;
+  height:26px;
+  flex:none;
+  place-items:center;
+  border-radius:8px;
+  background:var(--move-indicator-fill);
+  color:var(--move-indicator-ink);
+  font-size:16px;
+  line-height:1;
+}
+.bus-card-summary-copy{
+  display:flex;
+  flex:1;
+  flex-direction:column;
+  min-width:0;
+  gap:1px;
+}
+.bus-card-summary-copy small{
+  color:var(--move-indicator-text);
+  font-size:6.5px;
+  font-weight:950;
+  letter-spacing:.7px;
+  line-height:1.2;
+}
+.bus-card-summary-copy strong{
+  display:block;
+  overflow:hidden;
+  color:var(--text);
+  font-size:10px;
+  line-height:1.3;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.bus-card-summary-copy span{
+  overflow:hidden;
+  color:var(--muted);
+  font-size:8px;
+  line-height:1.25;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.bus-card-details{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  margin-top:7px;
+}
+.bus-card .bus-meta{
+  padding:4px 6px;
+  border-radius:6px;
+  font-size:8px;
+  line-height:1.25;
+}
+.bus-card .bus-meta-state{
+  background:var(--move-indicator-soft);
+  color:var(--move-indicator-text);
+}
+.bus-card-updated{
+  margin-top:6px;
+  color:var(--muted);
+  font-size:7px;
+  line-height:1.25;
+}
+body.dark .bus-card .bus-meta-state{
+  background:#3a3835;
+  color:#f5edda;
+}
+.bus-marker{
+  background:var(--bus-marker-fill);
+  border:3px solid var(--bus-marker-ink);
+  box-shadow:0 4px 15px rgba(0,0,0,.28);
+}
+.bus-marker.selected{
+  transform:scale(1.17);
+  box-shadow:0 0 0 5px var(--bus-marker-glow),0 7px 20px rgba(0,0,0,.32);
+}
+body.dark .bus-marker{
+  border-color:#29251d;
+  outline:2px solid #c6aa68;
+}
+body.dark .bus-marker.selected{
+  outline:3px solid #f5edda;
+  box-shadow:0 0 0 6px var(--bus-marker-glow),0 7px 20px rgba(0,0,0,.4);
+}
+.bus-marker.confidence-low{
+  opacity:.72;
+  filter:none;
+}
+.bus-marker .bus-body{
+  box-shadow:0 1px 3px rgba(0,0,0,.24);
+}
+.selected-bus-panel{
+  left:50%;
+  top:50%;
+  right:auto;
+  bottom:auto;
+  width:min(312px,calc(100% - 24px));
+  max-height:none;
+  overflow:visible;
+  padding:10px 11px 9px;
+  border:1.5px solid var(--bus-marker-fill);
+  border-radius:13px;
+  background:rgba(255,255,255,.98);
+  box-shadow:0 12px 30px rgba(21,24,29,.22);
+  transform:translate(-50%,-100%);
+  backdrop-filter:blur(12px);
+}
+.selected-bus-panel::before,
+.selected-bus-panel::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  width:0;
+  height:0;
+  transform:translateX(-50%);
+  border-left:9px solid transparent;
+  border-right:9px solid transparent;
+}
+.selected-bus-panel::before{
+  bottom:-10px;
+  border-top:10px solid var(--bus-marker-fill);
+}
+.selected-bus-panel::after{
+  bottom:-8px;
+  border-top:8px solid rgba(255,255,255,.98);
+}
+.selected-bus-panel.panel-below{
+  transform:translate(-50%,0);
+}
+.selected-bus-panel.panel-below::before{
+  top:-10px;
+  bottom:auto;
+  border-top:0;
+  border-bottom:10px solid var(--bus-marker-fill);
+}
+.selected-bus-panel.panel-below::after{
+  top:-8px;
+  bottom:auto;
+  border-top:0;
+  border-bottom:8px solid rgba(255,255,255,.98);
+}
+.selected-bus-panel .eyebrow{
+  padding-right:28px;
+  font-size:7px;
+  letter-spacing:1px;
+}
+.selected-bus-close{
+  top:6px;
+  right:6px;
+  width:24px;
+  height:24px;
+  border-radius:7px;
+  font-size:17px;
+}
+.selected-bus-heading{
+  margin-top:2px;
+  padding-right:27px;
+  gap:7px;
+}
+.selected-bus-heading h3{
+  font-size:14px;
+  line-height:1.2;
+}
+.selected-status{
+  flex:none;
+  padding:4px 6px;
+  background:var(--move-indicator-soft);
+  color:var(--move-indicator-text);
+  font-size:6px;
+}
+.selected-direction{
+  gap:7px;
+  margin-top:7px;
+  padding:7px;
+  border-radius:9px;
+  background:var(--move-indicator-soft);
+}
+.selected-direction-arrow{
+  width:25px;
+  height:25px;
+  flex:none;
+  border-radius:8px;
+  background:var(--move-indicator-fill);
+  color:var(--move-indicator-ink);
+  font-size:14px;
+}
+.selected-direction-arrow::before{
+  content:"↑";
+}
+.selected-direction small{
+  font-size:6px;
+  color:var(--move-indicator-text);
+  letter-spacing:.7px;
+}
+.selected-direction strong{
+  display:-webkit-box;
+  overflow:hidden;
+  margin-top:1px;
+  font-size:10px;
+  line-height:1.3;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+}
+.selected-metrics{
+  gap:5px;
+  margin-top:7px;
+}
+.selected-metrics span{
+  padding:4px 6px;
+  font-size:8px;
+  line-height:1.25;
+}
+.selected-metrics #selectedBusMovement{
+  display:none;
+}
+.selected-bus-location-note{
+  display:none!important;
+}
+.selected-actions{
+  gap:6px;
+  margin-top:7px;
+}
+.selected-actions .button{
+  height:30px;
+  min-height:30px;
+  border-radius:8px;
+  font-size:9px;
+}
+body.dark .selected-bus-panel{
+  background:rgba(41,40,39,.98);
+  border-color:#c6aa68;
+}
+body.dark .selected-bus-panel::after{
+  border-top-color:rgba(41,40,39,.98);
+}
+body.dark .selected-bus-panel.panel-below::after{
+  border-top:0;
+  border-bottom-color:rgba(41,40,39,.98);
+}
+body.dark .selected-direction{
+  background:#3a3835;
+}
+body.dark .selected-direction strong{
+  color:#f5edda;
+}
+body.dark .selected-status{
+  background:#3a3835;
+  color:#f5edda;
+}
+@media(max-width:700px){
+  .bus-card{padding:8px 9px}
+  .bus-card-identity h3{font-size:11.5px}
+  .bus-card-summary{margin-top:7px;padding:6px 7px}
+  .bus-card .bus-meta{font-size:7.5px}
+  .selected-bus-panel{width:min(312px,calc(100% - 20px))}
+}
+@media(max-width:430px){
+  .bus-card{padding:8px}
+  .bus-card-tools .favorite-button{width:23px;height:23px}
+  .bus-card-tools .bus-rank{width:22px;height:22px}
+  .selected-bus-panel{width:calc(100% - 18px)}
+}
