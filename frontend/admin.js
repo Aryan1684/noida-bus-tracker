@@ -351,6 +351,13 @@ async function load() {
 }
 
 
+
+function maintenanceDurationMinutes() {
+    const hours = Math.max(0, Math.min(168, Number(document.getElementById("maintenanceHours").value) || 0));
+    const minutes = Math.max(0, Math.min(59, Number(document.getElementById("maintenanceMinutes").value) || 0));
+    return Math.floor(hours * 60 + minutes);
+}
+
 async function loadMaintenance() {
     const state = document.getElementById("maintenanceState");
     const message = document.getElementById("maintenanceMessage");
@@ -360,12 +367,19 @@ async function loadMaintenance() {
         state.textContent = data.enabled ? "ENABLED" : "DISABLED";
         state.classList.toggle("maintenance-on", data.enabled);
         message.value = data.message || "We are making a few improvements. Please check back shortly.";
-        document.getElementById("maintenanceToggle").disabled = data.enabled;
+        document.getElementById("maintenanceToggle").disabled = false;
         document.getElementById("maintenanceDisable").disabled = !data.enabled;
-        status.textContent = data.enabled ? "Visitors currently see the maintenance page." : "The tracker is visible to visitors.";
+        if (data.expires_at) {
+            const remaining = Math.max(0, Math.ceil((data.expires_at - Date.now()) / 60000));
+            document.getElementById("maintenanceHours").value = Math.floor(remaining / 60);
+            document.getElementById("maintenanceMinutes").value = remaining % 60;
+            status.textContent = data.enabled ? "Auto-disable scheduled. Remaining: " + remaining + " minute(s)." : "The tracker is visible to visitors.";
+        } else {
+            status.textContent = data.enabled ? "Maintenance is enabled without an expiry." : "The tracker is visible to visitors.";
+        }
     } catch (error) {
         state.textContent = "Unavailable";
-        status.textContent = error.message;
+        status.textContent = error.message + " If this persists, check whether the backend has deployed the maintenance API.";
     }
 }
 
@@ -373,9 +387,14 @@ async function setMaintenance(enabled) {
     const status = document.getElementById("maintenanceStatus");
     const toggle = document.getElementById("maintenanceToggle");
     const disable = document.getElementById("maintenanceDisable");
+    const duration = maintenanceDurationMinutes();
+    if (enabled && duration < 1) {
+        status.textContent = "Enter a duration of at least 1 minute.";
+        return;
+    }
     toggle.disabled = true;
     disable.disabled = true;
-    status.textContent = enabled ? "Enabling maintenance mode…" : "Restoring the tracker…";
+    status.textContent = enabled ? "Saving maintenance schedule…" : "Disabling maintenance…";
     try {
         const response = await fetch(API + "/api/admin/maintenance", {
             method: "POST",
@@ -383,15 +402,16 @@ async function setMaintenance(enabled) {
             cache: "no-store",
             body: JSON.stringify({
                 enabled,
-                message: document.getElementById("maintenanceMessage").value.trim()
+                message: document.getElementById("maintenanceMessage").value.trim(),
+                duration_minutes: duration
             })
         });
-        if (response.status === 401) throw new Error("Invalid admin token.");
-        if (!response.ok) throw new Error("Could not update maintenance mode (HTTP " + response.status + ").");
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.detail || "Could not update maintenance mode (HTTP " + response.status + ").");
         await loadMaintenance();
-        status.textContent = enabled ? "Maintenance mode is now enabled." : "Maintenance mode is now disabled.";
+        status.textContent = enabled ? "Maintenance enabled. Auto-disable is scheduled." : "Maintenance disabled. The tracker is available again.";
     } catch (error) {
-        status.textContent = error.message;
+        status.textContent = error.message + " Check backend deployment and API logs.";
         toggle.disabled = false;
         disable.disabled = false;
     }
