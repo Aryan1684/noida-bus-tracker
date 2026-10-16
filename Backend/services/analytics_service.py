@@ -765,7 +765,7 @@ def dashboard(days=30, hours=None):
     location_cells = Counter()
 
     for row in rows:
-        if row["event_name"] != "location_shared":
+        if row["event_name"] not in {"location_shared", "page_view", "app_open"}:
             continue
 
         if row["coarse_lat"] is None or row["coarse_lon"] is None:
