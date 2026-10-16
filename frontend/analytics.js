@@ -11,31 +11,73 @@
         return String(Date.now()) + "-" + Math.random().toString(36).slice(2);
     }
 
-    function sessionId() {
-        let id = sessionStorage.getItem(SESSION_KEY);
-        if (!id) {
-            id = makeId();
-            sessionStorage.setItem(SESSION_KEY, id);
+    const SESSION_ACTIVITY_KEY = "noidaBusAnalyticsLastActivity";
+    const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+    let memorySessionId = "";
+    let memorySessionActivity = 0;
+    let memoryVisitorId = "";
+
+    function sourceName() {
+        try {
+            const standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+                window.navigator.standalone === true;
+            return standalone ? "installed_app" : "web";
+        } catch (_) {
+            return "web";
         }
-        return id;
+    }
+
+    function referrerHost() {
+        if (!document.referrer) return "";
+        try {
+            const referrer = new URL(document.referrer);
+            return referrer.origin === location.origin ? "" : referrer.hostname;
+        } catch (_) {
+            return "";
+        }
+    }
+
+    function sessionId() {
+        const now = Date.now();
+        try {
+            let id = sessionStorage.getItem(SESSION_KEY);
+            const lastActivity = Number(sessionStorage.getItem(SESSION_ACTIVITY_KEY) || 0);
+            if (!id || !lastActivity || now - lastActivity > SESSION_TIMEOUT_MS) {
+                id = makeId();
+                sessionStorage.setItem(SESSION_KEY, id);
+            }
+            sessionStorage.setItem(SESSION_ACTIVITY_KEY, String(now));
+            return id;
+        } catch (_) {
+            if (!memorySessionId || now - memorySessionActivity > SESSION_TIMEOUT_MS) {
+                memorySessionId = makeId();
+            }
+            memorySessionActivity = now;
+            return memorySessionId;
+        }
     }
 
     function visitorId() {
-        let id = localStorage.getItem(VISITOR_KEY);
-        if (!id) {
-            id = makeId();
-            localStorage.setItem(VISITOR_KEY, id);
+        try {
+            let id = localStorage.getItem(VISITOR_KEY);
+            if (!id) {
+                id = makeId();
+                localStorage.setItem(VISITOR_KEY, id);
+            }
+            return id;
+        } catch (_) {
+            if (!memoryVisitorId) memoryVisitorId = makeId();
+            return memoryVisitorId;
         }
-        return id;
     }
 
     function browserName() {
         const ua = navigator.userAgent || "";
-        if (/Edg\//i.test(ua)) return "Edge";
-        if (/OPR\//i.test(ua)) return "Opera";
-        if (/Firefox\//i.test(ua)) return "Firefox";
-        if (/Chrome\//i.test(ua)) return "Chrome";
-        if (/Safari\//i.test(ua)) return "Safari";
+        if (ua.includes("EdgA/") || ua.includes("EdgiOS/") || ua.includes("Edg/")) return "Edge";
+        if (ua.includes("OPR/") || /Opera Mini/i.test(ua)) return "Opera";
+        if (ua.includes("FxiOS/") || /Firefox/i.test(ua)) return "Firefox";
+        if (ua.includes("CriOS/") || /Chrome/i.test(ua)) return "Chrome";
+        if (/Safari/i.test(ua)) return "Safari";
         return "Other";
     }
 
@@ -62,12 +104,12 @@
             path: location.pathname,
             session_id: sessionId(),
             visitor_id: visitorId(),
-            source: "web",
+            source: sourceName(),
             device_type: deviceType(),
             browser: browserName(),
             os: osName(),
             language: (navigator.language || "").slice(0, 20),
-            referrer: document.referrer ? document.referrer.slice(0, 300) : "",
+            referrer: referrerHost(),
             screen_width: Number(window.innerWidth || screen.width || 0),
             screen_height: Number(window.innerHeight || screen.height || 0),
             metadata: {}
@@ -88,7 +130,8 @@
                 "Accept": "application/json"
             },
             body: JSON.stringify(payload),
-            keepalive: true
+            keepalive: true,
+            cache: "no-store"
         }).catch(() => {});
     }
 
@@ -104,7 +147,7 @@
 
         if (!accepted) return;
 
-        localStorage.setItem(LOCATION_CONSENT_KEY, "true");
+        try { localStorage.setItem(LOCATION_CONSENT_KEY, "true"); } catch (_) {}
 
         navigator.geolocation.getCurrentPosition(
             function (position) {
@@ -120,12 +163,11 @@
                         path: location.pathname,
                         session_id: sessionId(),
                         visitor_id: visitorId(),
-                        source: "web"
+                        source: sourceName()
                     }),
                     keepalive: true
                 }).then(function (response) {
                     if (!response.ok) throw new Error("location analytics failed");
-                    track("location_shared", { source: "map_share", approximate: true });
                     alert("Thanks. Only an approximate area was shared.");
                 }).catch(function () {
                     alert("Could not share the approximate area right now.");
@@ -143,9 +185,11 @@
     }
 
     function bind() {
-        track("page_view", {
+        const source = sourceName();
+        track(source === "installed_app" ? "app_open" : "page_view", {
             title: document.title,
-            referrer_type: document.referrer ? "referral" : "direct"
+            referrer_type: referrerHost() ? "referral" : "direct",
+            launch_mode: source === "installed_app" ? "standalone" : "browser"
         });
 
         window.addEventListener("appinstalled", function () {
@@ -187,6 +231,17 @@
                 track("feedback_opened");
                 return;
             }
+
+            const moreAction = target.closest("[data-more]");
+            if (moreAction) {
+                if (moreAction.getAttribute("data-more") === "report") {
+                    const card = moreAction.closest(".bus-card");
+                    track("report_opened", { bus_id: card ? card.id.replace("bus-card-", "") : "" });
+                }
+                return;
+            }
+
+            if (target.closest(".feature-actions") || target.closest(".favorite-button")) return;
 
             if (target.closest(".bus-card")) {
                 const card = target.closest(".bus-card");

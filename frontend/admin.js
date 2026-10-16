@@ -12,10 +12,22 @@ function auth() {
 }
 
 async function request(path) {
-    const response = await fetch(API + path, { headers: auth() });
+    let response;
+    try {
+        response = await fetch(API + path, {
+            headers: auth(),
+            cache: "no-store"
+        });
+    } catch (_) {
+        throw new Error("Cannot reach the analytics API. Check the connection and backend status.");
+    }
     if (response.status === 401) throw new Error("Invalid admin token.");
     if (!response.ok) throw new Error("Request failed: HTTP " + response.status);
-    return response.json();
+    try {
+        return await response.json();
+    } catch (_) {
+        throw new Error("The analytics API returned an unreadable response.");
+    }
 }
 
 function esc(value) {
@@ -54,18 +66,28 @@ function tableRows(id, items, labelKey, options = {}) {
 function platformTable(items) {
     const box = document.getElementById("platformTable");
     box.innerHTML = "";
-    const rows = (items || []).filter(x => x.name === "web" || x.name === "android");
+    const labels = {
+        web: "Web browser",
+        installed_app: "Installed app (PWA)",
+        android: "Android app",
+        ios: "iOS app",
+        unknown: "Unclassified source"
+    };
+    const rows = (items || []).filter(x =>
+        ["web", "installed_app", "android", "ios", "unknown"].includes(x.name) &&
+        (Number(x.events) > 0 || Number(x.visitors) > 0)
+    );
     if (!rows.length) {
-        emptyState(box, "No platform data yet.");
+        emptyState(box, "No platform data yet. New visits will appear here.");
         return;
     }
     rows.forEach(x => {
-        const label = x.name === "android" ? "Android app" : "Web";
         box.innerHTML +=
-            "<div class='platform-row'><div><strong>" + label + "</strong><small>" +
-            (x.views || 0) + " views/open · " + (x.events || 0) + " events · " + (x.selections || 0) + " bus selections</small></div>" +
+            "<div class='platform-row'><div><strong>" + esc(labels[x.name] || x.name) + "</strong><small>" +
+            (x.views || 0) + " views / opens · " + (x.events || 0) + " events · " +
+            (x.sessions || 0) + " sessions · " + (x.selections || 0) + " bus selections</small></div>" +
             "<div><b>" + (x.visitors || 0) + "</b><span> visitors</span><small>" +
-            Math.round((Number(x.visitor_share) || 0) * 100) + "%</small></div></div>";
+            Math.round((Number(x.visitor_share) || 0) * 100) + "% of platform visitor counts</small></div></div>";
     });
 }
 
@@ -73,14 +95,33 @@ function dailyChart(items) {
     const box = document.getElementById("dailyChart");
     box.innerHTML = "";
     const data = items || [];
-    const max = Math.max(1, ...data.map(x => Math.max(Number(x.visitors) || 0, Number(x.sessions) || 0, Number(x.events) || 0)));
+    const max = Math.max(1, ...data.map(x => Math.max(
+        Number(x.visitors) || 0,
+        Number(x.sessions) || 0,
+        Number(x.events) || 0
+    )));
     data.forEach(x => {
         const col = document.createElement("div");
         col.className = "day-col";
-        const height = Math.max(4, Math.round((Number(x.events) || 0) / max * 150));
-        col.innerHTML =
-            "<div class='day-bar' style='height:" + height + "px' title='" + esc(x.date) + " · " + (x.events || 0) + " events'></div>" +
-            "<span>" + esc((x.date || "").slice(5)) + "</span>";
+        const bars = document.createElement("div");
+        bars.className = "day-bars";
+        [
+            ["visitors", "bar-visitors", "visitors"],
+            ["sessions", "bar-sessions", "sessions"],
+            ["events", "bar-events", "events"]
+        ].forEach(([key, className, label]) => {
+            const value = Number(x[key]) || 0;
+            const bar = document.createElement("i");
+            bar.className = "day-bar " + className;
+            bar.style.height = Math.max(2, Math.round(value / max * 145)) + "px";
+            bar.title = (x.date || "") + " · " + value + " " + label;
+            bars.appendChild(bar);
+        });
+        const date = document.createElement("span");
+        date.textContent = (x.date || "").slice(5);
+        date.title = x.date || "";
+        col.appendChild(bars);
+        col.appendChild(date);
         box.appendChild(col);
     });
 }
@@ -188,59 +229,97 @@ function recentTable(items) {
 }
 
 async function load() {
-    document.getElementById("error").hidden = true;
+    const errorBox = document.getElementById("error");
+    const warningBox = document.getElementById("warning");
+    const fleetError = document.getElementById("fleetError");
+    const refreshButton = document.getElementById("refresh");
+    errorBox.hidden = true;
+    warningBox.hidden = true;
+    fleetError.hidden = true;
     const started = Date.now();
-    try {
-        const days = document.getElementById("days").value;
-        const results = await Promise.all([
-            request("/api/admin/analytics?days=" + days),
-            request("/api/admin/fleet")
-        ]);
-        const analytics = results[0];
-        const fleetData = results[1];
+    refreshButton.disabled = true;
+    refreshButton.textContent = "Loading…";
 
-        document.getElementById("uniqueVisitors").textContent = analytics.unique_visitors ?? "0";
-        document.getElementById("sessions").textContent = analytics.unique_sessions ?? "0";
-        document.getElementById("returning").textContent = analytics.returning_visitors ?? "0";
-        document.getElementById("views").textContent = analytics.page_views ?? "0";
-        document.getElementById("events").textContent = analytics.total_events ?? "0";
-        document.getElementById("avgSession").textContent = (analytics.average_session_minutes ?? 0) + " min";
-        document.getElementById("engaged").textContent = analytics.engaged_sessions ?? "0";
-        document.getElementById("bounce").textContent =
-            (analytics.bounce_sessions ?? 0) + " · " + Math.round((Number(analytics.bounce_rate) || 0) * 100) + "%";
+    (async () => {
+        try {
+            const days = document.getElementById("days").value;
+            const results = await Promise.allSettled([
+                request("/api/admin/analytics?days=" + days),
+                request("/api/admin/fleet")
+            ]);
 
-        document.getElementById("refreshes").textContent = analytics.refreshes ?? "0";
-        document.getElementById("selections").textContent = analytics.bus_selections ?? "0";
-        document.getElementById("busShares").textContent = analytics.bus_shares ?? "0";
-        document.getElementById("locationUses").textContent = analytics.location_uses ?? "0";
-        document.getElementById("locations").textContent = analytics.location_shares ?? "0";
-        document.getElementById("installs").textContent = analytics.pwa_installs ?? "0";
-        document.getElementById("feedback").textContent = analytics.feedback_submitted ?? "0";
-        document.getElementById("reports").textContent = analytics.reports_submitted ?? "0";
+            if (results[0].status === "rejected") throw results[0].reason;
+            const analytics = results[0].value;
 
-        document.getElementById("storage").textContent = "Storage: " + analytics.storage;
-        document.getElementById("lastLoaded").textContent = "Loaded in " + (Date.now() - started) + " ms";
+            document.getElementById("uniqueVisitors").textContent = analytics.unique_visitors ?? "0";
+            document.getElementById("sessions").textContent = analytics.unique_sessions ?? "0";
+            document.getElementById("returning").textContent = analytics.returning_visitors ?? "0";
+            document.getElementById("views").textContent = analytics.page_views ?? "0";
+            document.getElementById("events").textContent = analytics.total_events ?? "0";
+            document.getElementById("avgSession").textContent = (analytics.average_session_minutes ?? 0) + " min";
+            document.getElementById("engaged").textContent = analytics.engaged_sessions ?? "0";
+            document.getElementById("bounce").textContent =
+                (analytics.bounce_sessions ?? 0) + " · " + Math.round((Number(analytics.bounce_rate) || 0) * 100) + "%";
 
-        platformTable(analytics.platforms);
-        dailyChart(analytics.daily);
-        hourlyChart(analytics.hourly);
-        tableRows("eventTable", analytics.event_breakdown, "event");
-        tableRows("deviceTable", analytics.devices, "name", { visitors: true });
-        tableRows("browserTable", analytics.browsers, "name", { visitors: true });
-        tableRows("osTable", analytics.oses, "name", { visitors: true });
-        tableRows("versionTable", analytics.app_versions, "name", { visitors: true });
-        tableRows("busTable", analytics.top_buses, "bus_id");
-        tableRows("sharedBusTable", analytics.top_shared_buses, "bus_id");
-        tableRows("searchTable", analytics.top_searches, "name");
-        tableRows("referrerTable", analytics.referrers, "name");
-        recentTable(analytics.recent_events);
-        demandMap(analytics.location_cells);
-        fleet(fleetData);
-    } catch (error) {
-        const box = document.getElementById("error");
-        box.textContent = error.message;
-        box.hidden = false;
-    }
+            document.getElementById("refreshes").textContent = analytics.refreshes ?? "0";
+            document.getElementById("selections").textContent = analytics.bus_selections ?? "0";
+            document.getElementById("busShares").textContent = analytics.bus_shares ?? "0";
+            document.getElementById("locationUses").textContent = analytics.location_uses ?? "0";
+            document.getElementById("locations").textContent = analytics.location_shares ?? "0";
+            document.getElementById("installs").textContent = analytics.pwa_installs ?? "0";
+            document.getElementById("feedback").textContent = analytics.feedback_submitted ?? "0";
+            document.getElementById("reports").textContent = analytics.reports_submitted ?? "0";
+
+            document.getElementById("storage").textContent = "Storage: " + analytics.storage;
+            document.getElementById("lastLoaded").textContent = "Loaded in " + (Date.now() - started) + " ms";
+
+            if (analytics.storage !== "postgresql") {
+                warningBox.textContent = "Analytics is using temporary SQLite storage. Events can disappear after a service restart or redeploy. Configure DATABASE_URL for persistent history.";
+                warningBox.hidden = false;
+            }
+
+            platformTable(analytics.platforms);
+            dailyChart(analytics.daily);
+            hourlyChart(analytics.hourly);
+            tableRows("eventTable", analytics.event_breakdown, "event");
+            tableRows("deviceTable", analytics.devices, "name", { visitors: true });
+            tableRows("browserTable", analytics.browsers, "name", { visitors: true });
+            tableRows("osTable", analytics.oses, "name", { visitors: true });
+            tableRows("versionTable", analytics.app_versions, "name", { visitors: true });
+            tableRows("busTable", analytics.top_buses, "bus_id");
+            tableRows("sharedBusTable", analytics.top_shared_buses, "bus_id");
+            tableRows("searchTable", analytics.top_searches, "name");
+            tableRows("referrerTable", analytics.referrers, "name");
+            recentTable(analytics.recent_events);
+            demandMap(analytics.location_cells);
+
+            if (results[1].status === "fulfilled") {
+                fleet(results[1].value);
+            } else {
+                fleetError.textContent = "Fleet data did not load (" + (results[1].reason?.message || "request failed") + "). Usage analytics above are still up to date; retry to reload fleet data.";
+                fleetError.hidden = false;
+                ["fleetTotal", "fleetLive", "fleetMoving", "fleetStationary", "fleetNoSignal", "fleetAnomalies",
+                 "fleetPredictions", "fleetCorrected", "fleetConfidence", "collectorStatus"].forEach(id => {
+                    document.getElementById(id).textContent = "—";
+                });
+                emptyState(document.getElementById("fleetTable"), "Fleet data is temporarily unavailable.");
+                document.getElementById("fleetUpdated").textContent = "Unavailable";
+            }
+        } catch (error) {
+            errorBox.textContent = error.message || "Analytics failed to load.";
+            errorBox.hidden = false;
+            if (error.message === "Invalid admin token.") {
+                sessionStorage.removeItem(KEY);
+                token = "";
+                document.getElementById("dash").hidden = true;
+                document.getElementById("login").hidden = false;
+                document.getElementById("loginStatus").textContent = "Your admin token was rejected. Log in again.";
+            }
+        } finally {
+            refreshButton.disabled = false;
+            refreshButton.textContent = "Refresh data";
+        }
+    })();
 }
 
 function login() {

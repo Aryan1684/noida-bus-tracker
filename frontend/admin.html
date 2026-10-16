@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Noida Bus Tracker Admin</title>
-<link rel="stylesheet" href="admin.css">
+<link rel="stylesheet" href="admin.css?v=2">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
@@ -33,6 +33,7 @@
     <span id="lastLoaded"></span>
   </div>
   <div id="error" class="error" hidden></div>
+  <div id="warning" class="warning" hidden></div>
 
   <section>
     <div class="section-title"><span>OVERVIEW</span><h2>Who is using the tracker?</h2></div>
@@ -50,7 +51,7 @@
 
   <section class="cols">
     <section class="panel">
-      <div class="panel-head"><div><span class="eyebrow">PLATFORM</span><h2>Web vs Android</h2></div></div>
+      <div class="panel-head"><div><span class="eyebrow">PLATFORM</span><h2>Web vs installed app</h2></div></div>
       <div id="platformTable" class="table"></div>
     </section>
     <section class="panel">
@@ -70,6 +71,7 @@
 
   <section class="panel">
     <div class="panel-head"><div><span class="eyebrow">TRAFFIC</span><h2>Daily visitors, sessions and events</h2></div></div>
+    <div class="chart-legend" aria-label="Daily chart legend"><span class="legend-visitors">Visitors</span><span class="legend-sessions">Sessions</span><span class="legend-events">Events</span></div>
     <div id="dailyChart" class="bar-chart"></div>
   </section>
 
@@ -117,6 +119,7 @@
 
   <section>
     <div class="section-title"><span>FLEET</span><h2>Live electric-bus intelligence</h2></div>
+    <div id="fleetError" class="error" hidden></div>
     <div class="cards fleet">
       <div><span>Total</span><b id="fleetTotal">—</b></div>
       <div><span>Live</span><b id="fleetLive">—</b></div>
@@ -138,6 +141,6 @@
 </section>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="admin.js?v=3"></script>
+<script src="admin.js?v=4"></script>
 </body>
 </html>

@@ -7,6 +7,8 @@ import threading
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 
+INDIA_TIMEZONE = timezone(timedelta(hours=5, minutes=30))
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 SQLITE_PATH = os.getenv("ANALYTICS_SQLITE_PATH", "/tmp/noidabus_analytics.sqlite3")
 
@@ -513,7 +515,7 @@ def _parse_time(value):
 
 
 def _daily_counts(rows, days):
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(INDIA_TIMEZONE).date()
     buckets = {}
 
     for offset in range(days - 1, -1, -1):
@@ -532,7 +534,7 @@ def _daily_counts(rows, days):
         if not parsed:
             continue
 
-        key = parsed.date().isoformat()
+        key = parsed.astimezone(INDIA_TIMEZONE).date().isoformat()
         bucket = buckets.get(key)
         if not bucket:
             continue
@@ -543,7 +545,7 @@ def _daily_counts(rows, days):
             bucket["visitors"].add(visitor)
         if row["session_id"]:
             bucket["sessions"].add(row["session_id"])
-        if row["event_name"] == "page_view":
+        if row["event_name"] in {"page_view", "app_open"}:
             bucket["views"] += 1
         if row["event_name"] == "refresh":
             bucket["refreshes"] += 1
@@ -578,7 +580,7 @@ def _hourly_counts(rows):
         if not parsed:
             continue
 
-        bucket = buckets[parsed.hour]
+        bucket = buckets[parsed.astimezone(INDIA_TIMEZONE).hour]
         bucket["events"] += 1
         visitor = row["visitor_id"] or ("legacy-" + row["session_id"] if row["session_id"] else "")
         if visitor:
@@ -632,7 +634,7 @@ def dashboard(days=30):
         visitor_keys.add(visitor)
         parsed = _parse_time(row["event_time"])
         if parsed:
-            visitor_days[visitor].add(parsed.date().isoformat())
+            visitor_days[visitor].add(parsed.astimezone(INDIA_TIMEZONE).date().isoformat())
 
     returning_visitors = sum(1 for days_seen in visitor_days.values() if len(days_seen) >= 2)
 
@@ -659,9 +661,15 @@ def dashboard(days=30):
     average_events_per_session = round(len(rows) / len(sessions), 2) if sessions else 0
 
     platform_data = {}
-    for source in ["web", "android", "unknown"]:
+    known_sources = ["web", "installed_app", "android", "ios", "unknown"]
+
+    def normalized_source(row):
+        value = str(row.get("source") or "web").strip().lower()
+        return value if value in known_sources[:-1] else "unknown"
+
+    for source in known_sources:
         platform_rows = [
-            row for row in rows if (row["source"] or "web") == source
+            row for row in rows if normalized_source(row) == source
         ]
         platform_visitors = set()
         platform_sessions = set()
@@ -767,7 +775,9 @@ def dashboard(days=30):
         "unique_visitors": len(visitor_keys),
         "unique_sessions": len(sessions),
         "returning_visitors": returning_visitors,
-        "page_views": event_counts["page_view"],
+        "page_views": event_counts["page_view"] + event_counts["app_open"],
+        "browser_page_views": event_counts["page_view"],
+        "app_opens": event_counts["app_open"],
         "refreshes": event_counts["refresh"],
         "location_uses": event_counts["location_used"],
         "location_shares": event_counts["location_shared"],

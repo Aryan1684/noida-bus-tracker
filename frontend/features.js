@@ -611,6 +611,12 @@
                     return data;
                 });
             }).then(function(){
+                if(window.noidaBusAnalytics && window.noidaBusAnalytics.track) {
+                    window.noidaBusAnalytics.track("report_submitted", {
+                        bus_id: String(bus.bus_id || ""),
+                        report_type: String(type.value || "")
+                    });
+                }
                 status.textContent="Report submitted. Thank you.";
                 form.reset();
                 occupancyField.classList.add("hidden");
@@ -704,6 +710,12 @@
                     return data;
                 });
             }).then(function(){
+                if(window.noidaBusAnalytics && window.noidaBusAnalytics.track) {
+                    window.noidaBusAnalytics.track("feedback_submitted", {
+                        rating: String(rating.value || ""),
+                        feedback_type: String(type.value || "")
+                    });
+                }
                 form.reset();
                 modal.querySelector(".report-modal-card").innerHTML=
                     "<div class='feedback-result' role='status' aria-live='polite'>"+
