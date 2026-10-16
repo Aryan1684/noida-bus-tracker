@@ -5,6 +5,7 @@ import threading
 import time
 
 from fastapi import FastAPI, Query, HTTPException, Header, Response, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -122,9 +123,31 @@ app.add_middleware(
 
 
 @app.middleware("http")
-async def disable_api_caching(request, call_next):
+async def enforce_maintenance_and_disable_caching(request, call_next):
+    path = request.url.path
+    protected_paths = (
+        path.startswith("/api/buses"),
+        path in {"/api/routes", "/api/location-label", "/api/search-location"},
+    )
+    if any(protected_paths):
+        try:
+            maintenance = _maintenance_row()
+            if maintenance.get("enabled"):
+                response = JSONResponse(
+                    status_code=503,
+                    content={
+                        "maintenance": True,
+                        "message": maintenance.get("message") or "The tracker is temporarily unavailable during maintenance.",
+                        "expires_at": maintenance.get("expires_at"),
+                    },
+                    headers={"Retry-After": "30", "Cache-Control": "no-store"},
+                )
+                return response
+        except Exception:
+            pass
+
     response = await call_next(request)
-    if request.url.path.startswith("/api/buses"):
+    if path.startswith("/api/buses"):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
