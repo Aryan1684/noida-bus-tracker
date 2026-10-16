@@ -33,6 +33,33 @@ const BUS_ROUTES = {
     "UP80LT4120": "R1"
 };
 
+let maintenanceRedirecting = false;
+
+function monitorMaintenanceStatus() {
+    const check = async () => {
+        if (maintenanceRedirecting || window.location.pathname.endsWith("/maintenance.html")) return;
+        try {
+            const response = await fetch(API_BASE_URL + "/api/maintenance?_=" + Date.now(), {
+                cache: "no-store",
+                headers: { "Cache-Control": "no-cache" }
+            });
+            if (!response.ok) return;
+            const state = await response.json();
+            if (state.enabled && !maintenanceRedirecting) {
+                maintenanceRedirecting = true;
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
+                document.documentElement.style.visibility = "hidden";
+                window.location.replace("./maintenance.html");
+            }
+        } catch (_) {}
+    };
+    check();
+    window.setInterval(check, 5000);
+}
+
 function getBusRoute(busId) {
     return BUS_ROUTES[String(busId || "").trim().toUpperCase()] || null;
 }
@@ -170,6 +197,7 @@ document.addEventListener(
         initializeWarningModal();
         initializeTradeFairNotice();
         initializeTradeFairControls();
+        monitorMaintenanceStatus();
 
         const locationButton = document.getElementById("locationBtn");
         if (locationButton) {
