@@ -762,20 +762,25 @@ def dashboard(days=30, hours=None):
         if row["event_name"] == "place_search" and metadata.get("place"):
             search_counts[str(metadata["place"])] += 1
 
-    location_cells = Counter()
+    location_visitors = defaultdict(set)
 
     for row in rows:
         if row["event_name"] not in {"location_shared", "page_view", "app_open"}:
             continue
 
-        if row["coarse_lat"] is None or row["coarse_lon"] is None:
+        if row["coarse_lat"] is None or row["coarse_lon"] is None or not row["visitor_id"]:
             continue
 
         cell = (
             round(float(row["coarse_lat"]), 2),
             round(float(row["coarse_lon"]), 2),
         )
-        location_cells[cell] += 1
+        location_visitors[cell].add(row["visitor_id"])
+
+    location_cells = Counter({
+        cell: len(visitors)
+        for cell, visitors in location_visitors.items()
+    })
 
     safe_locations = [
         {
