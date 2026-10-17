@@ -1780,4 +1780,4 @@ body.dark .selected-bus-panel.panel-below::after{
   .selected-bus-panel{width:min(300px,calc(100% - 18px));padding:9px 10px 8px}
 }
 
-.namaste-welcome{text-align:center;padding:2px 0 16px}.namaste-art{display:block;width:112px;height:112px;object-fit:contain;margin:0 auto 12px;border-radius:16px}.namaste-welcome .eyebrow{margin-bottom:7px}.namaste-welcome h2{font-size:clamp(23px,4vw,30px);letter-spacing:-.8px;line-height:1.15;margin-bottom:2px}.tracker-disclosure-subtitle{font-size:16px;font-weight:850;margin:4px 0 8px}
+.namaste-welcome{text-align:center;padding:2px 0 16px}.namaste-art{display:grid;place-items:center;width:112px;height:112px;font-size:64px;line-height:1;margin:0 auto 12px;border-radius:28px;background:#e5f8f5}.namaste-welcome .eyebrow{margin-bottom:7px}.namaste-welcome h2{font-size:clamp(23px,4vw,30px);letter-spacing:-.8px;line-height:1.15;margin-bottom:2px}.tracker-disclosure-subtitle{font-size:16px;font-weight:850;margin:4px 0 8px}
