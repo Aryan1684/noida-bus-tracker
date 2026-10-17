@@ -1840,3 +1840,73 @@ body.dark .selected-bus-panel.panel-below::after{
  .tracker-disclosure-actions button{min-height:36px}
  .tracker-disclosure-footnote{margin-top:4px!important;padding-top:4px}
 }
+
+/* Welcome popup matching the Namaste design */
+.tracker-disclosure-modal{padding:18px;align-items:center;justify-content:center}
+.tracker-disclosure-card{position:relative;width:min(1120px,calc(100vw - 36px));max-height:calc(100dvh - 36px);overflow:auto;padding:24px 30px 18px;border-radius:26px;overscroll-behavior:contain}
+.tracker-disclosure-close{position:absolute;top:13px;right:16px;display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:50%;background:transparent;color:#525b65;font-size:28px;font-weight:400;line-height:1}
+.tracker-disclosure-close:hover{background:#eef0f3}
+.namaste-welcome{text-align:center;padding:0 0 14px}
+.namaste-art{display:block;width:190px;height:auto;object-fit:contain;margin:0 auto 4px;background:transparent;border:0;border-radius:0}
+.tracker-disclosure-card .namaste-welcome .eyebrow{font-size:10px;letter-spacing:2px;margin:2px 0 5px}
+.tracker-disclosure-card .namaste-welcome h2{font-size:clamp(25px,3.1vw,40px);font-weight:850;line-height:1.08;letter-spacing:-.045em;margin:0;color:var(--text)}
+.tracker-info-panel{padding:22px 24px;border:1px solid #dfe3e8;border-radius:20px;background:#f8f9fb}
+.tracker-info-row{display:grid;grid-template-columns:50px minmax(0,1fr);align-items:start;gap:14px}
+.tracker-info-icon{display:grid;place-items:center;width:42px;height:42px;color:#171a1e}
+.tracker-info-icon svg{width:34px;height:34px;display:block}
+.tracker-info-row h3{font-size:clamp(17px,2vw,26px);line-height:1.2;font-weight:850;letter-spacing:-.025em;margin:0 0 8px;color:#15181d}
+.tracker-disclosure-card .tracker-info-row p{font-size:clamp(13px,1.35vw,18px);line-height:1.5;color:#68727f;margin:0}
+.tracker-info-divider{height:1px;background:#dfe3e8;margin:16px 0}
+.tracker-info-secondary{align-items:center}
+.tracker-info-secondary .tracker-info-icon{color:#68727f}
+.tracker-disclosure-actions{grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.tracker-disclosure-actions button{min-height:58px;font-size:15px;font-weight:850;border-radius:14px;gap:9px}
+.tracker-disclosure-actions .button-primary{background:#15181d;border-color:#15181d}
+.tracker-disclosure-actions .button-secondary{background:#fff;border-color:#dfe3e8}
+.tracker-disclosure-footnote{margin:12px 0 0!important;padding-top:10px;border-top:1px solid #dfe3e8;font-size:11px!important;line-height:1.3!important;color:#737d89!important}
+@media(max-width:650px){
+ .tracker-disclosure-modal{padding:8px}
+ .tracker-disclosure-card{width:100%;max-height:calc(100dvh - 16px);padding:12px 13px 9px;border-radius:18px;overflow-y:auto}
+ .tracker-disclosure-close{top:6px;right:7px;width:28px;height:28px;font-size:24px}
+ .namaste-welcome{padding-bottom:7px}
+ .namaste-art{width:132px;margin-bottom:0}
+ .tracker-disclosure-card .namaste-welcome .eyebrow{font-size:8px;letter-spacing:1.15px;margin:2px 0 3px}
+ .tracker-disclosure-card .namaste-welcome h2{font-size:clamp(20px,5.4vw,27px);line-height:1.08;max-width:100%;padding:0 18px}
+ .tracker-info-panel{padding:12px 11px;border-radius:13px}
+ .tracker-info-row{grid-template-columns:28px minmax(0,1fr);gap:8px}
+ .tracker-info-icon{width:27px;height:27px}
+ .tracker-info-icon svg{width:25px;height:25px}
+ .tracker-info-row h3{font-size:14px;line-height:1.2;margin-bottom:5px}
+ .tracker-disclosure-card .tracker-info-row p{font-size:11px;line-height:1.35}
+ .tracker-info-divider{margin:9px 0}
+ .tracker-disclosure-actions{grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+ .tracker-disclosure-actions button{min-height:44px;font-size:11px;line-height:1.15;padding:0 6px;border-radius:10px;white-space:normal}
+ .tracker-disclosure-footnote{font-size:8.5px!important;margin-top:7px!important;padding-top:6px}
+}
+@media(max-width:380px){
+ .tracker-disclosure-card{padding:9px 10px 7px}
+ .namaste-art{width:108px}
+ .namaste-welcome{padding-bottom:5px}
+ .tracker-disclosure-card .namaste-welcome .eyebrow{font-size:7px;letter-spacing:.9px}
+ .tracker-disclosure-card .namaste-welcome h2{font-size:20px}
+ .tracker-info-panel{padding:9px}
+ .tracker-info-row{grid-template-columns:23px minmax(0,1fr);gap:6px}
+ .tracker-info-icon{width:23px;height:23px}
+ .tracker-info-icon svg{width:22px;height:22px}
+ .tracker-info-row h3{font-size:12px;margin-bottom:4px}
+ .tracker-disclosure-card .tracker-info-row p{font-size:10px;line-height:1.3}
+ .tracker-info-divider{margin:7px 0}
+ .tracker-disclosure-actions{gap:5px}
+ .tracker-disclosure-actions button{min-height:40px;font-size:10px}
+}
+@media(max-height:680px) and (max-width:650px){
+ .namaste-art{width:92px}
+ .tracker-disclosure-card{padding-top:6px;padding-bottom:5px}
+ .namaste-welcome{padding-bottom:4px}
+ .tracker-info-panel{padding:8px 9px}
+ .tracker-disclosure-card .tracker-info-row p{font-size:10px;line-height:1.25}
+ .tracker-info-divider{margin:6px 0}
+ .tracker-disclosure-actions{margin-top:6px}
+ .tracker-disclosure-actions button{min-height:36px}
+ .tracker-disclosure-footnote{margin-top:5px!important;padding-top:4px}
+}
