@@ -57,7 +57,7 @@ function monitorMaintenanceStatus() {
         } catch (_) {}
     };
     check();
-    window.setInterval(check, 5000);
+    window.setInterval(check, 15000);
 }
 
 function getBusRoute(busId) {
@@ -195,9 +195,7 @@ document.addEventListener(
         initializeRouteCatalog();
         initializeAppComingSoon();
         initializeWarningModal();
-        initializeTradeFairNotice();
-        initializeTradeFairControls();
-        monitorMaintenanceStatus();
+monitorMaintenanceStatus();
 
         const locationButton = document.getElementById("locationBtn");
         if (locationButton) {
@@ -308,76 +306,6 @@ document.addEventListener(
         }
     }
 );
-
-function initializeTradeFairNotice() {
-    localStorage.removeItem("tradeFairNoticeDismissed");
-    const notice = document.getElementById("tradeFairNotice");
-    const countdown = document.getElementById("tradeFairCountdown");
-    if (!notice || !countdown) return;
-
-    const start = new Date("2026-09-25T00:00:00+05:30");
-    const end = new Date("2026-09-30T00:00:00+05:30");
-
-    const update = () => {
-        const now = new Date();
-
-        if (now < start || now >= end) {
-            notice.classList.add("hidden");
-            return;
-        }
-
-        if (sessionStorage.getItem("tradeFairNoticeDismissed") === "true") {
-            notice.classList.add("hidden");
-            return;
-        }
-
-        notice.classList.remove("hidden");
-
-        const totalSeconds = Math.max(0, Math.floor((end - now) / 1000));
-        const days = Math.floor(totalSeconds / 86400);
-        const hours = Math.floor((totalSeconds % 86400) / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
-
-        countdown.textContent =
-            days + "d " +
-            String(hours).padStart(2, "0") + "h " +
-            String(minutes).padStart(2, "0") + "m " +
-            String(seconds).padStart(2, "0") + "s";
-    };
-
-    update();
-    setInterval(update, 1000);
-}
-
-function initializeTradeFairControls() {
-    const notice = document.getElementById("tradeFairNotice");
-    const closeButton = document.getElementById("tradeFairClose");
-    const routesButton = document.getElementById("tradeFairRoutesToggle");
-    const routes = document.getElementById("tradeFairRoutes");
-
-    if (!notice) return;
-
-    if (sessionStorage.getItem("tradeFairNoticeDismissed") === "true") {
-        notice.classList.add("hidden");
-    }
-
-    if (closeButton) {
-        closeButton.addEventListener("click", () => {
-            notice.classList.add("hidden");
-            sessionStorage.setItem("tradeFairNoticeDismissed", "true");
-        });
-    }
-
-    if (routesButton && routes) {
-        routesButton.addEventListener("click", () => {
-            const expanded = routesButton.getAttribute("aria-expanded") === "true";
-            routesButton.setAttribute("aria-expanded", String(!expanded));
-            routes.classList.toggle("hidden", expanded);
-            routesButton.querySelector(".trade-fair-chevron").textContent = expanded ? "⌄" : "⌃";
-        });
-    }
-}
 
 function initializeWarningModal() {
     const modal = document.getElementById("warningModal");
