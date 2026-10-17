@@ -4,7 +4,7 @@ import requests
 import threading
 import time
 
-from fastapi import FastAPI, Query, HTTPException, Header, Response, Request
+from fastapi import FastAPI, Query, HTTPException, Header, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
