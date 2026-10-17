@@ -1,6 +1,10 @@
+import hashlib
+import hmac
+import ipaddress
 import math
 import os
 import requests
+import secrets
 import threading
 import time
 
@@ -9,6 +13,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 from services.gps_service import get_cached_direct_live_buses, get_direct_bus_histories, refresh_direct_snapshot
@@ -27,31 +32,69 @@ _location_label_cache_lock = threading.Lock()
 _last_nominatim_lookup_at = 0.0
 LOCATION_LABEL_CACHE_SECONDS = 1800
 LOCATION_LABEL_CACHE_LIMIT = 300
-_ip_area_cache = {}
+IP_AREA_CACHE = {}
 _ip_area_cache_lock = threading.Lock()
 IP_AREA_CACHE_SECONDS = 6 * 60 * 60
+IP_AREA_MAX_LOOKUPS_PER_MINUTE = 30
+_ip_area_lookup_times = []
+_ip_area_cache_secret = secrets.token_bytes(32)
+MAINTENANCE_DEFAULT_MESSAGE = "We are making a few improvements. Please check back shortly."
+_maintenance_cache = {
+    "enabled": False,
+    "message": MAINTENANCE_DEFAULT_MESSAGE,
+    "updated_at": None,
+    "expires_at": None,
+}
+_maintenance_cache_lock = threading.RLock()
+_maintenance_schema_lock = threading.Lock()
+_maintenance_schema_ready = False
+_maintenance_refresh_stop = threading.Event()
+_maintenance_refresh_thread = None
+_maintenance_last_error = None
+MAINTENANCE_REFRESH_SECONDS = 10
 WEB3FORMS_FEEDBACK_KEY = os.getenv("WEB3FORMS_FEEDBACK_KEY")
 WEB3FORMS_REPORT_KEY = os.getenv("WEB3FORMS_REPORT_KEY")
 
 
 def approximate_ip_area(ip_address: str | None):
-    if not ip_address or ip_address in {"127.0.0.1", "::1", "unknown"}:
+    try:
+        parsed_ip = ipaddress.ip_address((ip_address or "").strip())
+    except ValueError:
         return None
-    now = time.time()
+
+    if not parsed_ip.is_global:
+        return None
+
+    normalized_ip = str(parsed_ip)
+    cache_key = hmac.new(
+        _ip_area_cache_secret,
+        normalized_ip.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    now = time.monotonic()
+
     with _ip_area_cache_lock:
-        cached = _ip_area_cache.get(ip_address)
+        cached = IP_AREA_CACHE.get(cache_key)
         if cached and now - cached[0] < IP_AREA_CACHE_SECONDS:
             return cached[1]
+
+        _ip_area_lookup_times[:] = [
+            timestamp for timestamp in _ip_area_lookup_times if now - timestamp < 60
+        ]
+        if len(_ip_area_lookup_times) >= IP_AREA_MAX_LOOKUPS_PER_MINUTE:
+            return None
+        _ip_area_lookup_times.append(now)
+
     try:
         response = requests.get(
-            "https://ipapi.co/" + requests.utils.quote(ip_address, safe="") + "/json/",
+            "https://ipapi.co/" + requests.utils.quote(normalized_ip, safe="") + "/json/",
             headers={"User-Agent": "NoidaBusTracker/1.0"},
-            timeout=2.5,
+            timeout=1.5,
         )
         if not response.ok:
             return None
         data = response.json()
-        if data.get("error") or not data.get("latitude") or not data.get("longitude"):
+        if data.get("error") or data.get("latitude") is None or data.get("longitude") is None:
             return None
         latitude = round(float(data["latitude"]), 2)
         longitude = round(float(data["longitude"]), 2)
@@ -59,9 +102,10 @@ def approximate_ip_area(ip_address: str | None):
             return None
         area = (latitude, longitude)
         with _ip_area_cache_lock:
-            if len(_ip_area_cache) > 1000:
-                _ip_area_cache.clear()
-            _ip_area_cache[ip_address] = (now, area)
+            if len(IP_AREA_CACHE) >= 1000:
+                oldest_key = min(IP_AREA_CACHE, key=lambda key: IP_AREA_CACHE[key][0])
+                IP_AREA_CACHE.pop(oldest_key, None)
+            IP_AREA_CACHE[cache_key] = (now, area)
         return area
     except (requests.RequestException, ValueError, TypeError):
         return None
@@ -130,21 +174,17 @@ async def enforce_maintenance_and_disable_caching(request, call_next):
         path in {"/api/routes", "/api/location-label", "/api/search-location"},
     )
     if any(protected_paths):
-        try:
-            maintenance = _maintenance_row()
-            if maintenance.get("enabled"):
-                response = JSONResponse(
-                    status_code=503,
-                    content={
-                        "maintenance": True,
-                        "message": maintenance.get("message") or "The tracker is temporarily unavailable during maintenance.",
-                        "expires_at": maintenance.get("expires_at"),
-                    },
-                    headers={"Retry-After": "30", "Cache-Control": "no-store"},
-                )
-                return response
-        except Exception:
-            pass
+        maintenance = get_cached_maintenance_settings()
+        if maintenance.get("enabled"):
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "maintenance": True,
+                    "message": maintenance.get("message") or "The tracker is temporarily unavailable during maintenance.",
+                    "expires_at": maintenance.get("expires_at"),
+                },
+                headers={"Retry-After": "30", "Cache-Control": "no-store"},
+            )
 
     response = await call_next(request)
     if path.startswith("/api/buses"):
@@ -157,11 +197,16 @@ async def enforce_maintenance_and_disable_caching(request, call_next):
 @app.on_event("startup")
 def startup_live_gps_collector():
     start_collector()
+    start_maintenance_status_refresh()
 
 
 @app.on_event("shutdown")
 def shutdown_live_gps_collector():
     stop_collector()
+    _maintenance_refresh_stop.set()
+    worker = _maintenance_refresh_thread
+    if worker and worker.is_alive():
+        worker.join(timeout=1)
 
 
 @app.get("/")
@@ -227,17 +272,33 @@ def _ensure_maintenance_table(connection):
         connection.execute("INSERT OR IGNORE INTO maintenance_settings (id, enabled) VALUES (1, 0)")
 
 
+def _ensure_maintenance_schema_once(connection):
+    global _maintenance_schema_ready
+    if _maintenance_schema_ready:
+        return
+    with _maintenance_schema_lock:
+        if _maintenance_schema_ready:
+            return
+        _ensure_maintenance_table(connection)
+        connection.commit()
+        _maintenance_schema_ready = True
+
+
 def _maintenance_row():
     init_analytics_db()
     connection = analytics_connect()
     try:
-        _ensure_maintenance_table(connection)
-        connection.commit()
+        _ensure_maintenance_schema_once(connection)
         with connection.cursor() if ANALYTICS_DATABASE_URL else _sqlite_cursor(connection) as cursor:
             cursor.execute("SELECT enabled, message, updated_at, expires_at FROM maintenance_settings WHERE id = 1")
             row = cursor.fetchone()
         if row is None:
-            return {"enabled": False, "message": "We are making a few improvements. Please check back shortly.", "updated_at": None, "expires_at": None}
+            return {
+                "enabled": False,
+                "message": MAINTENANCE_DEFAULT_MESSAGE,
+                "updated_at": None,
+                "expires_at": None,
+            }
         enabled, message, updated_at, expires_at = bool(row[0]), row[1], row[2], row[3]
         now_ms = int(time.time() * 1000)
         if enabled and expires_at is not None and int(expires_at) <= now_ms:
@@ -248,13 +309,64 @@ def _maintenance_row():
                 connection.execute("UPDATE maintenance_settings SET enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE id = 1")
             connection.commit()
             enabled = False
-        return {"enabled": enabled, "message": message, "updated_at": str(updated_at), "expires_at": int(expires_at) if expires_at is not None else None}
+        return {
+            "enabled": enabled,
+            "message": message,
+            "updated_at": str(updated_at) if updated_at is not None else None,
+            "expires_at": int(expires_at) if expires_at is not None else None,
+        }
     finally:
         connection.close()
 
 
+def get_cached_maintenance_settings():
+    with _maintenance_cache_lock:
+        state = dict(_maintenance_cache)
+    expires_at = state.get("expires_at")
+    if state.get("enabled") and expires_at is not None and int(expires_at) <= int(time.time() * 1000):
+        state["enabled"] = False
+        with _maintenance_cache_lock:
+            _maintenance_cache["enabled"] = False
+    return state
+
+
+def refresh_maintenance_cache():
+    global _maintenance_last_error
+    try:
+        state = _maintenance_row()
+    except Exception as error:
+        error_type = type(error).__name__
+        if _maintenance_last_error != error_type:
+            print(f"Maintenance status refresh failed: {error_type}", flush=True)
+            _maintenance_last_error = error_type
+        return get_cached_maintenance_settings()
+
+    _maintenance_last_error = None
+    with _maintenance_cache_lock:
+        _maintenance_cache.update(state)
+    return dict(state)
+
+
+def _maintenance_status_refresh_loop():
+    while not _maintenance_refresh_stop.wait(MAINTENANCE_REFRESH_SECONDS):
+        refresh_maintenance_cache()
+
+
+def start_maintenance_status_refresh():
+    global _maintenance_refresh_thread
+    _maintenance_refresh_stop.clear()
+    refresh_maintenance_cache()
+    if _maintenance_refresh_thread is None or not _maintenance_refresh_thread.is_alive():
+        _maintenance_refresh_thread = threading.Thread(
+            target=_maintenance_status_refresh_loop,
+            name="maintenance-status-refresh",
+            daemon=True,
+        )
+        _maintenance_refresh_thread.start()
+
+
 def read_maintenance_settings():
-    return _maintenance_row()
+    return get_cached_maintenance_settings()
 
 
 class _sqlite_cursor:
@@ -275,7 +387,7 @@ def write_maintenance_settings(enabled: bool, message: str | None, duration_minu
         clean_message = "We are making a few improvements. Please check back shortly."
     expires_at = int(time.time() * 1000) + int(duration_minutes or 60) * 60 * 1000 if enabled else None
     try:
-        _ensure_maintenance_table(connection)
+        _ensure_maintenance_schema_once(connection)
         if ANALYTICS_DATABASE_URL:
             with connection.cursor() as cursor:
                 cursor.execute("""
@@ -300,7 +412,14 @@ def write_maintenance_settings(enabled: bool, message: str | None, duration_minu
         connection.commit()
     finally:
         connection.close()
-    return read_maintenance_settings()
+    with _maintenance_cache_lock:
+        _maintenance_cache.update({
+            "enabled": bool(enabled),
+            "message": clean_message,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": expires_at,
+        })
+    return get_cached_maintenance_settings()
 
 
 @app.get("/api/maintenance")
@@ -409,8 +528,7 @@ class AnalyticsLocation(BaseModel):
 def analytics_event(payload: AnalyticsEvent, request: Request):
     approximate_area = None
     if payload.event_name in {"page_view", "app_open"}:
-        forwarded_for = request.headers.get("x-forwarded-for", "")
-        client_ip = forwarded_for.split(",")[0].strip() if forwarded_for else (request.client.host if request.client else None)
+        client_ip = request.client.host if request.client else None
         approximate_area = approximate_ip_area(client_ip)
     accepted = record_event(
         payload.event_name,
