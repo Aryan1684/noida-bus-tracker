@@ -385,6 +385,7 @@ function initializeWarningModal() {
 
     const acceptButton = document.getElementById("warningAcceptBtn");
     const feedbackButton = document.getElementById("warningFeedbackBtn");
+    const closeButton = document.getElementById("warningCloseBtn");
 
     modal.classList.remove("hidden");
 
@@ -394,6 +395,10 @@ function initializeWarningModal() {
 
     if (acceptButton) {
         acceptButton.addEventListener("click", close);
+    }
+
+    if (closeButton) {
+        closeButton.addEventListener("click", close);
     }
 
     if (feedbackButton) {
