@@ -1781,3 +1781,62 @@ body.dark .selected-bus-panel.panel-below::after{
 }
 
 .namaste-welcome{text-align:center;padding:2px 0 16px}.namaste-art{display:grid;place-items:center;width:112px;height:112px;font-size:64px;line-height:1;margin:0 auto 12px;border-radius:28px;background:#e5f8f5}.namaste-welcome .eyebrow{margin-bottom:7px}.namaste-welcome h2{font-size:clamp(23px,4vw,30px);letter-spacing:-.8px;line-height:1.15;margin-bottom:2px}.tracker-disclosure-subtitle{font-size:16px;font-weight:850;margin:4px 0 8px}
+
+/* Compact monochrome welcome disclosure */
+.namaste-welcome{text-align:center;padding:0 0 7px}
+.namaste-art{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;width:100%;height:auto;margin:0 auto 5px;background:transparent;border-radius:0;color:#111}
+.namaste-art svg{display:block;width:68px;height:54px;overflow:visible}
+.namaste-word{font-family:"Brush Script MT","Segoe Script",cursive;font-size:22px;font-style:italic;line-height:1;color:#111;margin-top:-1px}
+.namaste-welcome .eyebrow{font-size:9px;letter-spacing:1.3px;margin:6px 0 3px}
+.tracker-disclosure-card .namaste-welcome h2{font-size:clamp(21px,3vw,26px);line-height:1.1;letter-spacing:-.045em;margin:3px 0 0}
+.tracker-disclosure-note>.eyebrow{font-size:9px;letter-spacing:1.2px}
+.tracker-disclosure-subtitle{font-size:15px;line-height:1.2;font-weight:850;margin:2px 0 4px;letter-spacing:-.025em}
+.tracker-disclosure-card p:not(.eyebrow){font-size:12px;line-height:1.45;margin:6px 0;color:var(--muted)}
+.tracker-disclosure-note p:not(.eyebrow){margin:5px 0}
+.tracker-collab-compact{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:9px 0 0;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface2);font-size:11px;color:var(--muted)}
+.tracker-disclosure-card .tracker-collab-compact .tracker-collab-link{display:inline-flex;width:auto;min-height:0;margin:0;padding:0;border:0;background:transparent;color:var(--text);font-size:11px;font-weight:850;text-decoration:underline;text-underline-offset:3px}
+.tracker-disclosure-actions{margin-top:10px;gap:8px}
+.tracker-disclosure-actions button{min-height:42px;font-size:11px;padding:0 9px}
+.tracker-disclosure-footnote{margin:8px 0 0!important;padding-top:7px;font-size:9px!important;line-height:1.3!important}
+.tracker-disclosure-card{width:min(600px,100%);max-height:calc(100dvh - 32px);overflow:auto;padding:20px 24px 14px;overscroll-behavior:contain}
+@media(max-width:520px){
+ .tracker-disclosure-modal{padding:8px;align-items:center}
+ .tracker-disclosure-card{width:100%;max-height:calc(100dvh - 16px);overflow-y:auto;padding:11px 13px 9px;border-radius:16px}
+ .namaste-welcome{padding-bottom:3px}
+ .namaste-art svg{width:52px;height:41px}
+ .namaste-word{font-size:18px}
+ .namaste-welcome .eyebrow{font-size:8px;letter-spacing:1px;margin:3px 0 2px}
+ .tracker-disclosure-card .namaste-welcome h2{font-size:21px;line-height:1.08;margin:2px 0 0}
+ .tracker-disclosure-note>.eyebrow{font-size:8px;letter-spacing:1px}
+ .tracker-disclosure-subtitle{font-size:13px;margin:1px 0 3px}
+ .tracker-disclosure-card p:not(.eyebrow){font-size:11px;line-height:1.35;margin:4px 0}
+ .tracker-disclosure-note p:not(.eyebrow){margin:4px 0}
+ .tracker-collab-compact{margin-top:6px;padding:6px 8px;gap:4px 8px;font-size:10px}
+ .tracker-disclosure-card .tracker-collab-compact .tracker-collab-link{font-size:10px}
+ .tracker-disclosure-actions{grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+ .tracker-disclosure-actions button{width:100%;min-height:40px;font-size:10px;line-height:1.1;padding:0 5px;border-radius:9px;white-space:normal}
+ .tracker-disclosure-footnote{margin-top:6px!important;padding-top:5px;font-size:8px!important}
+}
+@media(max-width:360px){
+ .tracker-disclosure-card{padding:9px 10px 8px}
+ .namaste-art svg{width:44px;height:35px}
+ .namaste-word{font-size:16px}
+ .tracker-disclosure-card .namaste-welcome h2{font-size:19px}
+ .tracker-disclosure-card p:not(.eyebrow){font-size:10.5px;line-height:1.3}
+ .tracker-disclosure-subtitle{font-size:12px}
+ .tracker-disclosure-actions button{font-size:9px}
+ .tracker-collab-compact{font-size:9.5px}
+}
+@media(max-height:620px) and (max-width:520px){
+ .tracker-disclosure-card{padding-top:7px;padding-bottom:6px}
+ .namaste-art svg{width:38px;height:29px}
+ .namaste-word{font-size:15px}
+ .namaste-welcome .eyebrow{margin:2px 0}
+ .tracker-disclosure-card .namaste-welcome h2{font-size:18px}
+ .tracker-disclosure-card p:not(.eyebrow){font-size:10px;line-height:1.25;margin:3px 0}
+ .tracker-disclosure-subtitle{font-size:11px}
+ .tracker-collab-compact{margin-top:4px;padding:4px 7px}
+ .tracker-disclosure-actions{margin-top:5px}
+ .tracker-disclosure-actions button{min-height:36px}
+ .tracker-disclosure-footnote{margin-top:4px!important;padding-top:4px}
+}
