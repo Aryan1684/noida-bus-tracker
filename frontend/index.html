@@ -41,7 +41,7 @@
       })();
     </script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="style.css?v=17">
+    <link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
     <header class="topbar">
@@ -354,7 +354,7 @@
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="app.js?v=44"></script>
+    <script src="app.js?v=45"></script>
     <script src="analytics.js?v=4"></script>
     <script src="features.js?v=26"></script>
     <script src="server-history.js?v=1"></script>
@@ -398,6 +398,10 @@
                 <button id="warningAcceptBtn" class="button button-primary" type="button">Continue to tracker <span aria-hidden="true">→</span></button>
                 <button id="warningFeedbackBtn" class="button button-secondary" type="button">Feedback &amp; suggestions</button>
             </div>
+            <label class="tracker-warning-preference" for="warningDontShowAgain">
+                <input id="warningDontShowAgain" type="checkbox">
+                <span>Don’t show this notice again</span>
+            </label>
             <p class="tracker-disclosure-footnote">Independent project · Not affiliated with UPSRTC or any government department.</p>
         </div>
     </div>
