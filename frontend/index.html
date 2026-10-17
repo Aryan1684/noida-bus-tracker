@@ -41,7 +41,7 @@
       })();
     </script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="style.css?v=13">
+    <link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
     <header class="topbar">
@@ -354,50 +354,47 @@
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="app.js?v=43"></script>
+    <script src="app.js?v=44"></script>
     <script src="analytics.js?v=4"></script>
     <script src="features.js?v=26"></script>
     <script src="server-history.js?v=1"></script>
     <script src="theme.js?v=9"></script>
 
-    <div id="warningModal" class="tracker-disclosure-modal hidden" role="dialog" aria-modal="true" aria-labelledby="trackerDisclosureTitle">
+        <div id="warningModal" class="tracker-disclosure-modal hidden" role="dialog" aria-modal="true" aria-labelledby="trackerDisclosureTitle">
         <div class="tracker-disclosure-card">
-            <div class="namaste-welcome">
-                <div class="namaste-art" role="img" aria-label="Black and white line artwork of folded hands with a Namaste greeting">
-                    <svg viewBox="0 0 120 100" aria-hidden="true" focusable="false">
-                        <g fill="#fff" stroke="#111" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M60 8 C56 8 54 11 54 15 L54 31 L49 15 C48 11 44 10 42 13 C40 15 41 18 42 21 L48 38 L38 22 C36 19 32 19 30 22 C28 24 30 28 32 31 L44 48 L34 39 C31 36 27 38 27 41 C27 43 29 46 31 49 L43 64 C47 68 49 73 49 78 L42 85 L51 92 L60 83 Z"/>
-                            <path d="M60 8 C64 8 66 11 66 15 L66 31 L71 15 C72 11 76 10 78 13 C80 15 79 18 78 21 L72 38 L82 22 C84 19 88 19 90 22 C92 24 90 28 88 31 L76 48 L86 39 C89 36 93 38 93 41 C93 43 91 46 89 49 L77 64 C73 68 71 73 71 78 L78 85 L69 92 L60 83 Z"/>
-                        </g>
-                        <g fill="none" stroke="#111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M54 14 L54 30 M45 17 L51 35 M34 24 L47 43 M31 41 L42 52 M49 77 L55 81"/>
-                            <path d="M66 14 L66 30 M75 17 L69 35 M86 24 L73 43 M89 41 L78 52 M71 77 L65 81"/>
-                            <path d="M42 85 L51 89 M78 85 L69 89"/>
-                            <path d="M60 8 L60 83" stroke-width="1.8"/>
-                        </g>
-                    </svg>
-                    <span class="namaste-word">Namaste</span>
-                </div>
+            <button id="warningCloseBtn" class="tracker-disclosure-close" type="button" aria-label="Close welcome notice">×</button>
+            <header class="namaste-welcome">
+                <img class="namaste-art" src="data:image/webp;base64,UklGRmgTAABXRUJQVlA4TFwTAAAvScFAEJ8hFkx252+dwCiMgoK0DVjY7iTo4wO8W9v2Ns22betxSHKhQyihQxpwhpp1/qfu2A9ZtrHx9euK6P8E8H///9//X1vLveLEcnPTWgWrGxvr23c1NzSnPXo3mxlDXqIzgp8bHSIiNzJddM5jAecbnNto9skmxqGvN0huYLaip3Hl92hz8xwBEVxGzebFWQ7hOtrZ5JwW9Pi9cdnuM62cR25c7JMrkw3PP4AKlfGGhh65q11vWMbqfb/cds1u5IblUb3VhlRJbdOgvm1ejMldG5FT5peeqc3G5VDvaUYtbZAA9Id6ulGZqp0SbAeh8UblQz2qfe9zoeebFvWXRTvqeOmDZrXdoByqU70nTXa3klGK9tQfGxTVRjMJoBLqX9XNypsKqPfB7vH7Q+BIHW9MbtSp7oCzTkBRHzYmRvBzJos71U1JW9wVzv7AD31QdzYk/6nbKmdqonKQVEEn6seGRBX9xrvaQvAf4yKhh6qbka3ip4LqeSUzKVrUD3W6EVFtrZ3AWwEUUz4U9XVjgv6hK4DzXndMNKluQvaKU018r+xUnlRBH4qdDYjqiQqqE2CiPkCi5lR1Q9L2ABirtzRt5Vop8sZjWtzoNak2UW/yeJL+C9D74mjj8UN9USGrN6lJwXWejPOOmgp/q+8bD9UfwbE67sYt2+pNmowz6rfgUHXTkQv1HFQZTTq21Esmo+ARGuN2w7FboYkm04499ZpxlwqByvGGw1rK6mUaTztu1Ee6Fp5mcEOyw1Tt0njSYUnOsKMmtjYjuSa/VNJo3FZIgHrCTW1/o/FPfSw+dixyO2pqpSr5TP2putFQ/Vmwp/5Hato8wJbqbZE3GNfqneorqnuQZ9lR9/nv3vh8g6G6rT8gAFIzA+oNNGqrurnYKZ6VygmkdgAh7epu0WwsVJN9hNzlUZACIzC+2VS0BXoG/Aw6gLOgKx56vOqW6qbiWT3/owCWE0rDb8V5sA1MtCv2NxNZFXudFePIgj+FAPpWuJm4K1q9qlwdtoXVy8JebhUdafOQVCcqQKMS71VOii5dqAn40FzcbCL2CypXfWiDKVX1DBjpn3tVNpCqf7f1hiZhr0nQ9RJApdjfPDQFKimT1MfaXjCd7V1T4ebhpQewpW7XjoKt2pM6AtAfW0XeOKhyoE3xqFL/PstYvYSESvG8aXhQ31Ap7fc7OKmhCrCtuVPdNKiCUjYzGD4NgO5RPG0WVF/hx35woh7NZI9HtSnwFVS/Emn5moKe/1TmgHoRnP6M/EJ8gqpnfex3VvnVT0jERfsJjJ6314GpTpYtF/TcVUc9niv2uFIT9cJPQD1cA1TTkv2nHvRRpefhz+DmpAfq3x4UeeksV12OXDJVep6rXR/GAb2v1FoKzpbtvvi36qj8WKpxsXVRUz/o3QyA+lIBVJcqgyVr4LhwqY7ViVZUmbH4N0NWU5RcvoRrA4F0y3OvEuRMq46GuOmXUIUGaL0rmmUiB6yHwZTl/a2OgqbhXV8Y4qQfCbUjA+g/tV0qy5/kNaDhtnCJfqknQc6opCG+zQDnekeo78s2DlgXg/PluVYvgkRTzDwMaq1slslyvDZQuDwn6mUAre4Ocz63vDSZg4D18a54Wpp99abSKcP8nO1YUy+W2JJ1shDScmyrvzUV48GcDW2LZunOi1PyGpEKWdKp+q5dMRpib7iu2Fk6S+barhyui62lSIwMp0Xj/WwO9SM6889yXRQM3cJYvfmM/juCNByFSwG5uHGv4GN3qLPZDmyLn16q/5ZH9WSgBGPDz+ev6i20aSiKW9IyUOz6LZgw82n0d7buOhWvnqgPS9JyV5CGSB0Yjz8f43tohzpTJS9N9jgYcG9SvO/ORqb88Jt6vySgyqANPBjzCW9FegDtEClTvNIsCx4NBcUNg794oV4ty616PkTTkI33+Zwrugt5tlKVpQyeDudzPdzv95/q2bKoMqzxI5/2TkUz5CG21afluZ/T6XCX98/q0ZLsqszewJ1xw2d+UFGGvVaX53hnPvvDHRyo7i+JOiXNRDbe5rOfVHQQ3vRyaUjz2RpuRLG3NH9I9O/AeI9V2FV0CNTlmWMxHi4Fu0vDjBm+G16yKtuKlwM0d9vLkufVDpeDvSWZuQPDX6zSJtJMmmFJC+aVh0vBwWeQ4MbyI7FqXwOF5hNJc0jzOvoMwPItQ1o18Bi4z+eRnvYXLQG8q8efwXfV/1jZN4V+HiMPh2uGufxTXKlXn8COegukVQU7/1Svlmxce7AZbjTMgwnYVl8/genfS1b/vrpkFzVluMkw1+4BqH4C62K3vWRWDuayNcxIa+mrsPTFFqC/hknF3jD02d0MbBfAWBm2LQ4He6s8bwasONh2cTrQvgKobgT+Fi3cKwMfFzcDoVbOv3yZc0tAfw91XTwPdaoH8FP1y8e9ZQsqQ78VDoUKFEL7pTP8D1QGdz6osFd4zNqemzYvXs459XkwhkdlXmkw9Cc8FQpd/gRS23ZNWi1xO9n9dn+5OP1PrUJS5jYZDgVeA79DU0spLdKx4c+LfVZvd2Pv40V5Ut0J/lj9DdAxx3F0PAc6gPtA9yE1OScW/SDq+XHTrYR/DpgX4936lT33mPtt9D6PeDvSH5TjB9Xp4tCc/OpXnn96f5z13ymL6qB/WECr84OK+mLPMSkvRnzy0svP7pu9/xyyoDcO/IeFrKUFYLfW/5WF3/m9KrYrT8eZOM0lZ5ja97TXFYs5ru0tAhwNUb4CaTEScXPy29fRZ8fWr4st5p5SSgHs2ht77rGojzUXA3aHUS9YX1OaS33fGdmvPACkBXHhYPrSoznqoYeQ81oyx3HT7Fy9OOg/XoJTFjkXb6nYWxjgtiI/++ghZW5ySmvRnkM+RAnVMYv9XDQULk4Ctj+Cc/qp96zR+XG2I44iin+kxbJk0apXqrOF/51M1qJycnzz589TdApYaVUX7E9xDBQuGsFutPOzV/1yDSqT5RmMc48cLLYlte3FShHRMwzwtr0GpQy7zy/HALmjB4tnuV9QuFjMIPB7hjPW8TxLWiBDwh+FS0YufrPON7PkxXkOqAYuUaY8VA+/Bn+LtBgZni0PagRCWph2himQALa6dS71OCsWM4HhLT2ngdAsyg/1pccOX0P1MdhRr8nzawDD3/Q+DGRhVS+YqH+/FodBVqWdVwLeDG+Y8Tjwv0Xa5US9USdfB9RDWIQW+Gu8zczbgZ4AaW5NAS/qpZq+FsKdus28rTNopD+Yv5HqlcoX8UePVnW4x1vAembgnUifgZ12uBT8iq6/EDvafSsy81DB6kdmjt8i/Qt6MFBmXIyC07/631cBfaGAY/V5kJG6ZfWOee9GerejDtNgCUcq6sGX4UOL34DqEKrvxmcs5J9AL9T7IQhuwQpfxl3luwpcqlez2feKhX0I4iEsU/D0tUB3iFAl9du35xML/dxDSEM8wanaZr35Qhwr7ypwokrvN3uOIC9OgnEPj5jxowBUeVe+kkoTUexWEtjzBjILneC65q8+CVR/klv1Db8YE7+hCuyoRhnsCSmx6Alq2iNjCahuoeMvBYc/adVd4EWVybjrwPpvSCzndc0ax8VFBZUv5hSeVRIUMpmA9TGZpe1q1iwB1WN0+tUoVUlQCDtW71nymlt0XYclMCpofeQreqbek5kWfW9o0nJxU/GWDsszQDXTjfiaqh7ScThDToll/1ZRDIF79YMvrGoCdvvxGfaIgakqX9mRKkDzuQGoPn1pOFel/MwALPnivqpeADxU+HQALLuvDoUeUD58Hk2Pb8DI8pSvb6A+f1jySUZ/DgF+Wj4z93+O1p6rx6O5NIlKPPksCACOjJm76vqSgHfj4RrY79fwaZ4UvZm75dbawq59x0Oxb/VVPeIzPe53xNwPAtbVzhkH2rPOZ9zL+bnWOPPfIX5ZP+Nzzg89vJ3TfnC4nhw7IHmGXXse8rnfBgqk4QxZS+35AzgIEqnPtvUdPvvEdqRAHmg7OCatH2Prp5Q5OCL3OYv+2wGa9LmR4UekQDOIIWvID6s/qQbH/Xp2rMibSEcM2QWnrJ/Wqedgb5acghWZge1I92ZqMWTNzGD1gp77QUPqk4Ab1b3VUP0W6G2/RA6u1g2w2tD3LqBvhmT1Y5UAR4XbvTKGrJ1W6e9MGez7Y5Ukyu2rthfRI3uTvFYY/2JOnNl/lQya+Bewbhof0/TLwUslgbNerzYwfLN+vhYY79A/cx9MKuDspJXUjfL4/J+D5lWXwXiX1C9hSDVbB1aZ81x5YLxFYsY0w5ZVINealZNxnmesfONdZr8NTqNt4z1Gk5bV1Q30erXbpczqP4vOGdCQrgGmxtA2GdLKyjzMwjrZGn7QDbc9GbFt+AsS5U5wT145wIf+/b7PRQCTcdekNcGYzOw/ghu6EbuGu9Tvg8zqThhNRpl18TRiUENIdIYNPQ1Jq6kbjyZpEuyQWB8ND0gDpEoGQ+qJVFnViRZD1snjiIaZE3+DEWAIucf3gBXeRL/WCsOc02xgCBhCoqerLrMdsIYw6H5wA89BS6LnaDX99LXt4dri7RCGcGp5QP9/wdZK2TX8FxF963Oqvq0HzqGzvGdGQ/IKebUeXQXUz43PVxrR6wCnwQ6GpH7fgyeaVZGwbxdY/keK7Lm30njQfYY0xJBMf0M+553DbgCeex33aUi5sDftKhu6CfbfAvonxpX8+RwY7vOoT32S8Z9iWlwFkLsGnCHXTt7S6slpgIb3YMeSGTM/gp98uskZL3sYHkBBaXkONAnjR6ImSOzrx+oZ2PLZ8mAWMGQhr1PtUX/N68iZZzkl2KJrK4QPEVRy0TBV30mrL3EdhI+0s3QDdK/qG6DTXjvqW/BoWOtU21l+OPNV7TIA+OkuuR1x3WfPELCcUDaMVFkP7Utm1ovgoMeR/ds+loV1GE/AeNrvzdmp/y1+FXGL5T0JMAQMKROonpLWgYs+DGhI3Vn3e/yo7NirobPe69VqRxv9IlWuisc+ROM0HvERjMGQMoEl66E9twdoKinonDn1MLqxH1v2zJXEnTFMp0TPxC2Gvc4DpjttZ7nHq2EqMliyDiZOevyhme0yaGjaDNvOvE99P+Da3h1b9m0q7Bq+wGiK8SRquBrAaDTFGTtiy8k6kDL2pGV2Q2hHDVPrHxV6Gk4NdwjA3qlm+ERplTCxZfyblPodkJgFIAGWJ6yHOz0YtEYiWQWI7ms5aAyhYggBVWMSicfKaZDA+gHVFEDiqdd/VC1vWROtnw2QOA4ypfEWgPFx7SKIqcVwUTwUKaX9iDzd5c4qQGrBvqPKUw/7Urf8xdpBng0MKY1hkrioULcvs5B4K6YFDYaQx5zbD7A8JxDICSzPgB6P1E8tb1gXn2rkNJ+ziG53i4nxn5p9KbsetB2WxP8FV5A4tH5Kk6CxfE2VY7quSxHAUfAfQAISGH5nbbS6y6AnwR4JDAmtUv3dh1ECzmvQtpXUJsAQOvbtOWE6ZscQppF0kym1xGVAHnUZMuwYHrM2XtQY9ilg0mI4DeyRUwKu7ZlHXZvBKpBy8E4zHoPhdyYcW94FTcrcWL6D9bbZ2uZHBS6iZtSNugzGJzTrQQKrDGzUMY0YJbB+zmjcwYE9v5NzTj3uCIsz0ojGuIN7Q4KWzvCdHXt+Y2sby9tiL7glvDPeYl3MTCq/yIO0wR3wErC93WJPaEcNe/alWqHPFNgz/gPGRD35qXpMcNVjvyDwcWv72jrrpFUGPg0ALH+RwfAmAu7sS45Oo61eB/DT+pMx7SzcqI7psRUBpErvf6wj20P9jhInAYAhHzV735AiY0g9/OWA5FG/F8aqtzTRPpNJLQF5phFrpVWGNoLXSmcIRrv2px5RDwa8hpxbehyBJWBInnQ5SpTf+p2yZlaYz2/A8oJXQyr102hSOwh+DTKlxw7xuAK5smt4TTNqun5MeuyzXiaeoyfyQDtBV6uPgYdeu0TUbwL61qAHfW/9uwc0RHUg08wAzf3z092ENdSYlAZJnAWkWVoSbPeB+4Cek+K8F8FPyqBh9gxpBgJmquY1I/MrOmbgzG3UzJAIewCWj33Y11tmPRgxx5QoZ8hFSoOtn8YM96fHYQ/qEWXA51h7J058BGvvSbQ3WOKxB2/RNakGJ8fEh+r+J8FV8Zfexe7aY8wcnvpwrt5DZtgtD/i879THdaeJWtJQmT9RLsLECkwpzcKL7q83CWNGDJ24miWxsYwS89yPUmVTmbmMmGvejIAhcw72SBuSNJ/DQjadpwFzD9x0bBUvpHltBT5sNihYwOPADQdbeyzmRmRxD7zjf6HNaLq1vb2z++2s/H5+cXF5eXV1fXt3d3d7d3t7c3N1fnK4vzv5MuRPo93ZPzy5fXx3qV+ffl2fTNa3pW62j28e//lJf1w0X6Hxt/u//1yBT1+HNNN4//z3u6v0+ezrUB0f3vx1yZ9vjrbHma926rV38duFf3+6/74/Zp4p5ZybpslxSiRIX5NydHDx5ML+vT/baRg8AWmWL3N7ePfsIv69OeqYMeWcchrgiz76/td5P3zfYuM5ufrnHJ/Ox/TNucmbiu7WgV9uDzIb1L0Ph3w46ajnpskbkO2/zvrnsKWeUrQZPbTn94Z60zS52Kye6b+zxCa56dr89QE=" alt="Black line-art Namaste with folded palms and cursive lettering" width="220" height="174">
                 <p class="eyebrow">WELCOME TO NOIDA BUS TRACKER</p>
                 <h2 id="trackerDisclosureTitle">Namaste! Welcome aboard.</h2>
-            </div>
-            <section class="tracker-disclosure-note" aria-labelledby="trackerDisclosureNoteTitle">
-                <p class="eyebrow">LIVE DATA & ESTIMATES</p>
-                <h3 id="trackerDisclosureNoteTitle" class="tracker-disclosure-subtitle">A quick note before you track</h3>
-                <p>Bus positions come from the MARGDARSHI · UPSRTC feed when available. Directions and likely last stops are estimates from GPS history and mapped routes, not official dispatch details.</p>
-                <p>Some buses may be missing due to feed gaps or weak GPS history. Predictions can be wrong near turns, diversions, or route changes.</p>
+            </header>
+            <section class="tracker-info-panel" aria-labelledby="trackerDisclosureNoteTitle">
+                <div class="tracker-info-row">
+                    <div class="tracker-info-icon" aria-hidden="true">
+                        <svg viewBox="0 0 32 32"><path d="M7 25V8.5C7 6.6 8.6 5 10.5 5h11C23.4 5 25 6.6 25 8.5V25M7 11h18M7 20h18M11 25v2m10-2v2M11 14h10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11" cy="24" r="1.3" fill="currentColor"/><circle cx="21" cy="24" r="1.3" fill="currentColor"/></svg>
+                    </div>
+                    <div>
+                        <h3 id="trackerDisclosureNoteTitle">A quick note before you track</h3>
+                        <p>Bus locations come from the MARGDARSHI · UPSRTC feed when available. Directions and likely last stops are estimates from recent GPS points and mapped routes, not confirmed dispatch information.</p>
+                    </div>
+                </div>
+                <div class="tracker-info-divider"></div>
+                <div class="tracker-info-row tracker-info-secondary">
+                    <div class="tracker-info-icon" aria-hidden="true">
+                        <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M16 14v8M16 9.5v.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg>
+                    </div>
+                    <p>Some buses may be missing due to feed gaps or weak GPS history. Predictions can be wrong near turns, diversions, or route changes.</p>
+                </div>
             </section>
-            <div class="tracker-collab-compact">
-                <span>Want to help improve the tracker?</span>
-                <a class="tracker-collab-link" href="mailto:raiaryan1684@gmail.com">Email to collaborate <span aria-hidden="true">↗</span></a>
-            </div>
             <div class="tracker-disclosure-actions">
-                <button id="warningAcceptBtn" class="button button-primary" type="button">Continue to tracker</button>
+                <button id="warningAcceptBtn" class="button button-primary" type="button">Continue to tracker <span aria-hidden="true">→</span></button>
                 <button id="warningFeedbackBtn" class="button button-secondary" type="button">Feedback &amp; suggestions</button>
             </div>
             <p class="tracker-disclosure-footnote">Independent project · Not affiliated with UPSRTC or any government department.</p>
         </div>
-    </div>    <div id="appComingSoonModal" class="app-coming-soon-modal hidden" role="dialog" aria-modal="true" aria-labelledby="appComingSoonTitle">
+    </div>
+
+    <div id="appComingSoonModal" class="app-coming-soon-modal hidden" role="dialog" aria-modal="true" aria-labelledby="appComingSoonTitle">
         <div class="app-coming-soon-card">
             <button id="appComingSoonClose" class="app-coming-soon-close" type="button" aria-label="Close">×</button>
             <div class="app-coming-soon-visual" aria-hidden="true">
