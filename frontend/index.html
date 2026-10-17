@@ -41,7 +41,7 @@
       })();
     </script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
     <header class="topbar">
@@ -363,30 +363,38 @@
     <div id="warningModal" class="tracker-disclosure-modal hidden" role="dialog" aria-modal="true" aria-labelledby="trackerDisclosureTitle">
         <div class="tracker-disclosure-card">
             <div class="namaste-welcome">
-                <div class="namaste-art" role="img" aria-label="Namaste greeting">🙏</div>
+                <div class="namaste-art" role="img" aria-label="Black and white line artwork of folded hands with a Namaste greeting">
+                    <svg viewBox="0 0 120 92" aria-hidden="true" focusable="false">
+                        <g fill="#fff" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M58 12 C54 18 51 25 49 32 L46 45 C44 51 39 57 33 63 L20 75 C16 78 12 78 8 75 L4 71 C2 69 4 66 7 68 L14 72 L29 59 C35 54 40 48 39 43 L30 26 C28 22 31 19 34 23 L44 37 L37 17 C36 13 40 11 42 16 L49 34 L47 13 C47 9 51 8 53 13 L58 30 Z"/>
+                            <path d="M62 12 C66 18 69 25 71 32 L74 45 C76 51 81 57 87 63 L100 75 C104 78 108 78 112 75 L116 71 C118 69 116 66 113 68 L106 72 L91 59 C85 54 80 48 81 43 L90 26 C92 22 89 19 86 23 L76 37 L83 17 C84 13 80 11 78 16 L71 34 L73 13 C73 9 69 8 67 13 L62 30 Z"/>
+                            <path d="M57 28 C54 39 52 48 47 55 M63 28 C66 39 68 48 73 55" fill="none"/>
+                            <path d="M9 70 L16 78 M111 70 L104 78 M19 74 L24 80 M101 74 L96 80" fill="none" stroke-width="2"/>
+                        </g>
+                        <path d="M60 7 L60 28" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+                    </svg>
+                    <span class="namaste-word">Namaste</span>
+                </div>
                 <p class="eyebrow">WELCOME TO NOIDA BUS TRACKER</p>
                 <h2 id="trackerDisclosureTitle">Namaste! Welcome aboard.</h2>
             </div>
-            <p class="eyebrow">LIVE DATA & ESTIMATES</p>
-            <h3 class="tracker-disclosure-subtitle">A quick note before you track</h3>
-            <p>Bus locations come from the MARGDARSHI · UPSRTC feed when available. Direction and likely last-stop details are estimates based on recent GPS points and mapped route coordinates, not confirmed dispatch information.</p>
-            <p>Some buses may not appear because they are missing from the source feed, have no recent GPS signal, or have insufficient history. We cannot verify every bus outside the feed. Predictions can be wrong, especially near turns, diversions, or route changes.</p>
-            <div class="tracker-collab-invite">
-                <p class="eyebrow">BUILD WITH US</p>
-                <h3>Want to help develop this project?</h3>
-                <p>Help us improve bus tracking, route estimates, data quality, and the overall experience. Suggestions, testing, and development contributions are welcome.</p>
+            <section class="tracker-disclosure-note" aria-labelledby="trackerDisclosureNoteTitle">
+                <p class="eyebrow">LIVE DATA & ESTIMATES</p>
+                <h3 id="trackerDisclosureNoteTitle" class="tracker-disclosure-subtitle">A quick note before you track</h3>
+                <p>Bus positions come from the MARGDARSHI · UPSRTC feed when available. Directions and likely last stops are estimates from GPS history and mapped routes, not official dispatch details.</p>
+                <p>Some buses may be missing due to feed gaps or weak GPS history. Predictions can be wrong near turns, diversions, or route changes.</p>
+            </section>
+            <div class="tracker-collab-compact">
+                <span>Want to help improve the tracker?</span>
                 <a class="tracker-collab-link" href="mailto:raiaryan1684@gmail.com">Email to collaborate <span aria-hidden="true">↗</span></a>
-                <a class="tracker-collab-email" href="mailto:raiaryan1684@gmail.com">raiaryan1684@gmail.com</a>
             </div>
             <div class="tracker-disclosure-actions">
                 <button id="warningAcceptBtn" class="button button-primary" type="button">Continue to tracker</button>
-                <button id="warningFeedbackBtn" class="button button-secondary" type="button">Feedback & suggestions</button>
+                <button id="warningFeedbackBtn" class="button button-secondary" type="button">Feedback &amp; suggestions</button>
             </div>
             <p class="tracker-disclosure-footnote">Independent project · Not affiliated with UPSRTC or any government department.</p>
         </div>
-    </div>
-
-    <div id="appComingSoonModal" class="app-coming-soon-modal hidden" role="dialog" aria-modal="true" aria-labelledby="appComingSoonTitle">
+    </div>    <div id="appComingSoonModal" class="app-coming-soon-modal hidden" role="dialog" aria-modal="true" aria-labelledby="appComingSoonTitle">
         <div class="app-coming-soon-card">
             <button id="appComingSoonClose" class="app-coming-soon-close" type="button" aria-label="Close">×</button>
             <div class="app-coming-soon-visual" aria-hidden="true">
