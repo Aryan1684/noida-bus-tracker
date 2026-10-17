@@ -386,6 +386,15 @@ function initializeWarningModal() {
     const acceptButton = document.getElementById("warningAcceptBtn");
     const feedbackButton = document.getElementById("warningFeedbackBtn");
     const closeButton = document.getElementById("warningCloseBtn");
+    const dontShowAgain = document.getElementById("warningDontShowAgain");
+    const acknowledgementKey = "noidaTrackerWarningAcknowledged";
+
+    try {
+        if (localStorage.getItem(acknowledgementKey) === "true") {
+            modal.classList.add("hidden");
+            return;
+        }
+    } catch (_) {}
 
     modal.classList.remove("hidden");
 
@@ -394,7 +403,14 @@ function initializeWarningModal() {
     }
 
     if (acceptButton) {
-        acceptButton.addEventListener("click", close);
+        acceptButton.addEventListener("click", () => {
+            try {
+                if (dontShowAgain && dontShowAgain.checked) {
+                    localStorage.setItem(acknowledgementKey, "true");
+                }
+            } catch (_) {}
+            close();
+        });
     }
 
     if (closeButton) {
