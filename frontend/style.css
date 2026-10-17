@@ -1910,3 +1910,10 @@ body.dark .selected-bus-panel.panel-below::after{
  .tracker-disclosure-actions button{min-height:36px}
  .tracker-disclosure-footnote{margin-top:5px!important;padding-top:4px}
 }
+
+/* Cursive greeting paired with the hand-drawn Namaste illustration */
+.namaste-art{width:154px;height:154px;margin:0 auto;object-fit:contain;background:transparent}
+.namaste-word{display:block;margin:-2px auto 6px;font-family:"Brush Script MT","Segoe Script","URW Chancery L",cursive;font-size:36px;font-weight:500;font-style:italic;line-height:1.05;letter-spacing:-1.2px;color:#111}
+@media(max-width:650px){.namaste-art{width:112px;height:112px}.namaste-word{font-size:27px;margin:-2px auto 4px}}
+@media(max-width:380px){.namaste-art{width:96px;height:96px}.namaste-word{font-size:24px}}
+@media(max-height:680px) and (max-width:650px){.namaste-art{width:82px;height:82px}.namaste-word{font-size:21px;margin:-1px auto 2px}}
