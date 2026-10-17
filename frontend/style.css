@@ -1917,3 +1917,14 @@ body.dark .selected-bus-panel.panel-below::after{
 @media(max-width:650px){.namaste-art{width:112px;height:112px}.namaste-word{font-size:27px;margin:-2px auto 4px}}
 @media(max-width:380px){.namaste-art{width:96px;height:96px}.namaste-word{font-size:24px}}
 @media(max-height:680px) and (max-width:650px){.namaste-art{width:82px;height:82px}.namaste-word{font-size:21px;margin:-1px auto 2px}}
+
+/* Compact build-with-us invitation within the tracker welcome notice */
+.tracker-build-with-us{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:12px 0 0;padding:12px 15px;border:1px solid #dfe3e8;border-radius:13px;background:#f8f9fb}
+.tracker-build-copy{min-width:0}
+.tracker-disclosure-card .tracker-build-copy .eyebrow{font-size:10px;letter-spacing:1.5px;font-weight:900;margin:0 0 4px;color:#68727f}
+.tracker-disclosure-card .tracker-build-copy p:not(.eyebrow){font-size:12px;line-height:1.4;margin:0;color:#68727f}
+.tracker-build-email{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;padding:10px 13px;border:1px solid #d8dde3;border-radius:10px;background:#fff;color:#15181d;font-size:12px;font-weight:850;text-decoration:none;white-space:nowrap}
+.tracker-build-email:hover{background:#f0f2f5;border-color:#bcc3cb}
+@media(max-width:650px){.tracker-build-with-us{gap:8px;margin-top:8px;padding:8px 9px;border-radius:10px}.tracker-disclosure-card .tracker-build-copy .eyebrow{font-size:8px;letter-spacing:1px;margin-bottom:2px}.tracker-disclosure-card .tracker-build-copy p:not(.eyebrow){font-size:10px;line-height:1.3}.tracker-build-email{padding:8px 9px;font-size:10px;border-radius:8px}}
+@media(max-width:380px){.tracker-build-with-us{align-items:flex-start;flex-direction:column}.tracker-build-email{align-self:stretch}}
+@media(max-height:680px) and (max-width:650px){.tracker-build-with-us{margin-top:5px;padding:6px 8px}.tracker-build-email{padding:6px 8px}}
