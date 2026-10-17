@@ -845,4 +845,15 @@
     }
 
     setTimeout(init,300);
+
+    var displayHookRetries=0;
+    function waitForDisplayHook(){
+        if(window.displayBuses && !window.displayBuses.__featureWrapped){
+            wrapDisplay();
+        }
+        if(window.displayBuses && window.displayBuses.__featureWrapped) return;
+        displayHookRetries++;
+        if(displayHookRetries<40) setTimeout(waitForDisplayHook,250);
+    }
+    setTimeout(waitForDisplayHook,300);
 })();
