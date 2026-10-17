@@ -1,10 +1,6 @@
-import hashlib
-import hmac
-import ipaddress
 import math
 import os
 import requests
-import secrets
 import threading
 import time
 
@@ -32,12 +28,6 @@ _location_label_cache_lock = threading.Lock()
 _last_nominatim_lookup_at = 0.0
 LOCATION_LABEL_CACHE_SECONDS = 1800
 LOCATION_LABEL_CACHE_LIMIT = 300
-IP_AREA_CACHE = {}
-_ip_area_cache_lock = threading.Lock()
-IP_AREA_CACHE_SECONDS = 6 * 60 * 60
-IP_AREA_MAX_LOOKUPS_PER_MINUTE = 30
-_ip_area_lookup_times = []
-_ip_area_cache_secret = secrets.token_bytes(32)
 MAINTENANCE_DEFAULT_MESSAGE = "We are making a few improvements. Please check back shortly."
 _maintenance_cache = {
     "enabled": False,
@@ -54,61 +44,6 @@ _maintenance_last_error = None
 MAINTENANCE_REFRESH_SECONDS = 10
 WEB3FORMS_FEEDBACK_KEY = os.getenv("WEB3FORMS_FEEDBACK_KEY")
 WEB3FORMS_REPORT_KEY = os.getenv("WEB3FORMS_REPORT_KEY")
-
-
-def approximate_ip_area(ip_address: str | None):
-    try:
-        parsed_ip = ipaddress.ip_address((ip_address or "").strip())
-    except ValueError:
-        return None
-
-    if not parsed_ip.is_global:
-        return None
-
-    normalized_ip = str(parsed_ip)
-    cache_key = hmac.new(
-        _ip_area_cache_secret,
-        normalized_ip.encode("utf-8"),
-        hashlib.sha256,
-    ).hexdigest()
-    now = time.monotonic()
-
-    with _ip_area_cache_lock:
-        cached = IP_AREA_CACHE.get(cache_key)
-        if cached and now - cached[0] < IP_AREA_CACHE_SECONDS:
-            return cached[1]
-
-        _ip_area_lookup_times[:] = [
-            timestamp for timestamp in _ip_area_lookup_times if now - timestamp < 60
-        ]
-        if len(_ip_area_lookup_times) >= IP_AREA_MAX_LOOKUPS_PER_MINUTE:
-            return None
-        _ip_area_lookup_times.append(now)
-
-    try:
-        response = requests.get(
-            "https://ipapi.co/" + requests.utils.quote(normalized_ip, safe="") + "/json/",
-            headers={"User-Agent": "NoidaBusTracker/1.0"},
-            timeout=1.5,
-        )
-        if not response.ok:
-            return None
-        data = response.json()
-        if data.get("error") or data.get("latitude") is None or data.get("longitude") is None:
-            return None
-        latitude = round(float(data["latitude"]), 2)
-        longitude = round(float(data["longitude"]), 2)
-        if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
-            return None
-        area = (latitude, longitude)
-        with _ip_area_cache_lock:
-            if len(IP_AREA_CACHE) >= 1000:
-                oldest_key = min(IP_AREA_CACHE, key=lambda key: IP_AREA_CACHE[key][0])
-                IP_AREA_CACHE.pop(oldest_key, None)
-            IP_AREA_CACHE[cache_key] = (now, area)
-        return area
-    except (requests.RequestException, ValueError, TypeError):
-        return None
 
 
 class FeedbackSubmission(BaseModel):
@@ -169,11 +104,16 @@ app.add_middleware(
 @app.middleware("http")
 async def enforce_maintenance_and_disable_caching(request, call_next):
     path = request.url.path
-    protected_paths = (
-        path.startswith("/api/buses"),
-        path in {"/api/routes", "/api/location-label", "/api/search-location"},
-    )
-    if any(protected_paths):
+    maintenance_exempt_paths = {
+        "/api/maintenance",
+        "/api/health",
+        "/api/livez",
+        "/api/feedback",
+    }
+    is_admin_path = path.startswith("/api/admin/")
+    is_api_path = path.startswith("/api/")
+
+    if is_api_path and path not in maintenance_exempt_paths and not is_admin_path:
         maintenance = get_cached_maintenance_settings()
         if maintenance.get("enabled"):
             return JSONResponse(
@@ -525,13 +465,7 @@ class AnalyticsLocation(BaseModel):
 
 
 @app.post("/api/analytics/event")
-def analytics_event(payload: AnalyticsEvent, request: Request):
-    approximate_area = None
-    if payload.event_name in {"page_view", "app_open"}:
-        forwarded_for = request.headers.get("x-forwarded-for", "")
-        forwarded_client_ip = forwarded_for.split(",", 1)[0].strip() if forwarded_for else None
-        client_ip = forwarded_client_ip or (request.client.host if request.client else None)
-        approximate_area = approximate_ip_area(client_ip)
+def analytics_event(payload: AnalyticsEvent):
     accepted = record_event(
         payload.event_name,
         path=payload.path,
@@ -547,8 +481,6 @@ def analytics_event(payload: AnalyticsEvent, request: Request):
         screen_height=payload.screen_height,
         app_version=payload.app_version,
         metadata=payload.metadata,
-        coarse_lat=approximate_area[0] if approximate_area else None,
-        coarse_lon=approximate_area[1] if approximate_area else None,
     )
     return {"success": accepted}
 
