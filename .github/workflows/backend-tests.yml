@@ -10,6 +10,7 @@ on:
   pull_request:
     paths:
       - "Backend/**"
+      - "frontend/**"
       - ".github/workflows/backend-tests.yml"
       - ".python-version"
 
