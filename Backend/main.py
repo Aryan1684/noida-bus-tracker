@@ -528,7 +528,9 @@ class AnalyticsLocation(BaseModel):
 def analytics_event(payload: AnalyticsEvent, request: Request):
     approximate_area = None
     if payload.event_name in {"page_view", "app_open"}:
-        client_ip = request.client.host if request.client else None
+        forwarded_for = request.headers.get("x-forwarded-for", "")
+        forwarded_client_ip = forwarded_for.split(",", 1)[0].strip() if forwarded_for else None
+        client_ip = forwarded_client_ip or (request.client.host if request.client else None)
         approximate_area = approximate_ip_area(client_ip)
     accepted = record_event(
         payload.event_name,
