@@ -844,11 +844,5 @@
         }
     }
 
-    var observer=new MutationObserver(function(){
-        toolbar();
-        wrapDisplay();
-    });
-
-    observer.observe(document.documentElement,{childList:true,subtree:true});
     setTimeout(init,300);
 })();
