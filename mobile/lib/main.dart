@@ -559,6 +559,16 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   }
  }
 
+ Future<Map<String,String>> _appHeaders([Map<String,String> base = const {}]) async {
+  final headers = <String,String>{...base};
+  try {
+    analyticsAppVersion = (await PackageInfo.fromPlatform()).version;
+  } catch (_) {}
+  headers['X-App-Version'] = analyticsAppVersion;
+  headers['X-App-Platform'] = 'android';
+  return headers;
+ }
+
  Future<bool> _sendAnalytics(String name,[Map<String,Object>? parameters]) async {
   if(!analyticsEnabled)return false;
   final visitor=analyticsVisitorId;
@@ -571,7 +581,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   try {
    final response=await http.post(
     Uri.parse(api+'/api/analytics/event'),
-    headers:{'Content-Type':'application/json','Accept':'application/json'},
+    headers: await _appHeaders({'Content-Type':'application/json','Accept':'application/json'}),
     body:jsonEncode({
      'event_name':name,
      'path':'/mobile',
@@ -700,7 +710,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   try {
     final response = await http.get(
       Uri.parse('$api/api/maintenance?_=${DateTime.now().millisecondsSinceEpoch}'),
-      headers: const {'Cache-Control': 'no-cache'},
+      headers: await _appHeaders({'Cache-Control': 'no-cache'}),
     ).timeout(const Duration(seconds: 5));
 
     if (response.statusCode != 200) return maintenanceMode;
@@ -858,7 +868,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
 
  Future<void> _loadRoutes() async {
   try {
-    final response = await http.get(Uri.parse(api + '/api/routes')).timeout(const Duration(seconds: 10));
+    final response = await http.get(Uri.parse(api + '/api/routes'), headers: await _appHeaders()).timeout(const Duration(seconds: 10));
     if (response.statusCode != 200) return;
     final data = jsonDecode(response.body);
     final received = List<dynamic>.from(data['routes'] ?? []);
@@ -999,7 +1009,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   );
 
   try {
-    final r = await http.get(u).timeout(const Duration(seconds: 20));
+    final r = await http.get(u, headers: await _appHeaders()).timeout(const Duration(seconds: 20));
     if (r.statusCode == 503) {
       try {
         final body = jsonDecode(r.body);
@@ -1210,7 +1220,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             Uri.encodeQueryComponent(v.trim()),
       );
 
-      final response = await http.get(uri).timeout(
+      final response = await http.get(uri, headers: await _appHeaders()).timeout(
         const Duration(seconds: 7),
       );
 
@@ -1293,7 +1303,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   try {
     final response = await http.post(
       Uri.parse(api + '/api/report'),
-      headers: const {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      headers: await _appHeaders({'Content-Type': 'application/json', 'Accept': 'application/json'}),
       body: jsonEncode({
         'bus_id': bus['bus_id'].toString(),
         'report_type': issue.toLowerCase().replaceAll(' ', '_'),
