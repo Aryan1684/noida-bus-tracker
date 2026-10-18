@@ -1412,7 +1412,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     );
     final response = await http.post(
       Uri.parse(api + '/api/analytics/location'),
-      headers: const {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      headers: await _appHeaders({'Content-Type': 'application/json', 'Accept': 'application/json'}),
       body: jsonEncode({
         'latitude': position.latitude,
         'longitude': position.longitude,
@@ -1511,7 +1511,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
               try {
                 final response = await http.post(
                   Uri.parse(api + '/api/feedback'),
-                  headers: const {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                  headers: await _appHeaders({'Content-Type': 'application/json', 'Accept': 'application/json'}),
                   body: jsonEncode({
                     'rating': rating,
                     'feedback_type': type,
