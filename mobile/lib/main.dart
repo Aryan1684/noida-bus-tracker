@@ -359,7 +359,8 @@ class _HomeState extends State<Home> {
  static const api='https://noida-bus-tracker.onrender.com';
  String? analyticsVisitorId;
  late String analyticsSessionId;
- String analyticsAppVersion='1.0.0';
+ String analyticsAppVersion='1.1.0';
+ Map<String,Object> analyticsDeviceMetadata={};
  bool analyticsEnabled=true;
  DateTime? analyticsLastActivity;
  final map=MapController(); final search=TextEditingController(); Timer? refreshTimer,searchTimer,maintenanceTimer; bool maintenanceMode=false,maintenanceCheckRunning=false; String maintenanceMessage='We are making a few improvements. Please check back shortly.'; int? maintenanceExpiresAt;
