@@ -33,14 +33,11 @@ ALLOWED_EVENTS = {
     "bus_shared",
     "location_shared",
     "feedback_opened",
-    "feedback_opened",
     "feedback_submitted",
-    "report_opened",
     "report_opened",
     "report_submitted",
     "pwa_install",
 }
-
 _initialized = False
 _event_queue = queue.Queue(maxsize=1000)
 _event_worker = None
