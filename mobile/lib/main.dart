@@ -10,6 +10,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -739,6 +740,15 @@ class _HomeState extends State<Home> {
                         label: const Text('Check status'),
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _feedback,
+                        icon: const Icon(Icons.feedback_outlined),
+                        label: const Text('Feedback & suggestions'),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1246,6 +1256,74 @@ class _HomeState extends State<Home> {
   );
 }
 
+ Future<void> _openWebsitePage(String page) async {
+  final uri = Uri.parse('https://noidabus.netlify.app/' + page);
+  try {
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) _info('Could not open the page. Website address: ' + uri.toString());
+  } catch (_) {
+    if (mounted) _info('Could not open the page. Website address: ' + uri.toString());
+  }
+ }
+
+ Future<void> _shareApproximateLocation() async {
+  final accepted = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Help improve this area'),
+      content: const Text(
+        'Share your current location once? The app sends coordinates to the tracker backend, which rounds them to an approximate area. Admin analytics only shows aggregated areas with at least 3 unique visitor identifiers. This is optional and is not required to track buses.',
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Not now')),
+        FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Share area')),
+      ],
+    ),
+  );
+  if (accepted != true || !mounted) return;
+
+  try {
+    await _initAnalytics();
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      _info('Turn on Location/GPS before sharing an approximate area.');
+      return;
+    }
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      _info('Location permission was not granted. You can still use the tracker without sharing an area.');
+      return;
+    }
+    final position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.low,
+        timeLimit: Duration(seconds: 12),
+      ),
+    );
+    final response = await http.post(
+      Uri.parse(api + '/api/analytics/location'),
+      headers: const {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      body: jsonEncode({
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'path': '/mobile',
+        'session_id': analyticsSessionId,
+        'visitor_id': analyticsVisitorId,
+        'source': 'android',
+      }),
+    ).timeout(const Duration(seconds: 12));
+    final data = jsonDecode(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300 || data is! Map<String, dynamic> || data['success'] != true) {
+      throw Exception('Area sharing failed');
+    }
+    if (mounted) _info('Thanks. Your location was rounded into an approximate area for aggregate demand analytics.');
+  } catch (_) {
+    if (mounted) _info('Could not share the approximate area right now. You can continue using the tracker without it.');
+  }
+ }
+
  Future<void> _feedback() async {
   final messageController = TextEditingController();
   String rating = '5';
@@ -1426,15 +1504,45 @@ class _HomeState extends State<Home> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.privacy_tip_outlined),
-                  title: const Text('Privacy notice'),
-                  subtitle: const Text('Approximate analytics and location controls'),
+                  leading: const Icon(Icons.location_searching_outlined),
+                  title: const Text('Help improve this area'),
+                  subtitle: const Text('Optional one-time approximate location share'),
                   onTap: () {
                     Navigator.pop(sheetContext);
-                    _info(
-                      'When Usage analytics is enabled, the app sends first-open, app-open, and feature events together with a pseudonymous installation ID, app version, phone brand/manufacturer/model, and Android version. The server may send the network IP to ipapi.co for an approximate area lookup. That is not GPS and does not reliably identify the actual installation location. Raw IP addresses are not saved in the analytics database. Turn analytics off in App settings to stop future app analytics events. Device GPS is used for nearby-bus tracking only when you choose to use your location.\n\n'
-                      'Full privacy notice: https://noidabus.netlify.app/privacy.html',
-                    );
+                    _shareApproximateLocation();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.privacy_tip_outlined),
+                  title: const Text('Privacy notice'),
+                  subtitle: const Text('Analytics, location and data controls'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _openWebsitePage('privacy.html');
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.gavel_outlined),
+                  title: const Text('Terms of use'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _openWebsitePage('terms.html');
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.storage_outlined),
+                  title: const Text('Data sources'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _openWebsitePage('data-sources.html');
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.accessibility_new_outlined),
+                  title: const Text('Accessibility'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _openWebsitePage('accessibility.html');
                   },
                 ),
                 SwitchListTile(
