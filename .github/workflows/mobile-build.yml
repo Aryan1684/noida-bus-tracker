@@ -13,6 +13,10 @@ on:
       - ".github/workflows/mobile-build.yml"
   workflow_dispatch:
 
+concurrency:
+  group: noida-bus-tracker-android-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
