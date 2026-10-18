@@ -624,6 +624,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     if (response.statusCode != 200) return;
     final decoded = jsonDecode(response.body);
     if (decoded is! Map<String, dynamic>) return;
+
     final data = decoded;
     final latest = data['latest_version']?.toString() ?? info.version;
     final minimum = data['minimum_version']?.toString() ?? info.version;
@@ -632,12 +633,11 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     if (!mandatory && !optionalUpdate) return;
     if (!mounted) return;
 
-    final message = data['message']?.toString() ??
-        'A newer version of Noida Bus Tracker is available.';
+    final message = data['message']?.toString() ?? 'A newer version of Noida Bus Tracker is available.';
     final rawUrl = data['download_url']?.toString() ?? '';
     final updateUri = Uri.tryParse(rawUrl);
     final validUpdateUri = updateUri != null &&
-        (updateUri.scheme == 'https' || updateUri.scheme == 'http') &&
+        updateUri.scheme == 'https' &&
         updateUri.host.isNotEmpty;
 
     await showDialog<void>(
@@ -645,47 +645,178 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       barrierDismissible: !mandatory,
       builder: (dialogContext) => PopScope(
         canPop: !mandatory,
-        child: AlertDialog(
-          title: Text(mandatory ? 'Update required' : 'New version available'),
-          content: Text(
-            mandatory
-                ? '$message\n\nThis version is no longer supported. Install the required update to continue using the app.'
-                : message,
-          ),
-          actions: [
-            if (!mandatory)
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Later'),
+        child: Dialog(
+          backgroundColor: const Color(0xFF151D16),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 26, 22, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 82,
+                      height: 82,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFB8F26B),
+                        borderRadius: BorderRadius.circular(26),
+                      ),
+                      child: const Icon(
+                        Icons.system_update_alt_rounded,
+                        size: 43,
+                        color: Color(0xFF172016),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Text(
+                    mandatory ? 'Update required' : 'A better ride starts here',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      height: 1.15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    mandatory
+                        ? 'This version is no longer supported. Update the app to continue tracking buses.'
+                        : 'Noida Bus Tracker version $latest is ready to install.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFFD3D9D0),
+                      fontSize: 14,
+                      height: 1.45,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF242E25),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: const Color(0xFF384439)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.verified_rounded, color: Color(0xFFB8F26B), size: 21),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            message,
+                            style: const TextStyle(
+                              color: Color(0xFFE5EAE2),
+                              fontSize: 12,
+                              height: 1.45,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF252E26),
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Text(
+                          'Installed: ${info.version}',
+                          style: const TextStyle(color: Color(0xFFE5EAE2), fontSize: 11, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFB8F26B),
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Text(
+                          'Latest: $latest',
+                          style: const TextStyle(color: Color(0xFF172016), fontSize: 11, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    height: 54,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFB8F26B),
+                        foregroundColor: const Color(0xFF172016),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                      ),
+                      onPressed: () async {
+                        if (!validUpdateUri) {
+                          await Clipboard.setData(ClipboardData(text: rawUrl));
+                          if (dialogContext.mounted) {
+                            _info('The update link is not configured correctly. The available link has been copied.');
+                          }
+                          return;
+                        }
+                        try {
+                          final opened = await launchUrl(
+                            updateUri,
+                            mode: LaunchMode.externalApplication,
+                          );
+                          if (!opened && dialogContext.mounted) {
+                            await Clipboard.setData(ClipboardData(text: rawUrl));
+                            _info('Could not open the APK link. It has been copied so you can open it in your browser.');
+                          } else if (opened && !mandatory && dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                          }
+                        } catch (_) {
+                          if (dialogContext.mounted) {
+                            await Clipboard.setData(ClipboardData(text: rawUrl));
+                            _info('Could not open the APK link. It has been copied so you can open it in your browser.');
+                          }
+                        }
+                      },
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.download_rounded, size: 21),
+                          SizedBox(width: 9),
+                          Text('Update Now'),
+                          SizedBox(width: 8),
+                          Icon(Icons.north_east_rounded, size: 17),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (!mandatory) ...[
+                    const SizedBox(height: 7),
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Maybe later', style: TextStyle(color: Color(0xFFD3D9D0))),
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Update required to continue using the app',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xFFB8F26B), fontSize: 11, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ],
               ),
-            FilledButton(
-              onPressed: () async {
-                if (!validUpdateUri) {
-                  await Clipboard.setData(ClipboardData(text: rawUrl));
-                  if (dialogContext.mounted) {
-                    _info('The update link is not configured correctly. The available link has been copied.');
-                  }
-                  return;
-                }
-                try {
-                  final opened = await launchUrl(
-                    updateUri,
-                    mode: LaunchMode.externalApplication,
-                  );
-                  if (!opened && dialogContext.mounted) {
-                    await Clipboard.setData(ClipboardData(text: rawUrl));
-                    _info('Could not open the update link. It has been copied so you can open it in your browser.');
-                  }
-                } catch (_) {
-                  if (dialogContext.mounted) {
-                    await Clipboard.setData(ClipboardData(text: rawUrl));
-                    _info('Could not open the update link. It has been copied so you can open it in your browser.');
-                  }
-                }
-              },
-              child: Text(mandatory ? 'Update app' : 'Get update'),
             ),
-          ],
+          ),
         ),
       ),
     );
