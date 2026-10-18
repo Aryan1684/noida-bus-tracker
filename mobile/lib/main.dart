@@ -371,14 +371,14 @@ class _HomeState extends State<Home> {
  String? analyticsVisitorId;
  late final String analyticsSessionId;
  String analyticsAppVersion='1.0.0';
- final map=MapController(); final search=TextEditingController(); Timer? refreshTimer,searchTimer;
+ final map=MapController(); final search=TextEditingController(); Timer? refreshTimer,searchTimer,maintenanceTimer; bool maintenanceMode=false,maintenanceCheckRunning=false; String maintenanceMessage='We are making a few improvements. Please check back shortly.'; int? maintenanceExpiresAt;
  LatLng location=const LatLng(28.4598,77.5184); List<dynamic> buses=[]; List<dynamic> suggestions=[]; Set<String> favs={}; Map<String,List<LatLng>> history={}; Map<String,List<DateTime>> historyTimes={}; List<LatLng> trail=[]; Map<String,DateTime> alertHistory={};
  double radius=5; bool loading=false,locating=false,movePin=false,stops=false,following=false,permissionBlocked=false,dontShowNotice=false,nearbyAlerts=false; String? error,selected,followed; String locationLabel='Use your current location'; DateTime? refreshed;
  final stopData=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060]];
  final searchPlaces=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Sector 62',28.6280,77.3770],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Gaur Chowk',28.6150,77.4350],['Gaur City',28.6155,77.4240],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060],['Sector 90',28.5340,77.4380],['Noida International Airport',28.5562,77.5849]];
 
- @override void initState(){super.initState();analyticsSessionId=DateTime.now().microsecondsSinceEpoch.toString()+'-'+hashCode.toString();_initAnalytics();_initApp();_checkForUpdate();}
- @override void dispose(){refreshTimer?.cancel();searchTimer?.cancel();search.dispose();super.dispose();}
+ @override void initState(){super.initState();analyticsSessionId=DateTime.now().microsecondsSinceEpoch.toString()+'-'+hashCode.toString();_initAnalytics();_initApp();_checkForUpdate();_pollMaintenanceStatus();maintenanceTimer=Timer.periodic(const Duration(seconds:5),(_)=>_pollMaintenanceStatus());}
+ @override void dispose(){refreshTimer?.cancel();searchTimer?.cancel();maintenanceTimer?.cancel();search.dispose();super.dispose();}
  Future<void> _initApp() async {
   final prefs = await SharedPreferences.getInstance();
   if (!mounted) return;
@@ -551,6 +551,160 @@ class _HomeState extends State<Home> {
   return false;
  }
 
+ Future<bool> _checkMaintenanceStatus() async {
+  if (maintenanceCheckRunning) return maintenanceMode;
+  maintenanceCheckRunning = true;
+
+  try {
+    final response = await http.get(
+      Uri.parse('$api/api/maintenance?_=${DateTime.now().millisecondsSinceEpoch}'),
+      headers: const {'Cache-Control': 'no-cache'},
+    ).timeout(const Duration(seconds: 5));
+
+    if (response.statusCode != 200) return maintenanceMode;
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) return maintenanceMode;
+
+    if (decoded['enabled'] == true) {
+      _enableMaintenance(decoded);
+      return true;
+    }
+
+    _disableMaintenance();
+    return false;
+  } catch (_) {
+    return maintenanceMode;
+  } finally {
+    maintenanceCheckRunning = false;
+  }
+}
+
+ Future<void> _pollMaintenanceStatus() async {
+  final wasEnabled = maintenanceMode;
+  final enabled = await _checkMaintenanceStatus();
+
+  if (wasEnabled && !enabled && mounted) {
+    await _load(auto: true);
+  }
+}
+
+ void _enableMaintenance(Map<String, dynamic> data) {
+  final message = (data['message'] ?? 'We are making a few improvements. Please check back shortly.').toString();
+  final rawExpiry = data['expires_at'];
+  final expiry = rawExpiry is num ? rawExpiry.toInt() : int.tryParse(rawExpiry?.toString() ?? '');
+
+  refreshTimer?.cancel();
+
+  if (!mounted) return;
+  if (maintenanceMode && maintenanceMessage == message && maintenanceExpiresAt == expiry) return;
+
+  setState(() {
+    maintenanceMode = true;
+    maintenanceMessage = message;
+    maintenanceExpiresAt = expiry;
+    buses = [];
+    selected = null;
+    followed = null;
+    following = false;
+    loading = false;
+    error = null;
+  });
+}
+
+ void _disableMaintenance() {
+  if (!mounted || !maintenanceMode) return;
+  setState(() {
+    maintenanceMode = false;
+    maintenanceMessage = 'We are making a few improvements. Please check back shortly.';
+    maintenanceExpiresAt = null;
+  });
+}
+
+ Widget _maintenancePage() {
+  final expiry = maintenanceExpiresAt == null
+      ? null
+      : DateTime.fromMillisecondsSinceEpoch(maintenanceExpiresAt!);
+  final scheduledTime = expiry == null
+      ? null
+      : '${expiry.hour.toString().padLeft(2, '0')}:${expiry.minute.toString().padLeft(2, '0')} on ${expiry.day.toString().padLeft(2, '0')}/${expiry.month.toString().padLeft(2, '0')}/${expiry.year}';
+
+  return Scaffold(
+    body: SafeArea(
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+                side: BorderSide(color: Theme.of(context).dividerColor),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 88,
+                      height: 88,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFB8F26B).withOpacity(.2),
+                        borderRadius: BorderRadius.circular(26),
+                      ),
+                      child: const Icon(
+                        Icons.construction_rounded,
+                        size: 44,
+                        color: Color(0xFF668A2E),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'We’ll be back soon.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      maintenanceMessage,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 15, height: 1.55),
+                    ),
+                    const SizedBox(height: 18),
+                    if (scheduledTime != null)
+                      Text(
+                        'Scheduled return: $scheduledTime',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Live bus tracking is paused during maintenance. The app will check service status automatically.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 13, height: 1.5, color: Color(0xFF6B7280)),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => _pollMaintenanceStatus(),
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Check status'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
  Future<void> _location() async {
   if (locating) return;
   setState(() { locating = true; error = null; permissionBlocked = false; });
@@ -606,7 +760,9 @@ class _HomeState extends State<Home> {
  Future<void> _set(LatLng p,String label,bool load) async {setState(() { location=p; locationLabel=label; selected=null; error=null; });map.move(p,14.5);if(load){await _load();_auto();}}
  void _auto(){refreshTimer?.cancel();refreshTimer=Timer.periodic(const Duration(seconds:45),(_){if(!loading)_load(auto:true);});}
  Future<void> _load({bool auto=false}) async {
-  if (loading) return;
+  if (loading || maintenanceMode) return;
+  if (await _checkMaintenanceStatus()) return;
+  if (!mounted || loading || maintenanceMode) return;
   setState(() => loading = true);
 
   final u = Uri.parse(
@@ -621,6 +777,15 @@ class _HomeState extends State<Home> {
 
   try {
     final r = await http.get(u).timeout(const Duration(seconds: 20));
+    if (r.statusCode == 503) {
+      try {
+        final body = jsonDecode(r.body);
+        if (body is Map<String, dynamic> && body['maintenance'] == true) {
+          _enableMaintenance(body);
+          return;
+        }
+      } catch (_) {}
+    }
     if (r.statusCode != 200) throw Exception();
 
     final d = jsonDecode(r.body);
@@ -659,7 +824,7 @@ class _HomeState extends State<Home> {
       if (bus != null) _center(bus, false);
     }
   } catch (_) {
-    if (mounted) {
+    if (mounted && !maintenanceMode) {
       setState(() {
         error = 'Unable to refresh bus data. Showing previous results.';
       });
@@ -974,6 +1139,18 @@ class _HomeState extends State<Home> {
                   },
                 ),
                 ListTile(
+                  leading: const Icon(Icons.privacy_tip_outlined),
+                  title: const Text('Privacy notice'),
+                  subtitle: const Text('Approximate analytics and location controls'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _info(
+                      'The app may send app-open analytics to help understand broad usage areas. The server may use your network IP for approximate area analytics; raw IP addresses are not saved in the analytics database, but the external geolocation provider receives the IP to perform a lookup. IP-based areas can be inaccurate. Device GPS is accessed for nearby-bus tracking only when you choose to use your location.\n\n'
+                      'Full privacy notice: https://noidabus.netlify.app/privacy.html',
+                    );
+                  },
+                ),
+                ListTile(
                   leading: const Icon(Icons.info_outline),
                   title: const Text('About'),
                   onTap: () {
@@ -996,6 +1173,7 @@ class _HomeState extends State<Home> {
 
  @override
  Widget build(BuildContext context) {
+  if (maintenanceMode) return _maintenancePage();
   return Scaffold(
     appBar: AppBar(
       titleSpacing: 16,
