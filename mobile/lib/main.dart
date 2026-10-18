@@ -2113,11 +2113,19 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   final dir=b['likely_towards'];
   final lastStop=(b['last_passed_stop']??b['last_stop'])?.toString();
   final nextStop=(b['likely_next_stop']??b['likely_towards'])?.toString();
+  final destination=(b['likely_destination']??'').toString();
   final etaLabel=(b['eta_label']??'').toString();
+  final etaMin=int.tryParse(b['eta_min']?.toString()??'');
+  final etaMax=int.tryParse(b['eta_max']?.toString()??'');
+  final positionConfidence=(b['confidence_label']??b['position_confidence']??b['gps_confidence']??'').toString();
+  final nearbyPlace=(b['nearby_place']??b['location_label']??'').toString();
+  final gpsAge=int.tryParse((b['gps_age_seconds']??b['fix_age_seconds']??'').toString());
+  final gpsFreshness=(b['gps_freshness']??'').toString().toLowerCase();
+  final stale=b['data_stale']==true||b['is_stale']==true||gpsFreshness=='stale'||gpsFreshness=='unknown'||(gpsAge!=null&&gpsAge>120);
   final route=_routeForBus(b);
   final moved=_movedLastMinutes(id);
   final status=(b['movement_status']??b['vehicle_status']??'unknown').toString().toLowerCase();
-  final isMoving=status=='moving'&&((speed??0)>=3);
+  final isMoving=!stale&&status=='moving'&&((speed??0)>=3);
   final isSelected=selected==id;
 
   return Card(
@@ -2198,12 +2206,14 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                             style:const TextStyle(fontSize:12,color:Color(0xFF6B7280)),
                           ),
                           Text(
-                            isMoving
-                                ? 'Live'
-                                : status=='stationary'
-                                    ? 'Stationary'
-                                    : 'Not moving',
-                            style:const TextStyle(fontSize:12,color:Color(0xFF6B7280),fontWeight:FontWeight.w700),
+                            stale
+                                ? 'Last known GPS'
+                                : isMoving
+                                    ? 'Live GPS'
+                                    : status=='stationary'
+                                        ? 'Stationary'
+                                        : 'Not moving',
+                            style:TextStyle(fontSize:12,color:stale?const Color(0xFFB45309):const Color(0xFF6B7280),fontWeight:FontWeight.w700),
                           ),
                         ],
                       ),
@@ -2241,7 +2251,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                 ],
               ),
             ),
-            if ((lastStop != null && lastStop.isNotEmpty) || (nextStop != null && nextStop.isNotEmpty) || etaLabel.isNotEmpty)
+            if ((lastStop != null && lastStop.isNotEmpty) || (nextStop != null && nextStop.isNotEmpty) || destination.isNotEmpty || etaLabel.isNotEmpty || positionConfidence.isNotEmpty || nearbyPlace.isNotEmpty || gpsAge != null)
               Container(
                 width: double.infinity,
                 margin: const EdgeInsets.only(top: 10),
@@ -2259,6 +2269,34 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                       Padding(
                         padding: const EdgeInsets.only(top: 5),
                         child: Text('Next stop · $nextStop', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                      ),
+                    if (destination.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 5),
+                        child: Text('Likely destination · $destination', style: const TextStyle(fontSize: 12)),
+                      ),
+                    if (nearbyPlace.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 5),
+                        child: Text(nearbyPlace, style: const TextStyle(fontSize: 12)),
+                      ),
+                    if (gpsAge != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 5),
+                        child: Text(
+                          stale ? 'GPS delayed · updated ${gpsAge}s ago' : 'GPS updated ${gpsAge}s ago',
+                          style: TextStyle(fontSize: 11, color: stale ? const Color(0xFFB45309) : const Color(0xFF6B7280)),
+                        ),
+                      ),
+                    if (positionConfidence.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 5),
+                        child: Text('Position confidence · $positionConfidence', style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                      ),
+                    if (etaMin != null && etaMax != null && etaMax >= etaMin && b['eta_status'] == 'estimated')
+                      Padding(
+                        padding: const EdgeInsets.only(top: 5),
+                        child: Text('ETA range · $etaMin–$etaMax min', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                       ),
                     if (etaLabel.isNotEmpty)
                       Padding(
