@@ -1065,7 +1065,7 @@ class _HomeState extends State<Home> {
   });
 }
 
- Future<void> _pick(dynamic x)async{await _analytics('place_search', {'place': v.trim()});final a=double.tryParse(x['latitude'].toString()),o=double.tryParse(x['longitude'].toString());if(a==null||o==null)return;search.text=x['name'].toString();FocusScope.of(context).unfocus();setState(()=>suggestions=[]);await _set(LatLng(a,o),x['name'].toString(),true);}
+ Future<void> _pick(dynamic x)async{await _analytics('place_search', {'place': x['name'].toString()});final a=double.tryParse(x['latitude'].toString()),o=double.tryParse(x['longitude'].toString());if(a==null||o==null)return;search.text=x['name'].toString();FocusScope.of(context).unfocus();setState(()=>suggestions=[]);await _set(LatLng(a,o),x['name'].toString(),true);}
  void _tap(TapPosition _,LatLng p){
   if(movePin){
     _set(p,'Selected map location',true);
@@ -1078,9 +1078,62 @@ class _HomeState extends State<Home> {
  void _follow(dynamic b){final id=b['bus_id'].toString();setState(() { followed=followed==id?null:id; following=followed!=null; });_center(b,true);}
  void _trail(dynamic b){final p=history[b['bus_id'].toString()]??[];if(p.length<2){_info('Trail needs a few refreshes first.');return;}setState(()=>trail=List<LatLng>.from(p));map.fitCamera(CameraFit.coordinates(coordinates:trail,padding:const EdgeInsets.all(45)));}
  void _play(dynamic b){final p=history[b['bus_id'].toString()]??[];if(p.length<2){_info('Playback needs a few recorded positions first.');return;}var i=0;Timer.periodic(const Duration(milliseconds:450),(t){if(!mounted||i>=p.length){t.cancel();return;}map.move(p[i++],16);});}
- void _eta(dynamic b){final minutes=int.tryParse(b['eta_minutes']?.toString()??'');final d=double.tryParse(b['distance_km']?.toString()??'');final status=(b['eta_status']??'').toString();if(status=='not_ahead'){_info('This bus is not currently heading toward the selected location.');return;}if(minutes==null){_info('ETA unavailable. Recent movement data is not sufficient for a reliable estimate.');return;}_info('Estimated arrival: '+minutes.toString()+' min\\nDistance: '+(d?.toStringAsFixed(2)??'?')+' km\\nBased on backend ETA and recent GPS movement.');}
+ void _eta(dynamic b){final minutes=int.tryParse(b['eta_minutes']?.toString()??'');final status=(b['eta_status']??'').toString();final next=(b['likely_next_stop']??b['likely_towards']??'next stop').toString();final last=(b['last_passed_stop']??b['last_stop']??'unavailable').toString();if(status=='not_ahead'){_info('This bus is not currently heading toward the selected location.');return;}if(minutes==null){_info('Last passed stop: '+last+'\\nNext stop: '+next+'\\nETA unavailable. '+(b['eta_label']??'Recent movement data is not sufficient for a reliable estimate.').toString());return;}_info('Last passed stop: '+last+'\\nNext stop: '+next+'\\nEstimated arrival: '+minutes.toString()+' min\\n'+(b['eta_label']??'Based on recent GPS movement.').toString());}
  void _share(dynamic b){unawaited(_analytics('bus_shared', {'bus_id': b['bus_id'].toString()}));Clipboard.setData(ClipboardData(text:'Noida Bus Tracker · Bus '+b['bus_id'].toString()));_info('Bus ID copied to clipboard.');}
- void _report(dynamic b){showModalBottomSheet(context:context,showDragHandle:true,builder:(c)=>SafeArea(child:Column(mainAxisSize:MainAxisSize.min,children:[Padding(padding:const EdgeInsets.all(16),child:Text('Report '+b['bus_id'].toString(),style:const TextStyle(fontSize:20,fontWeight:FontWeight.w800))),...['Not moving','Wrong location','Already passed','Crowded'].map((x)=>ListTile(title:Text(x),leading:const Icon(Icons.flag_outlined),onTap:(){Navigator.pop(c);_info('Thanks. Your report has been noted locally.');}))])));}
+ void _report(dynamic b){
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (c) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+            child: Text('Report ${b['bus_id']}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Text('Your selected issue and bus ID will be sent to the project team.', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+          ),
+          ...['Not moving', 'Wrong location', 'Already passed', 'Crowded'].map((issue) => ListTile(
+            title: Text(issue),
+            leading: const Icon(Icons.flag_outlined),
+            onTap: () {
+              Navigator.pop(c);
+              unawaited(_submitBusReport(b, issue));
+            },
+          )),
+        ],
+      ),
+    ),
+  );
+ }
+
+ Future<void> _submitBusReport(dynamic bus, String issue) async {
+  try {
+    final response = await http.post(
+      Uri.parse(api + '/api/report'),
+      headers: const {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      body: jsonEncode({
+        'bus_id': bus['bus_id'].toString(),
+        'report_type': issue.toLowerCase().replaceAll(' ', '_'),
+        'value': issue,
+        'note': 'Submitted from Android app',
+        'consent': 'yes',
+        'time': DateTime.now().toIso8601String(),
+      }),
+    ).timeout(const Duration(seconds: 12));
+    final data = jsonDecode(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300 || data is! Map<String, dynamic> || data['success'] != true) {
+      throw Exception(data is Map<String, dynamic> ? data['detail']?.toString() : 'Report submission failed');
+    }
+    await _analytics('report_submitted', {'bus_id': bus['bus_id'].toString(), 'report_type': issue});
+    if (mounted) _info('Report submitted. Thanks for helping improve bus data.');
+  } catch (_) {
+    if (mounted) _info('The report could not be sent right now. Please try again when the backend is available.');
+  }
+ }
  void _info(String s){if(!mounted)return;showDialog(context:context,builder:(c)=>AlertDialog(title:const Text('Noida Bus Tracker'),content:Text(s),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('OK'))]));}
  void _openFavourites() {
   final favouriteBuses = buses.where(
@@ -1120,6 +1173,113 @@ class _HomeState extends State<Home> {
     ),
   );
 }
+
+ Future<void> _feedback() async {
+  final messageController = TextEditingController();
+  String rating = '5';
+  String type = 'general';
+  String status = '';
+  bool sending = false;
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setDialogState) => AlertDialog(
+        title: const Text('Feedback & suggestions'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: rating,
+                decoration: const InputDecoration(labelText: 'Rating'),
+                items: const [
+                  DropdownMenuItem(value: '5', child: Text('5 · Excellent')),
+                  DropdownMenuItem(value: '4', child: Text('4 · Good')),
+                  DropdownMenuItem(value: '3', child: Text('3 · Okay')),
+                  DropdownMenuItem(value: '2', child: Text('2 · Poor')),
+                  DropdownMenuItem(value: '1', child: Text('1 · Very poor')),
+                ],
+                onChanged: sending ? null : (value) { if (value != null) setDialogState(() => rating = value); },
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                initialValue: type,
+                decoration: const InputDecoration(labelText: 'Category'),
+                items: const [
+                  DropdownMenuItem(value: 'general', child: Text('General')),
+                  DropdownMenuItem(value: 'location', child: Text('Location / map')),
+                  DropdownMenuItem(value: 'bus-data', child: Text('Bus data / accuracy')),
+                  DropdownMenuItem(value: 'performance', child: Text('Speed / performance')),
+                  DropdownMenuItem(value: 'bug', child: Text('Bug or problem')),
+                  DropdownMenuItem(value: 'other', child: Text('Other')),
+                ],
+                onChanged: sending ? null : (value) { if (value != null) setDialogState(() => type = value); },
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: messageController,
+                maxLength: 1500,
+                minLines: 3,
+                maxLines: 6,
+                decoration: const InputDecoration(
+                  labelText: 'Your feedback',
+                  hintText: 'What should we improve?',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (status.isNotEmpty) Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(status, style: TextStyle(color: status.startsWith('Sent') ? Colors.green : Colors.red, fontSize: 12)),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: sending ? null : () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: sending ? null : () async {
+              final message = messageController.text.trim();
+              if (message.isEmpty) {
+                setDialogState(() => status = 'Enter a suggestion before sending.');
+                return;
+              }
+              setDialogState(() { sending = true; status = 'Sending…'; });
+              try {
+                final response = await http.post(
+                  Uri.parse(api + '/api/feedback'),
+                  headers: const {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                  body: jsonEncode({
+                    'rating': rating,
+                    'feedback_type': type,
+                    'message': message,
+                    'time': DateTime.now().toIso8601String(),
+                  }),
+                ).timeout(const Duration(seconds: 12));
+                final data = jsonDecode(response.body);
+                if (response.statusCode < 200 || response.statusCode >= 300 || data is! Map<String, dynamic> || data['success'] != true) {
+                  throw Exception(data is Map<String, dynamic> ? data['detail']?.toString() : 'Feedback submission failed');
+                }
+                await _analytics('feedback_submitted', {'feedback_type': type, 'rating': rating});
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+                if (mounted) _info('Feedback sent. Thank you for helping improve the tracker.');
+              } catch (_) {
+                setDialogState(() { sending = false; status = 'Could not send feedback. Try again later.'; });
+              }
+            },
+            child: Text(sending ? 'Sending…' : 'Send feedback'),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  messageController.dispose();
+ }
 
  void _settings() {
   var currentDark = widget.dark;
@@ -1182,6 +1342,15 @@ class _HomeState extends State<Home> {
                       setState(() => nearbyAlerts = value);
                       if (value && buses.isNotEmpty) _checkNearbyAlert(buses);
                     }
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.feedback_outlined),
+                  title: const Text('Feedback & suggestions'),
+                  subtitle: const Text('Send ideas or report app problems'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _feedback();
                   },
                 ),
                 ListTile(
@@ -1646,6 +1815,9 @@ class _HomeState extends State<Home> {
   final speed=double.tryParse(b['speed'].toString());
   final dist=double.tryParse(b['distance_km'].toString());
   final dir=b['likely_towards'];
+  final lastStop=(b['last_passed_stop']??b['last_stop'])?.toString();
+  final nextStop=(b['likely_next_stop']??b['likely_towards'])?.toString();
+  final etaLabel=(b['eta_label']??'').toString();
   final route=_routeForBus(b);
   final moved=_movedLastMinutes(id);
   final status=(b['movement_status']??b['vehicle_status']??'unknown').toString().toLowerCase();
@@ -1773,6 +1945,33 @@ class _HomeState extends State<Home> {
                 ],
               ),
             ),
+            if ((lastStop != null && lastStop.isNotEmpty) || (nextStop != null && nextStop.isNotEmpty) || etaLabel.isNotEmpty)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(top: 10),
+                padding: const EdgeInsets.all(11),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Theme.of(context).dividerColor),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (lastStop != null && lastStop.isNotEmpty)
+                      Text('Last passed stop · $lastStop', style: const TextStyle(fontSize: 12)),
+                    if (nextStop != null && nextStop.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 5),
+                        child: Text('Next stop · $nextStop', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                      ),
+                    if (etaLabel.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 5),
+                        child: Text(etaLabel, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                      ),
+                  ],
+                ),
+              ),
             const SizedBox(height:10),
             Container(
               width:double.infinity,
