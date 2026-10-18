@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'firebase_options.dart';
 
 FirebaseAnalytics? appAnalytics;
@@ -483,27 +484,69 @@ class _HomeState extends State<Home> {
    }
    final info=await PackageInfo.fromPlatform();
    analyticsAppVersion=info.version;
+   if(Platform.isAndroid){
+    try{
+     final android=await DeviceInfoPlugin().androidInfo;
+     analyticsDeviceMetadata={
+      'device_brand':android.brand,
+      'device_manufacturer':android.manufacturer,
+      'device_model':android.model,
+      'android_version':android.version.release,
+      'android_sdk_int':android.version.sdkInt,
+     };
+    }catch(_){}
+   }
    await _sendAnalytics('app_open');
+   final firstOpenTracked=prefs.getBool('analytics_first_open_tracked')??false;
+   if(!firstOpenTracked){
+    final recorded=await _sendAnalytics('first_open');
+    if(recorded)await prefs.setBool('analytics_first_open_tracked',true);
+   }
   } catch (_) {}
  }
 
- Future<void> _sendAnalytics(String name,[Map<String,Object>? parameters]) async {
+ Future<bool> _sendAnalytics(String name,[Map<String,Object>? parameters]) async {
   final visitor=analyticsVisitorId;
-  if(visitor==null||visitor.isEmpty)return;
+  if(visitor==null||visitor.isEmpty)return false;
   try {
-   await http.post(
+   final response=await http.post(
     Uri.parse(api+'/api/analytics/event'),
     headers:{'Content-Type':'application/json','Accept':'application/json'},
-    body:jsonEncode({'event_name':name,'path':'/mobile','session_id':analyticsSessionId,'visitor_id':visitor,'source':'android','device_type':'mobile','os':Platform.operatingSystem,'language':Platform.localeName,'app_version':analyticsAppVersion,'metadata':parameters??{}}),
+    body:jsonEncode({
+     'event_name':name,
+     'path':'/mobile',
+     'session_id':analyticsSessionId,
+     'visitor_id':visitor,
+     'source':'android',
+     'device_type':'mobile',
+     'os':Platform.operatingSystem,
+     'language':Platform.localeName,
+     'app_version':analyticsAppVersion,
+     'metadata':{
+      ...analyticsDeviceMetadata,
+      'install_id':visitor,
+      if(parameters!=null)...parameters,
+     },
+    }),
    ).timeout(const Duration(seconds:5));
-  } catch (_) {}
+   if(response.statusCode<200||response.statusCode>=300)return false;
+   final body=jsonDecode(response.body);
+   return body is Map<String,dynamic>&&body['success']==true;
+  } catch (_) {
+   return false;
+  }
  }
 
  Future<void> _analytics(String name, [Map<String,Object>? parameters]) async {
   try {
    await appAnalytics?.logEvent(name:name,parameters:parameters);
   } catch (_) {}
-  await _sendAnalytics(name,parameters);
+  final normalizedEvent = switch(name){
+   'current_location_used' => 'location_used',
+   'location_searched' => 'place_search',
+   _ => name,
+  };
+  await _sendAnalytics(normalizedEvent,parameters);
  }
  Future<void> _checkForUpdate() async {
   try {
@@ -1020,7 +1063,7 @@ class _HomeState extends State<Home> {
   });
 }
 
- Future<void> _pick(dynamic x)async{await _analytics('location_searched');final a=double.tryParse(x['latitude'].toString()),o=double.tryParse(x['longitude'].toString());if(a==null||o==null)return;search.text=x['name'].toString();FocusScope.of(context).unfocus();setState(()=>suggestions=[]);await _set(LatLng(a,o),x['name'].toString(),true);}
+ Future<void> _pick(dynamic x)async{await _analytics('place_search', {'place': v.trim()});final a=double.tryParse(x['latitude'].toString()),o=double.tryParse(x['longitude'].toString());if(a==null||o==null)return;search.text=x['name'].toString();FocusScope.of(context).unfocus();setState(()=>suggestions=[]);await _set(LatLng(a,o),x['name'].toString(),true);}
  void _tap(TapPosition _,LatLng p){
   if(movePin){
     _set(p,'Selected map location',true);
