@@ -67,6 +67,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           APK="mobile/build/app/outputs/flutter-apk/app-release.apk"
+          RELEASE_APK="mobile/build/app/outputs/flutter-apk/noida-bus-tracker.apk"
+          cp "$APK" "$RELEASE_APK"
           VERSION="$(sed -n 's/^version: *\\([^+]*\\)+.*/\\1/p' mobile/pubspec.yaml)"
           NOTES="App version: $VERSION
 
@@ -81,8 +83,8 @@ jobs:
                 exit 0
               fi
             fi
-            gh release upload mobile-latest "$APK#noida-bus-tracker.apk" --clobber
+            gh release upload mobile-latest "$RELEASE_APK" --clobber
             gh release edit mobile-latest --title "Noida Bus Tracker for Android" --notes "$NOTES"
           else
-            gh release create mobile-latest "$APK#noida-bus-tracker.apk" --title "Noida Bus Tracker for Android" --notes "$NOTES"
+            gh release create mobile-latest "$RELEASE_APK" --title "Noida Bus Tracker for Android" --notes "$NOTES"
           fi
