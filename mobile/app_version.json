@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.2.1",
+  "latest_version": "1.2.2",
   "minimum_version": "1.0.0",
-  "message": "Noida Bus Tracker 1.2.1 is available with stronger mandatory-update enforcement, direct APK download, improved GPS status and privacy controls.",
+  "message": "Noida Bus Tracker 1.2.2 improves mandatory update handling, provides a direct APK download, and includes clearer GPS status and privacy controls.",
   "download_url": "https://github.com/Aryan1684/noida-bus-tracker/releases/download/mobile-latest/noida-bus-tracker.apk"
 }
