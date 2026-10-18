@@ -738,7 +738,7 @@ def mobile_dashboard(days=30, hours=None):
 
     device_rows = []
     seen_device_rows = set()
-    for row in activity_rows:
+    for row in first_opens:
         visitor_id = row.get("visitor_id")
         metadata = row.get("metadata") or {}
         if not visitor_id:
@@ -746,6 +746,7 @@ def mobile_dashboard(days=30, hours=None):
         key = (
             visitor_id,
             metadata.get("device_brand"),
+            metadata.get("device_manufacturer"),
             metadata.get("device_model"),
             metadata.get("android_version"),
             row.get("app_version"),
