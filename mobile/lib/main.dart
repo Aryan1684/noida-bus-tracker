@@ -362,7 +362,7 @@ class _HomeState extends State<Home> {
  late String analyticsSessionId;
  String analyticsAppVersion='1.1.0';
  Map<String,Object> analyticsDeviceMetadata={};
- bool analyticsEnabled=true;
+ bool analyticsEnabled=false;
  DateTime? analyticsLastActivity;
  final map=MapController(); final search=TextEditingController(); Timer? refreshTimer,searchTimer,maintenanceTimer; bool maintenanceMode=false,maintenanceCheckRunning=false; String maintenanceMessage='We are making a few improvements. Please check back shortly.'; int? maintenanceExpiresAt;
  LatLng location=const LatLng(28.4598,77.5184); List<dynamic> buses=[]; List<dynamic> suggestions=[]; List<dynamic> routeData=[]; Set<String> favs={}; Map<String,List<LatLng>> history={}; Map<String,List<DateTime>> historyTimes={}; List<LatLng> trail=[]; Map<String,DateTime> alertHistory={};
@@ -385,9 +385,11 @@ class _HomeState extends State<Home> {
   if (!dontShowNotice) {
     await Future.delayed(const Duration(milliseconds: 700));
     if (mounted && !dontShowNotice) {
-      _notice();
+      await _notice();
     }
   }
+
+  await _requestAnalyticsConsent();
 }
 
  Future<void> _notice() async {
@@ -466,10 +468,49 @@ class _HomeState extends State<Home> {
   }
 }
 
+  Future<void> _requestAnalyticsConsent() async {
+  final prefs = await SharedPreferences.getInstance();
+  if (prefs.containsKey('analytics_consent_v2') || !mounted) return;
+
+  final choice = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: const Text('Optional usage analytics'),
+      content: const SingleChildScrollView(
+        child: Text(
+          'Help improve Noida Bus Tracker by sharing app usage events, sessions, app version, phone brand and model, Android version, and an approximate area inferred from your network IP. IP-based area is not GPS and can be inaccurate. Analytics does not need your device GPS location.\n\n'
+          'This is optional. Bus tracking works if you decline, and you can change this choice any time in App settings. See Privacy notice for details.',
+          style: TextStyle(height: 1.5),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text('Continue without analytics'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: const Text('Allow analytics'),
+        ),
+      ],
+    ),
+  );
+
+  if (!mounted) return;
+  final enabled = choice == true;
+  await prefs.setBool('analytics_consent_v2', enabled);
+  await prefs.setBool('analytics_enabled', enabled);
+  if (!mounted) return;
+  setState(() => analyticsEnabled = enabled);
+  if (enabled) await _recordAppOpen();
+}
+
  Future<void> _initAnalytics() async {
   try {
    final prefs=await SharedPreferences.getInstance();
-   analyticsEnabled=prefs.getBool('analytics_enabled')??true;
+   analyticsEnabled=prefs.getBool('analytics_consent_v2')??false;
    analyticsVisitorId=prefs.getString('analytics_visitor_id');
    if(analyticsVisitorId==null||analyticsVisitorId!.isEmpty){
     analyticsVisitorId=DateTime.now().microsecondsSinceEpoch.toString()+'-'+hashCode.toString();
@@ -771,7 +812,7 @@ class _HomeState extends State<Home> {
  }
 
  void _openRoutes() {
-  _analytics('routes_opened');
+  unawaited(_analytics('routes_opened'));
   showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
@@ -1156,14 +1197,15 @@ class _HomeState extends State<Home> {
   }
   _clearBusSelection();
 }
- Future<void> _fav(String id)async{final n=Set<String>.from(favs);n.contains(id)?n.remove(id):n.add(id);final p=await SharedPreferences.getInstance();await p.setStringList('favs',n.toList());if(mounted)setState(()=>favs=n);}
- void _follow(dynamic b){final id=b['bus_id'].toString();setState(() { followed=followed==id?null:id; following=followed!=null; });_center(b,true);}
- void _trail(dynamic b){final p=history[b['bus_id'].toString()]??[];if(p.length<2){_info('Trail needs a few refreshes first.');return;}setState(()=>trail=List<LatLng>.from(p));map.fitCamera(CameraFit.coordinates(coordinates:trail,padding:const EdgeInsets.all(45)));}
- void _play(dynamic b){final p=history[b['bus_id'].toString()]??[];if(p.length<2){_info('Playback needs a few recorded positions first.');return;}var i=0;Timer.periodic(const Duration(milliseconds:450),(t){if(!mounted||i>=p.length){t.cancel();return;}map.move(p[i++],16);});}
- void _eta(dynamic b){final minutes=int.tryParse(b['eta_minutes']?.toString()??'');final status=(b['eta_status']??'').toString();final next=(b['likely_next_stop']??b['likely_towards']??'next stop').toString();final last=(b['last_passed_stop']??b['last_stop']??'unavailable').toString();if(status=='not_ahead'){_info('This bus is not currently heading toward the selected location.');return;}if(minutes==null){_info('Last passed stop: '+last+'\\nNext stop: '+next+'\\nETA unavailable. '+(b['eta_label']??'Recent movement data is not sufficient for a reliable estimate.').toString());return;}_info('Last passed stop: '+last+'\\nNext stop: '+next+'\\nEstimated arrival: '+minutes.toString()+' min\\n'+(b['eta_label']??'Based on recent GPS movement.').toString());}
+ Future<void> _fav(String id)async{final existed=favs.contains(id);unawaited(_analytics(existed?'favorite_removed':'favorite_added', {'bus_id':id}));final n=Set<String>.from(favs);n.contains(id)?n.remove(id):n.add(id);final p=await SharedPreferences.getInstance();await p.setStringList('favs',n.toList());if(mounted)setState(()=>favs=n);}
+ void _follow(dynamic b){final id=b['bus_id'].toString();unawaited(_analytics('bus_follow_toggled', {'bus_id':id, 'following':followed!=id}));setState(() { followed=followed==id?null:id; following=followed!=null; });_center(b,true);}
+ void _trail(dynamic b){unawaited(_analytics('movement_trail_opened', {'bus_id':b['bus_id'].toString()}));final p=history[b['bus_id'].toString()]??[];if(p.length<2){_info('Trail needs a few refreshes first.');return;}setState(()=>trail=List<LatLng>.from(p));map.fitCamera(CameraFit.coordinates(coordinates:trail,padding:const EdgeInsets.all(45)));}
+ void _play(dynamic b){unawaited(_analytics('playback_opened', {'bus_id':b['bus_id'].toString()}));final p=history[b['bus_id'].toString()]??[];if(p.length<2){_info('Playback needs a few recorded positions first.');return;}var i=0;Timer.periodic(const Duration(milliseconds:450),(t){if(!mounted||i>=p.length){t.cancel();return;}map.move(p[i++],16);});}
+ void _eta(dynamic b){unawaited(_analytics('eta_requested', {'bus_id':b['bus_id'].toString()}));final minutes=int.tryParse(b['eta_minutes']?.toString()??'');final status=(b['eta_status']??'').toString();final next=(b['likely_next_stop']??b['likely_towards']??'next stop').toString();final last=(b['last_passed_stop']??b['last_stop']??'unavailable').toString();if(status=='not_ahead'){_info('This bus is not currently heading toward the selected location.');return;}if(minutes==null){_info('Last passed stop: '+last+'\\nNext stop: '+next+'\\nETA unavailable. '+(b['eta_label']??'Recent movement data is not sufficient for a reliable estimate.').toString());return;}_info('Last passed stop: '+last+'\\nNext stop: '+next+'\\nEstimated arrival: '+minutes.toString()+' min\\n'+(b['eta_label']??'Based on recent GPS movement.').toString());}
  void _share(dynamic b){unawaited(_analytics('bus_shared', {'bus_id': b['bus_id'].toString()}));Clipboard.setData(ClipboardData(text:'Noida Bus Tracker · Bus '+b['bus_id'].toString()));_info('Bus ID copied to clipboard.');}
  void _report(dynamic b){
-  showModalBottomSheet<void>(
+  unawaited(_analytics('report_opened', {'bus_id':b['bus_id'].toString()}));
+  showModalBottomSheet<void> (
     context: context,
     showDragHandle: true,
     builder: (c) => SafeArea(
@@ -1218,6 +1260,7 @@ class _HomeState extends State<Home> {
  }
  void _info(String s){if(!mounted)return;showDialog(context:context,builder:(c)=>AlertDialog(title:const Text('Noida Bus Tracker'),content:Text(s),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('OK'))]));}
  void _openFavourites() {
+  unawaited(_analytics('favorites_opened'));
   final favouriteBuses = buses.where(
     (b) => favs.contains(b['bus_id'].toString()),
   ).toList();
@@ -1325,6 +1368,7 @@ class _HomeState extends State<Home> {
  }
 
  Future<void> _feedback() async {
+  unawaited(_analytics('feedback_opened'));
   final messageController = TextEditingController();
   String rating = '5';
   String type = 'general';
@@ -1432,6 +1476,7 @@ class _HomeState extends State<Home> {
  }
 
  void _settings() {
+  unawaited(_analytics('settings_opened'));
   var currentDark = widget.dark;
   var alertsEnabled = nearbyAlerts;
   var currentAnalyticsEnabled = analyticsEnabled;
@@ -1545,6 +1590,14 @@ class _HomeState extends State<Home> {
                     _openWebsitePage('accessibility.html');
                   },
                 ),
+                ListTile(
+                  leading: const Icon(Icons.cookie_outlined),
+                  title: const Text('Cookies & storage'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _openWebsitePage('cookies.html');
+                  },
+                ),
                 SwitchListTile(
                   value: currentAnalyticsEnabled,
                   secondary: const Icon(Icons.insights_outlined),
@@ -1557,6 +1610,7 @@ class _HomeState extends State<Home> {
                   onChanged: (value) async {
                     setSheetState(() => currentAnalyticsEnabled = value);
                     final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool('analytics_consent_v2', value);
                     await prefs.setBool('analytics_enabled', value);
                     if (mounted) {
                       setState(() => analyticsEnabled = value);
