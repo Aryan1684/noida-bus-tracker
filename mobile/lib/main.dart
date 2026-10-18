@@ -356,7 +356,7 @@ class SplashRoutePainter extends CustomPainter {
 
 class Home extends StatefulWidget { final bool dark; final VoidCallback toggle; const Home({super.key,required this.dark,required this.toggle}); @override State<Home> createState()=>_HomeState(); }
 
-class _HomeState extends State<Home> {
+class _HomeState extends State<Home> with WidgetsBindingObserver {
  static const api='https://noida-bus-tracker.onrender.com';
  String? analyticsVisitorId;
  late String analyticsSessionId;
@@ -364,14 +364,28 @@ class _HomeState extends State<Home> {
  Map<String,Object> analyticsDeviceMetadata={};
  bool analyticsEnabled=false;
  DateTime? analyticsLastActivity;
+ bool _wasBackgrounded=false;
  final map=MapController(); final search=TextEditingController(); Timer? refreshTimer,searchTimer,maintenanceTimer; bool maintenanceMode=false,maintenanceCheckRunning=false; String maintenanceMessage='We are making a few improvements. Please check back shortly.'; int? maintenanceExpiresAt;
  LatLng location=const LatLng(28.4598,77.5184); List<dynamic> buses=[]; List<dynamic> suggestions=[]; List<dynamic> routeData=[]; Set<String> favs={}; Map<String,List<LatLng>> history={}; Map<String,List<DateTime>> historyTimes={}; List<LatLng> trail=[]; Map<String,DateTime> alertHistory={};
  double radius=5; bool loading=false,locating=false,movePin=false,stops=false,showRoutes=false,following=false,permissionBlocked=false,dontShowNotice=false,nearbyAlerts=false; String? error,selected,followed; String locationLabel='Use your current location'; DateTime? refreshed;
  final stopData=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060]];
  final searchPlaces=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Sector 62',28.6280,77.3770],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Gaur Chowk',28.6150,77.4350],['Gaur City',28.6155,77.4240],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060],['Sector 90',28.5340,77.4380],['Noida International Airport',28.5562,77.5849]];
 
- @override void initState(){super.initState();analyticsSessionId=DateTime.now().microsecondsSinceEpoch.toString()+'-'+hashCode.toString();_initAnalytics();_initApp();_loadRoutes();_checkForUpdate();_pollMaintenanceStatus();maintenanceTimer=Timer.periodic(const Duration(seconds:5),(_)=>_pollMaintenanceStatus());}
- @override void dispose(){refreshTimer?.cancel();searchTimer?.cancel();maintenanceTimer?.cancel();search.dispose();super.dispose();}
+ @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);analyticsSessionId=DateTime.now().microsecondsSinceEpoch.toString()+'-'+hashCode.toString();_initAnalytics();_initApp();_loadRoutes();_checkForUpdate();_pollMaintenanceStatus();maintenanceTimer=Timer.periodic(const Duration(seconds:5),(_)=>_pollMaintenanceStatus());}
+ @override void dispose(){WidgetsBinding.instance.removeObserver(this);refreshTimer?.cancel();searchTimer?.cancel();maintenanceTimer?.cancel();search.dispose();super.dispose();}
+
+ @override
+ void didChangeAppLifecycleState(AppLifecycleState state) {
+  if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.hidden) {
+    _wasBackgrounded = true;
+    return;
+  }
+  if (state == AppLifecycleState.resumed && _wasBackgrounded) {
+    _wasBackgrounded = false;
+    if (analyticsEnabled) unawaited(_recordAppOpen());
+    if (maintenanceMode) unawaited(_pollMaintenanceStatus());
+  }
+}
  Future<void> _initApp() async {
   final prefs = await SharedPreferences.getInstance();
   if (!mounted) return;
