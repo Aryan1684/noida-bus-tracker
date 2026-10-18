@@ -3,6 +3,8 @@ const KEY = "noidaBusAdminToken";
 let token = sessionStorage.getItem(KEY) || "";
 let map = null;
 let layer = null;
+let mobileInstallMapInstance = null;
+let mobileInstallHeatLayer = null;
 
 function auth() {
     return {
@@ -214,6 +216,119 @@ function demandMap(cells) {
     window.setTimeout(() => map && map.invalidateSize(), 100);
 }
 
+
+function renderMobileInstallMap(cells) {
+    const box = document.getElementById("mobileInstallMap");
+    const summary = document.getElementById("mobileInstallMapSummary");
+    if (!box) return;
+    if (!mobileInstallMapInstance) {
+        mobileInstallMapInstance = L.map(box).setView([28.5355, 77.3910], 10);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 18,
+            attribution: "&copy; OpenStreetMap contributors"
+        }).addTo(mobileInstallMapInstance);
+        mobileInstallHeatLayer = L.layerGroup().addTo(mobileInstallMapInstance);
+    }
+    mobileInstallHeatLayer.clearLayers();
+    const valid = (cells || []).filter(item =>
+        Number.isFinite(Number(item.latitude)) &&
+        Number.isFinite(Number(item.longitude)) &&
+        Number(item.count) >= 3
+    );
+    const max = Math.max(1, ...valid.map(item => Number(item.count)));
+    const bounds = [];
+    valid.forEach(item => {
+        const lat = Number(item.latitude);
+        const lon = Number(item.longitude);
+        const count = Number(item.count);
+        bounds.push([lat, lon]);
+        L.circleMarker([lat, lon], {
+            radius: Math.min(20, 6 + Math.sqrt(count) * 2),
+            color: "#5c8b28",
+            weight: 1,
+            fillColor: "#b8f26b",
+            fillOpacity: 0.35 + 0.45 * count / max
+        }).bindPopup("Approximate first-open area · " + count + " installation(s)").addTo(mobileInstallHeatLayer);
+    });
+    if (typeof L.heatLayer === "function" && valid.length) {
+        L.heatLayer(valid.map(item => [
+            Number(item.latitude),
+            Number(item.longitude),
+            Math.max(0.2, Number(item.count) / max)
+        ]), {radius: 34, blur: 26, maxZoom: 13, max: 1, minOpacity: 0.25}).addTo(mobileInstallHeatLayer);
+    }
+    if (bounds.length) {
+        mobileInstallMapInstance.fitBounds(bounds, {padding: [18, 18], maxZoom: 12});
+        summary.textContent = valid.length + " approximate areas shown; only cells with at least 3 tracked installation IDs are displayed.";
+    } else {
+        summary.textContent = "No area has reached 3 tracked installation IDs with a successful IP lookup yet.";
+    }
+    window.setTimeout(() => mobileInstallMapInstance && mobileInstallMapInstance.invalidateSize(), 100);
+}
+
+function renderMobileAnalytics(data) {
+    document.getElementById("mobileAnalyticsStatus").textContent =
+        data.storage === "sqlite-ephemeral" ? "TEMPORARY STORAGE" : (data.period_label || "Mobile analytics");
+    document.getElementById("mobileInstalls").textContent = data.tracked_first_opens_all_time ?? "0";
+    document.getElementById("mobileActive").textContent = data.active_installations ?? "0";
+    document.getElementById("mobileSessions").textContent = data.active_sessions ?? "0";
+    document.getElementById("mobileOpens").textContent = data.app_opens ?? "0";
+    document.getElementById("mobileNewInstalls").textContent = data.tracked_first_opens_in_window ?? "0";
+    document.getElementById("mobileFeatureEvents").textContent = data.feature_events ?? "0";
+    document.getElementById("mobileTrackingNote").textContent = data.tracking_note ||
+        "First opens are a proxy for installation instances, not exact Play Store install counts or unique physical phones. Areas are approximate IP-derived first-open areas.";
+    dailyChartInto("mobileDailyChart", data.daily);
+    tableRows("mobileBrandTable", data.brands, "name");
+    tableRows("mobileModelTable", data.models, "name");
+    tableRows("mobileAndroidTable", data.android_versions, "name");
+    tableRows("mobileAppVersionTable", data.app_versions, "name");
+    tableRows("mobileEventTable", data.event_breakdown, "name");
+    tableRows("mobileInstallAreaTable", (data.install_areas || []).map(item => ({
+        name: item.name + " · " + Number(item.latitude).toFixed(2) + ", " + Number(item.longitude).toFixed(2),
+        count: item.count
+    })), "name");
+    renderMobileInstallMap(data.install_areas);
+}
+
+function dailyChartInto(id, items) {
+    const box = document.getElementById(id);
+    if (!box) return;
+    box.innerHTML = "";
+    const data = items || [];
+    if (!data.length) {
+        emptyState(box, "No Android activity recorded in this reporting window.");
+        return;
+    }
+    const max = Math.max(1, ...data.map(item => Math.max(
+        Number(item.visitors) || 0,
+        Number(item.sessions) || 0,
+        Number(item.events) || 0
+    )));
+    const hourly = data.length > 0 && /^\d{2}:\d{2}$/.test(String(data[0].label || ""));
+    box.classList.toggle("hourly-series", hourly);
+    data.forEach((item, index) => {
+        const column = document.createElement("div");
+        column.className = "day-col";
+        const bars = document.createElement("div");
+        bars.className = "day-bars";
+        [["visitors", "bar-visitors", "active installations"], ["sessions", "bar-sessions", "sessions"], ["events", "bar-events", "events"]].forEach(([key, className, label]) => {
+            const value = Number(item[key]) || 0;
+            const bar = document.createElement("i");
+            bar.className = "day-bar " + className;
+            bar.style.height = Math.max(2, Math.round(value / max * 145)) + "px";
+            bar.title = (item.date || item.label || "") + " · " + value + " " + label;
+            bars.appendChild(bar);
+        });
+        const date = document.createElement("span");
+        date.textContent = item.label || (item.date || "").slice(5);
+        date.title = item.date || "";
+        if (hourly && data.length > 24 && index % 4 !== 0 && index !== data.length - 1) date.hidden = true;
+        column.appendChild(bars);
+        column.appendChild(date);
+        box.appendChild(column);
+    });
+}
+
 function fleet(data) {
     document.getElementById("fleetTotal").textContent = data.total ?? "—";
     document.getElementById("fleetLive").textContent = data.live ?? "—";
@@ -288,7 +403,8 @@ async function load() {
             const days = document.getElementById("days").value;
             const results = await Promise.allSettled([
                 request("/api/admin/analytics?period=" + encodeURIComponent(days)),
-                request("/api/admin/fleet")
+                request("/api/admin/fleet"),
+                request("/api/admin/mobile-analytics?period=" + encodeURIComponent(days))
             ]);
 
             if (results[0].status === "rejected") throw results[0].reason;
@@ -357,6 +473,16 @@ async function load() {
             tableRows("referrerTable", analytics.referrers, "name");
             recentTable(analytics.recent_events);
             demandMap(analytics.location_cells);
+
+            if (results[2].status === "fulfilled") {
+                renderMobileAnalytics(results[2].value);
+            } else {
+                document.getElementById("mobileAnalyticsStatus").textContent = "Unavailable";
+                document.getElementById("mobileTrackingNote").textContent = "Mobile analytics could not be loaded. Check that the backend with the mobile analytics endpoint has deployed successfully.";
+                ["mobileInstalls", "mobileActive", "mobileSessions", "mobileOpens", "mobileNewInstalls", "mobileFeatureEvents"].forEach(id => {
+                    document.getElementById(id).textContent = "—";
+                });
+            }
 
             if (results[1].status === "fulfilled") {
                 fleet(results[1].value);
