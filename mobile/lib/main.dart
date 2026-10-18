@@ -609,33 +609,74 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
  Future<void> _checkForUpdate() async {
   try {
     final info = await PackageInfo.fromPlatform();
-    final response = await http.get(Uri.parse('https://raw.githubusercontent.com/Aryan1684/noida-bus-tracker/main/mobile/app_version.json')).timeout(const Duration(seconds: 6));
+    final manifestUri = Uri.parse('https://raw.githubusercontent.com/Aryan1684/noida-bus-tracker/main/mobile/app_version.json?ts=${DateTime.now().millisecondsSinceEpoch}');
+    final response = await http.get(manifestUri, headers: const {'Cache-Control': 'no-cache'}).timeout(const Duration(seconds: 8));
     if (response.statusCode != 200) return;
-    final data = jsonDecode(response.body) as Map<String,dynamic>;
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) return;
+    final data = decoded;
     final latest = data['latest_version']?.toString() ?? info.version;
     final minimum = data['minimum_version']?.toString() ?? info.version;
-    if (!_isVersionNewer(latest, info.version) && !_isVersionNewer(minimum, info.version)) return;
-    if (!mounted) return;
     final mandatory = _isVersionNewer(minimum, info.version);
+    final optionalUpdate = _isVersionNewer(latest, info.version);
+    if (!mandatory && !optionalUpdate) return;
+    if (!mounted) return;
+
+    final message = data['message']?.toString() ??
+        'A newer version of Noida Bus Tracker is available.';
+    final rawUrl = data['download_url']?.toString() ?? '';
+    final updateUri = Uri.tryParse(rawUrl);
+    final validUpdateUri = updateUri != null &&
+        (updateUri.scheme == 'https' || updateUri.scheme == 'http') &&
+        updateUri.host.isNotEmpty;
+
     await showDialog<void>(
       context: context,
       barrierDismissible: !mandatory,
-      builder: (c) => AlertDialog(
-        title: Text(mandatory ? 'Update required' : 'New version available'),
-        content: Text(data['message']?.toString() ?? 'A newer version of Noida Bus Tracker is available.'),
-        actions: [
-          if (!mandatory) TextButton(onPressed: () => Navigator.pop(c), child: const Text('Later')),
-          FilledButton(
-            onPressed: () async {
-              final url = data['download_url']?.toString();
-              if (url == null || url.isEmpty) return;
-              await Clipboard.setData(ClipboardData(text: url));
-              if (c.mounted) Navigator.pop(c);
-              _info('Update link copied. Open it in your browser to install the latest version.');
-            },
-            child: const Text('Get update'),
+      builder: (dialogContext) => PopScope(
+        canPop: !mandatory,
+        child: AlertDialog(
+          title: Text(mandatory ? 'Update required' : 'New version available'),
+          content: Text(
+            mandatory
+                ? '$message\n\nThis version is no longer supported. Install the required update to continue using the app.'
+                : message,
           ),
-        ],
+          actions: [
+            if (!mandatory)
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Later'),
+              ),
+            FilledButton(
+              onPressed: () async {
+                if (!validUpdateUri) {
+                  await Clipboard.setData(ClipboardData(text: rawUrl));
+                  if (dialogContext.mounted) {
+                    _info('The update link is not configured correctly. The available link has been copied.');
+                  }
+                  return;
+                }
+                try {
+                  final opened = await launchUrl(
+                    updateUri,
+                    mode: LaunchMode.externalApplication,
+                  );
+                  if (!opened && dialogContext.mounted) {
+                    await Clipboard.setData(ClipboardData(text: rawUrl));
+                    _info('Could not open the update link. It has been copied so you can open it in your browser.');
+                  }
+                } catch (_) {
+                  if (dialogContext.mounted) {
+                    await Clipboard.setData(ClipboardData(text: rawUrl));
+                    _info('Could not open the update link. It has been copied so you can open it in your browser.');
+                  }
+                }
+              },
+              child: Text(mandatory ? 'Update app' : 'Get update'),
+            ),
+          ],
+        ),
       ),
     );
   } catch (_) {}
