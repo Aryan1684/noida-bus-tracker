@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Noida Bus Tracker Admin</title>
-<link rel="stylesheet" href="admin.css?v=3">
+<link rel="stylesheet" href="admin.css?v=4">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
@@ -57,6 +57,41 @@
       <div><span>Engaged sessions</span><b id="engaged">—</b></div>
       <div><span>Bounce-like sessions</span><b id="bounce">—</b></div>
     </div>
+  </section>
+
+
+  <section class="panel mobile-analytics-panel">
+    <div class="panel-head"><div><span class="eyebrow">DEDICATED MOBILE ANALYTICS</span><h2>Android app installs and usage</h2></div><span id="mobileAnalyticsStatus" class="badge">Loading mobile data…</span></div>
+    <p id="mobileTrackingNote">First opens count installation instances first observed after this analytics feature is released. They are not exact Play Store install counts or a count of unique physical phones. Approximate area is inferred from the IP address at first app open, not GPS.</p>
+    <div class="cards mobile-summary">
+      <div><span>Tracked first opens · all time</span><b id="mobileInstalls">—</b></div>
+      <div><span>Active installations · selected period</span><b id="mobileActive">—</b></div>
+      <div><span>Usage sessions</span><b id="mobileSessions">—</b></div>
+      <div><span>App opens</span><b id="mobileOpens">—</b></div>
+      <div><span>New first opens · selected period</span><b id="mobileNewInstalls">—</b></div>
+      <div><span>Feature events</span><b id="mobileFeatureEvents">—</b></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><div><span class="eyebrow">MOBILE ENGAGEMENT</span><h2>Daily active installations and sessions</h2></div></div>
+    <div class="chart-legend"><span class="legend-visitors">Active installations</span><span class="legend-sessions">Sessions</span><span class="legend-events">Events</span></div>
+    <div id="mobileDailyChart" class="bar-chart"></div>
+  </section>
+
+  <section class="cols">
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">DEVICE BRAND</span><h2>Phone brands</h2></div></div><div id="mobileBrandTable" class="table"></div></section>
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">DEVICE MODEL</span><h2>Phone models</h2></div></div><div id="mobileModelTable" class="table"></div></section>
+  </section>
+
+  <section class="cols">
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">ANDROID</span><h2>Android versions</h2></div></div><div id="mobileAndroidTable" class="table"></div></section>
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">RELEASE HEALTH</span><h2>App versions</h2></div></div><div id="mobileAppVersionTable" class="table"></div></section>
+  </section>
+
+  <section class="cols">
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">FEATURE USAGE</span><h2>Events from the app</h2></div></div><div id="mobileEventTable" class="table"></div></section>
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">AREA OF FIRST OPEN</span><h2>Approximate install-area map</h2></div></div><p>Areas are inferred from the network IP at first app open. This can point to a carrier gateway or VPN rather than the person's actual location. Areas with fewer than 3 tracked installations are hidden.</p><div class="heatmap-legend"><span class="heat-low"></span> Fewer installations <span class="heat-high"></span> More installations</div><div id="mobileInstallMap"></div><p id="mobileInstallMapSummary" class="muted">Waiting for first-open location data…</p><div id="mobileInstallAreaTable" class="table"></div></section>
   </section>
 
   <section class="cols">
@@ -154,6 +189,6 @@
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="admin.js?v=6"></script>
+<script src="admin.js?v=7"></script>
 </body>
 </html>
