@@ -1432,7 +1432,7 @@ class _HomeState extends State<Home> {
                   onTap: () {
                     Navigator.pop(sheetContext);
                     _info(
-                      'The app may send app-open analytics to help understand broad usage areas. The server may use your network IP for approximate area analytics; raw IP addresses are not saved in the analytics database, but the external geolocation provider receives the IP to perform a lookup. IP-based areas can be inaccurate. Device GPS is accessed for nearby-bus tracking only when you choose to use your location.\n\n'
+                      'When Usage analytics is enabled, the app sends first-open, app-open, and feature events together with a pseudonymous installation ID, app version, phone brand/manufacturer/model, and Android version. The server may send the network IP to ipapi.co for an approximate area lookup. That is not GPS and does not reliably identify the actual installation location. Raw IP addresses are not saved in the analytics database. Turn analytics off in App settings to stop future app analytics events. Device GPS is used for nearby-bus tracking only when you choose to use your location.\n\n'
                       'Full privacy notice: https://noidabus.netlify.app/privacy.html',
                     );
                   },
