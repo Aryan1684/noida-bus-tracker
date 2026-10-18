@@ -2,6 +2,8 @@ name: Android app build
 
 on:
   push:
+    branches:
+      - main
     paths:
       - "mobile/**"
       - ".github/workflows/mobile-build.yml"
@@ -12,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -47,10 +49,23 @@ jobs:
         working-directory: mobile
         run: flutter build apk --release
 
-      - name: Upload release APK
+      - name: Upload APK workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: noida-bus-tracker-android
           path: mobile/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish APK to stable GitHub Release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK="mobile/build/app/outputs/flutter-apk/app-release.apk"
+          if gh release view mobile-latest >/dev/null 2>&1; then
+            gh release upload mobile-latest "$APK#noida-bus-tracker.apk" --clobber
+            gh release edit mobile-latest --title "Noida Bus Tracker for Android" --notes "Latest Android APK for Noida Bus Tracker. Download noida-bus-tracker.apk and install it to update the app."
+          else
+            gh release create mobile-latest "$APK#noida-bus-tracker.apk" --title "Noida Bus Tracker for Android" --notes "Latest Android APK for Noida Bus Tracker. Download noida-bus-tracker.apk and install it to update the app."
+          fi
