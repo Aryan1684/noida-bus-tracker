@@ -364,12 +364,12 @@ class _HomeState extends State<Home> {
  bool analyticsEnabled=true;
  DateTime? analyticsLastActivity;
  final map=MapController(); final search=TextEditingController(); Timer? refreshTimer,searchTimer,maintenanceTimer; bool maintenanceMode=false,maintenanceCheckRunning=false; String maintenanceMessage='We are making a few improvements. Please check back shortly.'; int? maintenanceExpiresAt;
- LatLng location=const LatLng(28.4598,77.5184); List<dynamic> buses=[]; List<dynamic> suggestions=[]; Set<String> favs={}; Map<String,List<LatLng>> history={}; Map<String,List<DateTime>> historyTimes={}; List<LatLng> trail=[]; Map<String,DateTime> alertHistory={};
- double radius=5; bool loading=false,locating=false,movePin=false,stops=false,following=false,permissionBlocked=false,dontShowNotice=false,nearbyAlerts=false; String? error,selected,followed; String locationLabel='Use your current location'; DateTime? refreshed;
+ LatLng location=const LatLng(28.4598,77.5184); List<dynamic> buses=[]; List<dynamic> suggestions=[]; List<dynamic> routeData=[]; Set<String> favs={}; Map<String,List<LatLng>> history={}; Map<String,List<DateTime>> historyTimes={}; List<LatLng> trail=[]; Map<String,DateTime> alertHistory={};
+ double radius=5; bool loading=false,locating=false,movePin=false,stops=false,showRoutes=false,following=false,permissionBlocked=false,dontShowNotice=false,nearbyAlerts=false; String? error,selected,followed; String locationLabel='Use your current location'; DateTime? refreshed;
  final stopData=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060]];
  final searchPlaces=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Sector 62',28.6280,77.3770],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Gaur Chowk',28.6150,77.4350],['Gaur City',28.6155,77.4240],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060],['Sector 90',28.5340,77.4380],['Noida International Airport',28.5562,77.5849]];
 
- @override void initState(){super.initState();analyticsSessionId=DateTime.now().microsecondsSinceEpoch.toString()+'-'+hashCode.toString();_initAnalytics();_initApp();_checkForUpdate();_pollMaintenanceStatus();maintenanceTimer=Timer.periodic(const Duration(seconds:5),(_)=>_pollMaintenanceStatus());}
+ @override void initState(){super.initState();analyticsSessionId=DateTime.now().microsecondsSinceEpoch.toString()+'-'+hashCode.toString();_initAnalytics();_initApp();_loadRoutes();_checkForUpdate();_pollMaintenanceStatus();maintenanceTimer=Timer.periodic(const Duration(seconds:5),(_)=>_pollMaintenanceStatus());}
  @override void dispose(){refreshTimer?.cancel();searchTimer?.cancel();maintenanceTimer?.cancel();search.dispose();super.dispose();}
  Future<void> _initApp() async {
   final prefs = await SharedPreferences.getInstance();
@@ -749,6 +749,77 @@ class _HomeState extends State<Home> {
     ),
   );
 }
+
+ Future<void> _loadRoutes() async {
+  try {
+    final response = await http.get(Uri.parse(api + '/api/routes')).timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) return;
+    final data = jsonDecode(response.body);
+    final received = List<dynamic>.from(data['routes'] ?? []);
+    if (mounted) setState(() => routeData = received);
+  } catch (_) {}
+ }
+
+ void _openRoutes() {
+  _analytics('routes_opened');
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (sheetContext) => SafeArea(
+      child: SizedBox(
+        height: MediaQuery.of(sheetContext).size.height * .75,
+        child: routeData.isEmpty
+            ? const Center(child: Text('Route data is unavailable right now.'))
+            : ListView(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text('Routes & stops', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    child: Text('Choose a route or tap a stop to centre the map and find nearby buses.', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                  ),
+                  ...routeData.map((route) {
+                    final points = List<dynamic>.from(route['points'] ?? []);
+                    return ExpansionTile(
+                      leading: const Icon(Icons.route_rounded),
+                      title: Text((route['name'] ?? route['id'] ?? 'Route').toString(), style: const TextStyle(fontWeight: FontWeight.w800)),
+                      subtitle: Text('${points.length} mapped stops'),
+                      onExpansionChanged: (expanded) {
+                        if (!expanded || points.isEmpty) return;
+                        final coordinates = points.map((point) => LatLng(
+                          double.tryParse(point['latitude'].toString()) ?? 0,
+                          double.tryParse(point['longitude'].toString()) ?? 0,
+                        )).toList();
+                        setState(() => showRoutes = true);
+                        if (coordinates.length >= 2) {
+                          map.fitCamera(CameraFit.coordinates(coordinates: coordinates, padding: const EdgeInsets.all(35)));
+                        }
+                      },
+                      children: points.map((point) => ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.location_on_outlined, size: 18),
+                        title: Text((point['name'] ?? 'Stop').toString()),
+                        onTap: () async {
+                          final latitude = double.tryParse(point['latitude'].toString());
+                          final longitude = double.tryParse(point['longitude'].toString());
+                          if (latitude == null || longitude == null) return;
+                          Navigator.pop(sheetContext);
+                          setState(() { showRoutes = true; stops = true; });
+                          await _set(LatLng(latitude, longitude), point['name'].toString(), true);
+                        },
+                      )).toList(),
+                    );
+                  }),
+                ],
+              ),
+      ),
+    ),
+  );
+ }
 
  Future<void> _location() async {
   if (locating) return;
@@ -1426,10 +1497,15 @@ class _HomeState extends State<Home> {
         PopupMenuButton<String>(
           tooltip: 'Menu',
           onSelected: (value) {
+            if (value == 'routes') _openRoutes();
             if (value == 'favourites') _openFavourites();
             if (value == 'settings') _settings();
           },
           itemBuilder: (context) => const [
+            PopupMenuItem(
+              value: 'routes',
+              child: Text('Routes & stops'),
+            ),
             PopupMenuItem(
               value: 'favourites',
               child: Text('Favourite buses'),
@@ -1611,6 +1687,25 @@ class _HomeState extends State<Home> {
  Widget _searchCard(){return Card(elevation:0,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20)),child:Column(children:[Padding(padding:const EdgeInsets.fromLTRB(15,5,8,5),child:Row(children:[const Icon(Icons.search_rounded),const SizedBox(width:8),Expanded(child:TextField(controller:search,onChanged:_search,decoration:const InputDecoration(hintText:'Search Sector 62, Pari Chowk, Botanical Garden…',border:InputBorder.none))),if(search.text.isNotEmpty)IconButton(onPressed:(){search.clear();setState(()=>suggestions=[]);},icon:const Icon(Icons.close))])),...suggestions.map((x)=>ListTile(leading:const Icon(Icons.place_outlined),title:Text(x['name'].toString()),onTap:()=>_pick(x))) ]));}
  Widget _mapCard() {
   final markers = <Marker>[];
+  final stopByName = <String, Map<String, dynamic>>{};
+  for (final route in routeData) {
+    final points = route['points'];
+    if (points is! List) continue;
+    for (final point in points) {
+      if (point is! Map) continue;
+      final stop = Map<String, dynamic>.from(point);
+      final name = stop['name']?.toString() ?? '';
+      if (name.isNotEmpty) stopByName.putIfAbsent(name, () => stop);
+    }
+  }
+  final stopsToShow = stopByName.isNotEmpty
+      ? stopByName.values.toList()
+      : stopData.map((stop) => <String, dynamic>{
+          'name': stop[0],
+          'latitude': stop[1],
+          'longitude': stop[2],
+        }).toList();
+
 
   for (final bus in buses) {
     final lat = double.tryParse(bus['latitude'].toString());
@@ -1680,17 +1775,17 @@ class _HomeState extends State<Home> {
   );
 
   if (stops) {
-    for (final stop in stopData) {
+    for (final stop in stopsToShow) {
+      final latitude = double.tryParse(stop['latitude'].toString());
+      final longitude = double.tryParse(stop['longitude'].toString());
+      if (latitude == null || longitude == null) continue;
       markers.add(
         Marker(
-          point: LatLng(
-            stop[1] as double,
-            stop[2] as double,
-          ),
+          point: LatLng(latitude, longitude),
           width: 32,
           height: 32,
           child: Tooltip(
-            message: stop[0] as String,
+            message: stop['name'].toString(),
             child: const Icon(
               Icons.location_on,
               color: Color(0xFFB45309),
@@ -1721,6 +1816,16 @@ class _HomeState extends State<Home> {
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
                   ),
+                ),
+              ),
+              Tooltip(
+                message: showRoutes ? 'Hide routes' : 'Show routes',
+                child: IconButton(
+                  onPressed: () {
+                    if (routeData.isEmpty) unawaited(_loadRoutes());
+                    setState(() => showRoutes = !showRoutes);
+                  },
+                  icon: Icon(showRoutes ? Icons.alt_route : Icons.route_outlined),
                 ),
               ),
               Tooltip(
@@ -1790,6 +1895,20 @@ class _HomeState extends State<Home> {
                 userAgentPackageName:
                     'com.example.noida_bus_tracker',
               ),
+              if (showRoutes && routeData.isNotEmpty)
+                PolylineLayer(
+                  polylines: routeData.map<Polyline>((route) {
+                    final points = List<dynamic>.from(route['points'] ?? []);
+                    return Polyline(
+                      points: points.map((point) => LatLng(
+                        double.tryParse(point['latitude'].toString()) ?? 0,
+                        double.tryParse(point['longitude'].toString()) ?? 0,
+                      )).toList(),
+                      strokeWidth: 3,
+                      color: const Color(0xFF668A2E).withOpacity(.75),
+                    );
+                  }).where((line) => line.points.length >= 2).toList(),
+                ),
               if (trail.length > 1)
                 PolylineLayer(
                   polylines: [
