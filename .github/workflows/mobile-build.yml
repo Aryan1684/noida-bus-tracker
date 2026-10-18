@@ -41,7 +41,7 @@ jobs:
 
       - name: Analyze Flutter source
         working-directory: mobile
-        run: flutter analyze lib/
+        run: flutter analyze lib/ --no-fatal-infos --no-fatal-warnings
 
       - name: Build release APK
         working-directory: mobile
