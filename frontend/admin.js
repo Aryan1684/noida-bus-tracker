@@ -279,6 +279,7 @@ function renderMobileAnalytics(data) {
         "First opens are a proxy for installation instances, not exact Play Store install counts or unique physical phones. Areas are approximate IP-derived first-open areas.";
     dailyChartInto("mobileDailyChart", data.daily);
     tableRows("mobileBrandTable", data.brands, "name");
+    tableRows("mobileManufacturerTable", data.manufacturers, "name");
     tableRows("mobileModelTable", data.models, "name");
     tableRows("mobileAndroidTable", data.android_versions, "name");
     tableRows("mobileAppVersionTable", data.app_versions, "name");
