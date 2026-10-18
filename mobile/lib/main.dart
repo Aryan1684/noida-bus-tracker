@@ -8,23 +8,11 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'firebase_options.dart';
-
-FirebaseAnalytics? appAnalytics;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    appAnalytics = FirebaseAnalytics.instance;
-    await appAnalytics?.logAppOpen();
-  } catch (_) {}
   runApp(const App());
 }
 
@@ -538,9 +526,6 @@ class _HomeState extends State<Home> {
  }
 
  Future<void> _analytics(String name, [Map<String,Object>? parameters]) async {
-  try {
-   await appAnalytics?.logEvent(name:name,parameters:parameters);
-  } catch (_) {}
   final normalizedEvent = switch(name){
    'current_location_used' => 'location_used',
    'location_searched' => 'place_search',
