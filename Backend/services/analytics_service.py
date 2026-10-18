@@ -15,6 +15,7 @@ SQLITE_PATH = os.getenv("ANALYTICS_SQLITE_PATH", "/tmp/noidabus_analytics.sqlite
 
 ALLOWED_EVENTS = {
     "app_open",
+    "first_open",
     "page_view",
     "refresh",
     "location_used",
@@ -654,6 +655,189 @@ def _distribution(rows, key, limit=12):
         }
         for name, count in counts.most_common(limit)
     ]
+
+
+
+def _read_mobile_install_rows():
+    _init_db()
+    connection = _connect()
+
+    try:
+        query = """
+            SELECT event_time, visitor_id, app_version, metadata, coarse_lat, coarse_lon
+            FROM analytics_events
+            WHERE event_name = 'first_open' AND source = 'android'
+            ORDER BY event_time DESC
+            LIMIT 100000
+        """
+        if DATABASE_URL:
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                rows = cursor.fetchall()
+        else:
+            rows = connection.execute(query).fetchall()
+    finally:
+        connection.close()
+
+    normalized = []
+    for event_time, visitor_id, app_version, metadata, coarse_lat, coarse_lon in rows:
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except (TypeError, ValueError):
+                metadata = {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+        if hasattr(event_time, "isoformat"):
+            event_time = event_time.isoformat()
+        normalized.append({
+            "event_time": str(event_time),
+            "visitor_id": visitor_id or "",
+            "app_version": app_version or "",
+            "metadata": metadata,
+            "coarse_lat": coarse_lat,
+            "coarse_lon": coarse_lon,
+        })
+    return normalized
+
+
+def _mobile_distribution(rows, field):
+    installations = defaultdict(set)
+    for row in rows:
+        visitor_id = row.get("visitor_id")
+        if not visitor_id:
+            continue
+        metadata = row.get("metadata") or {}
+        value = str(metadata.get(field) or "Unknown").strip()[:100] or "Unknown"
+        installations[value].add(visitor_id)
+    return [
+        {"name": name, "count": len(visitor_ids)}
+        for name, visitor_ids in sorted(
+            installations.items(),
+            key=lambda item: len(item[1]),
+            reverse=True,
+        )[:25]
+    ]
+
+
+def mobile_dashboard(days=30, hours=None):
+    activity_rows = [
+        row for row in _read_rows(days=days, hours=hours)
+        if str(row.get("source") or "").strip().lower() == "android"
+    ]
+    first_opens = _read_mobile_install_rows()
+    install_ids = {row["visitor_id"] for row in first_opens if row["visitor_id"]}
+    active_install_ids = {row["visitor_id"] for row in activity_rows if row["visitor_id"]}
+    active_sessions = {row["session_id"] for row in activity_rows if row["session_id"]}
+    event_counts = Counter(row["event_name"] for row in activity_rows)
+    period_install_ids = {
+        row["visitor_id"]
+        for row in activity_rows
+        if row.get("event_name") == "first_open" and row.get("visitor_id")
+    }
+
+    device_rows = []
+    seen_device_rows = set()
+    for row in activity_rows:
+        visitor_id = row.get("visitor_id")
+        metadata = row.get("metadata") or {}
+        if not visitor_id:
+            continue
+        key = (
+            visitor_id,
+            metadata.get("device_brand"),
+            metadata.get("device_model"),
+            metadata.get("android_version"),
+            row.get("app_version"),
+        )
+        if key in seen_device_rows:
+            continue
+        seen_device_rows.add(key)
+        device_rows.append({
+            "visitor_id": visitor_id,
+            "app_version": row.get("app_version") or "",
+            "metadata": metadata,
+        })
+
+    install_area_visitors = defaultdict(set)
+    for row in first_opens:
+        if not row.get("visitor_id") or row.get("coarse_lat") is None or row.get("coarse_lon") is None:
+            continue
+        cell = (round(float(row["coarse_lat"]), 2), round(float(row["coarse_lon"]), 2))
+        install_area_visitors[cell].add(row["visitor_id"])
+
+    install_areas = [
+        {
+            "latitude": latitude,
+            "longitude": longitude,
+            "count": len(visitor_ids),
+            "name": "Approximate first-open area",
+        }
+        for (latitude, longitude), visitor_ids in sorted(
+            install_area_visitors.items(),
+            key=lambda item: len(item[1]),
+            reverse=True,
+        )
+        if len(visitor_ids) >= 3
+    ]
+
+    installs_with_area = len({
+        row["visitor_id"] for row in first_opens
+        if row.get("visitor_id") and row.get("coarse_lat") is not None and row.get("coarse_lon") is not None
+    })
+    period_label = f"Last {hours} hours" if hours is not None else f"Last {days} days"
+
+    return {
+        "storage": storage_mode(),
+        "period_label": period_label,
+        "window_hours": hours,
+        "window_days": days if hours is None else None,
+        "tracked_first_opens_all_time": len(install_ids),
+        "tracked_first_opens_in_window": len(period_install_ids),
+        "active_installations": len(active_install_ids),
+        "active_sessions": len(active_sessions),
+        "app_opens": event_counts["app_open"],
+        "first_opens_in_window": event_counts["first_open"],
+        "feature_events": sum(
+            count for name, count in event_counts.items()
+            if name not in {"app_open", "first_open"}
+        ),
+        "total_events": len(activity_rows),
+        "daily": _traffic_series(activity_rows, days=days, hours=hours),
+        "brands": _mobile_distribution(device_rows, "device_brand"),
+        "manufacturers": _mobile_distribution(device_rows, "device_manufacturer"),
+        "models": _mobile_distribution(device_rows, "device_model"),
+        "android_versions": _mobile_distribution(device_rows, "android_version"),
+        "app_versions": [
+            {"name": name, "count": len(visitors)}
+            for name, visitors in sorted(
+                _group_mobile_versions(activity_rows).items(),
+                key=lambda item: len(item[1]),
+                reverse=True,
+            )[:20]
+        ],
+        "event_breakdown": [
+            {"name": name, "count": count}
+            for name, count in event_counts.most_common(20)
+        ],
+        "install_areas": install_areas[:100],
+        "tracked_installs_with_area": installs_with_area,
+        "install_events_seen": len(first_opens),
+        "tracking_note": "First opens count installation instances first observed after this analytics feature is released. This is not an exact Play Store install count or a count of unique physical phones. Area is an approximate IP-derived area at first app open, not GPS install location.",
+    }
+
+
+def _group_mobile_versions(rows):
+    grouped = defaultdict(set)
+    for row in rows:
+        visitor_id = row.get("visitor_id")
+        if not visitor_id:
+            continue
+        version = str(row.get("app_version") or "Unknown").strip()[:50] or "Unknown"
+        grouped[version].add(visitor_id)
+    return grouped
+
+
 
 
 def dashboard(days=30, hours=None):
