@@ -20,7 +20,7 @@ from services.gps_service import get_cached_direct_live_buses, get_direct_bus_hi
 from services.prediction_collector import collector_running, start_collector, stop_collector
 from utils.distance import calculate_distance
 from services.direction_service import ROUTES, LANDMARKS, update_bus_history
-from services.analytics_service import dashboard as get_analytics_dashboard, record_consented_location, record_event, verify_admin_token, _connect as analytics_connect, _init_db as init_analytics_db, DATABASE_URL as ANALYTICS_DATABASE_URL
+from services.analytics_service import dashboard as get_analytics_dashboard, mobile_dashboard as get_mobile_analytics_dashboard, record_consented_location, record_event, verify_admin_token, _connect as analytics_connect, _init_db as init_analytics_db, DATABASE_URL as ANALYTICS_DATABASE_URL
 from services.gps_service import get_ingestion_stats, get_direct_snapshot_status
 
 load_dotenv()
@@ -527,7 +527,7 @@ class AnalyticsLocation(BaseModel):
 @app.post("/api/analytics/event")
 def analytics_event(payload: AnalyticsEvent, request: Request):
     approximate_area = None
-    if payload.event_name in {"page_view", "app_open"}:
+    if payload.event_name in {"page_view", "app_open", "first_open"}:
         forwarded_for = request.headers.get("x-forwarded-for", "")
         forwarded_client_ip = forwarded_for.split(",", 1)[0].strip() if forwarded_for else None
         client_ip = forwarded_client_ip or (request.client.host if request.client else None)
@@ -593,6 +593,30 @@ def admin_analytics(
         )
 
     return get_analytics_dashboard(days=days or 30)
+
+
+
+@app.get("/api/admin/mobile-analytics")
+def admin_mobile_analytics(
+    period: str | None = Query(default=None, max_length=5),
+    x_admin_token: str | None = Header(default=None),
+):
+    if not verify_admin_token(x_admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+
+    hour_windows = {"12h": 12, "24h": 24, "36h": 36, "48h": 48}
+    day_windows = {"7d": 7, "15d": 15, "30d": 30, "180d": 180, "365d": 365}
+
+    if period in hour_windows:
+        return get_mobile_analytics_dashboard(hours=hour_windows[period])
+    if period in day_windows:
+        return get_mobile_analytics_dashboard(days=day_windows[period])
+    if period is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported reporting window. Use 12h, 24h, 36h, 48h, 7d, 15d, 30d, 180d or 365d.",
+        )
+    return get_mobile_analytics_dashboard(days=30)
 
 
 @app.get("/api/admin/fleet")
