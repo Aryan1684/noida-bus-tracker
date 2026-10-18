@@ -3,6 +3,7 @@ import hmac
 import ipaddress
 import math
 import os
+import re
 import requests
 import secrets
 import threading
@@ -38,6 +39,49 @@ IP_AREA_CACHE_SECONDS = 6 * 60 * 60
 IP_AREA_MAX_LOOKUPS_PER_MINUTE = 30
 _ip_area_lookup_times = []
 _ip_area_cache_secret = secrets.token_bytes(32)
+MOBILE_VERSION_POLICY_URL = "https://raw.githubusercontent.com/Aryan1684/noida-bus-tracker/main/mobile/app_version.json"
+MOBILE_VERSION_POLICY_CACHE_SECONDS = 60
+_mobile_version_policy_lock = threading.Lock()
+_mobile_version_policy_cache = {
+    "checked_at": 0.0,
+    "latest_version": os.getenv("LATEST_MOBILE_APP_VERSION", "1.2.1"),
+    "minimum_version": os.getenv("MINIMUM_MOBILE_APP_VERSION", "1.0.0"),
+    "message": "Update Noida Bus Tracker to continue.",
+    "download_url": "https://github.com/Aryan1684/noida-bus-tracker/releases/download/mobile-latest/noida-bus-tracker.apk",
+}
+
+
+def _version_tuple(value):
+    parts = [int(part) for part in re.findall(r"\d+", str(value or ""))[:3]]
+    return tuple((parts + [0, 0, 0])[:3])
+
+
+def _get_mobile_version_policy():
+    now = time.monotonic()
+    with _mobile_version_policy_lock:
+        if now - _mobile_version_policy_cache["checked_at"] < MOBILE_VERSION_POLICY_CACHE_SECONDS:
+            return dict(_mobile_version_policy_cache)
+
+        try:
+            response = requests.get(
+                MOBILE_VERSION_POLICY_URL + "?_=" + str(int(time.time())),
+                headers={"Cache-Control": "no-cache"},
+                timeout=2,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if isinstance(payload, dict):
+                for key in ("latest_version", "minimum_version", "message", "download_url"):
+                    value = payload.get(key)
+                    if isinstance(value, str) and value.strip():
+                        _mobile_version_policy_cache[key] = value.strip()
+        except (requests.RequestException, ValueError):
+            pass
+
+        _mobile_version_policy_cache["checked_at"] = now
+        return dict(_mobile_version_policy_cache)
+
+
 MAINTENANCE_DEFAULT_MESSAGE = "We are making a few improvements. Please check back shortly."
 _maintenance_cache = {
     "enabled": False,
@@ -162,13 +206,33 @@ app.add_middleware(
     ],
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Cache-Control", "X-Admin-Token"],
+    allow_headers=["Content-Type", "Cache-Control", "X-Admin-Token", "X-App-Version", "X-App-Platform"],
 )
 
 
 @app.middleware("http")
 async def enforce_maintenance_and_disable_caching(request, call_next):
     path = request.url.path
+    if request.method != "OPTIONS" and path.startswith("/api/"):
+        user_agent = request.headers.get("user-agent", "")
+        platform = request.headers.get("x-app-platform", "").lower()
+        is_mobile_app = platform == "android" or "dart/" in user_agent.lower()
+        if is_mobile_app:
+            policy = _get_mobile_version_policy()
+            client_version = request.headers.get("x-app-version") or "1.0.0"
+            if _version_tuple(client_version) < _version_tuple(policy["minimum_version"]):
+                return JSONResponse(
+                    status_code=426,
+                    content={
+                        "update_required": True,
+                        "latest_version": policy["latest_version"],
+                        "minimum_version": policy["minimum_version"],
+                        "message": policy["message"],
+                        "download_url": policy["download_url"],
+                    },
+                    headers={"Cache-Control": "no-store", "Pragma": "no-cache"},
+                )
+
     protected_paths = (
         path.startswith("/api/buses"),
         path in {"/api/routes", "/api/location-label", "/api/search-location"},
