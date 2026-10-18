@@ -358,8 +358,10 @@ class Home extends StatefulWidget { final bool dark; final VoidCallback toggle; 
 class _HomeState extends State<Home> {
  static const api='https://noida-bus-tracker.onrender.com';
  String? analyticsVisitorId;
- late final String analyticsSessionId;
+ late String analyticsSessionId;
  String analyticsAppVersion='1.0.0';
+ bool analyticsEnabled=true;
+ DateTime? analyticsLastActivity;
  final map=MapController(); final search=TextEditingController(); Timer? refreshTimer,searchTimer,maintenanceTimer; bool maintenanceMode=false,maintenanceCheckRunning=false; String maintenanceMessage='We are making a few improvements. Please check back shortly.'; int? maintenanceExpiresAt;
  LatLng location=const LatLng(28.4598,77.5184); List<dynamic> buses=[]; List<dynamic> suggestions=[]; Set<String> favs={}; Map<String,List<LatLng>> history={}; Map<String,List<DateTime>> historyTimes={}; List<LatLng> trail=[]; Map<String,DateTime> alertHistory={};
  double radius=5; bool loading=false,locating=false,movePin=false,stops=false,following=false,permissionBlocked=false,dontShowNotice=false,nearbyAlerts=false; String? error,selected,followed; String locationLabel='Use your current location'; DateTime? refreshed;
@@ -465,6 +467,7 @@ class _HomeState extends State<Home> {
  Future<void> _initAnalytics() async {
   try {
    final prefs=await SharedPreferences.getInstance();
+   analyticsEnabled=prefs.getBool('analytics_enabled')??true;
    analyticsVisitorId=prefs.getString('analytics_visitor_id');
    if(analyticsVisitorId==null||analyticsVisitorId!.isEmpty){
     analyticsVisitorId=DateTime.now().microsecondsSinceEpoch.toString()+'-'+hashCode.toString();
@@ -484,18 +487,30 @@ class _HomeState extends State<Home> {
      };
     }catch(_){}
    }
-   await _sendAnalytics('app_open');
-   final firstOpenTracked=prefs.getBool('analytics_first_open_tracked')??false;
-   if(!firstOpenTracked){
-    final recorded=await _sendAnalytics('first_open');
-    if(recorded)await prefs.setBool('analytics_first_open_tracked',true);
-   }
+   if(analyticsEnabled)await _recordAppOpen();
   } catch (_) {}
  }
 
+ Future<void> _recordAppOpen() async {
+  if(!analyticsEnabled)return;
+  await _sendAnalytics('app_open');
+  final prefs=await SharedPreferences.getInstance();
+  final firstOpenTracked=prefs.getBool('analytics_first_open_tracked')??false;
+  if(!firstOpenTracked){
+   final recorded=await _sendAnalytics('first_open');
+   if(recorded)await prefs.setBool('analytics_first_open_tracked',true);
+  }
+ }
+
  Future<bool> _sendAnalytics(String name,[Map<String,Object>? parameters]) async {
+  if(!analyticsEnabled)return false;
   final visitor=analyticsVisitorId;
   if(visitor==null||visitor.isEmpty)return false;
+  final now=DateTime.now();
+  if(analyticsLastActivity==null||now.difference(analyticsLastActivity!)>const Duration(minutes:30)){
+   analyticsSessionId=now.microsecondsSinceEpoch.toString()+'-'+hashCode.toString();
+  }
+  analyticsLastActivity=now;
   try {
    final response=await http.post(
     Uri.parse(api+'/api/analytics/event'),
@@ -526,6 +541,7 @@ class _HomeState extends State<Home> {
  }
 
  Future<void> _analytics(String name, [Map<String,Object>? parameters]) async {
+  if(!analyticsEnabled)return;
   final normalizedEvent = switch(name){
    'current_location_used' => 'location_used',
    'location_searched' => 'place_search',
@@ -791,6 +807,7 @@ class _HomeState extends State<Home> {
   if (loading || maintenanceMode) return;
   if (await _checkMaintenanceStatus()) return;
   if (!mounted || loading || maintenanceMode) return;
+  await _analytics('refresh', {'refresh_mode': auto ? 'automatic' : 'manual'});
   setState(() => loading = true);
 
   final u = Uri.parse(
@@ -1062,7 +1079,7 @@ class _HomeState extends State<Home> {
  void _trail(dynamic b){final p=history[b['bus_id'].toString()]??[];if(p.length<2){_info('Trail needs a few refreshes first.');return;}setState(()=>trail=List<LatLng>.from(p));map.fitCamera(CameraFit.coordinates(coordinates:trail,padding:const EdgeInsets.all(45)));}
  void _play(dynamic b){final p=history[b['bus_id'].toString()]??[];if(p.length<2){_info('Playback needs a few recorded positions first.');return;}var i=0;Timer.periodic(const Duration(milliseconds:450),(t){if(!mounted||i>=p.length){t.cancel();return;}map.move(p[i++],16);});}
  void _eta(dynamic b){final minutes=int.tryParse(b['eta_minutes']?.toString()??'');final d=double.tryParse(b['distance_km']?.toString()??'');final status=(b['eta_status']??'').toString();if(status=='not_ahead'){_info('This bus is not currently heading toward the selected location.');return;}if(minutes==null){_info('ETA unavailable. Recent movement data is not sufficient for a reliable estimate.');return;}_info('Estimated arrival: '+minutes.toString()+' min\\nDistance: '+(d?.toStringAsFixed(2)??'?')+' km\\nBased on backend ETA and recent GPS movement.');}
- void _share(dynamic b){Clipboard.setData(ClipboardData(text:'Noida Bus Tracker · Bus '+b['bus_id'].toString()));_info('Bus ID copied to clipboard.');}
+ void _share(dynamic b){unawaited(_analytics('bus_shared', {'bus_id': b['bus_id'].toString()}));Clipboard.setData(ClipboardData(text:'Noida Bus Tracker · Bus '+b['bus_id'].toString()));_info('Bus ID copied to clipboard.');}
  void _report(dynamic b){showModalBottomSheet(context:context,showDragHandle:true,builder:(c)=>SafeArea(child:Column(mainAxisSize:MainAxisSize.min,children:[Padding(padding:const EdgeInsets.all(16),child:Text('Report '+b['bus_id'].toString(),style:const TextStyle(fontSize:20,fontWeight:FontWeight.w800))),...['Not moving','Wrong location','Already passed','Crowded'].map((x)=>ListTile(title:Text(x),leading:const Icon(Icons.flag_outlined),onTap:(){Navigator.pop(c);_info('Thanks. Your report has been noted locally.');}))])));}
  void _info(String s){if(!mounted)return;showDialog(context:context,builder:(c)=>AlertDialog(title:const Text('Noida Bus Tracker'),content:Text(s),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('OK'))]));}
  void _openFavourites() {
@@ -1107,6 +1124,7 @@ class _HomeState extends State<Home> {
  void _settings() {
   var currentDark = widget.dark;
   var alertsEnabled = nearbyAlerts;
+  var currentAnalyticsEnabled = analyticsEnabled;
 
   showModalBottomSheet<void>(
     context: context,
@@ -1176,6 +1194,25 @@ class _HomeState extends State<Home> {
                       'The app may send app-open analytics to help understand broad usage areas. The server may use your network IP for approximate area analytics; raw IP addresses are not saved in the analytics database, but the external geolocation provider receives the IP to perform a lookup. IP-based areas can be inaccurate. Device GPS is accessed for nearby-bus tracking only when you choose to use your location.\n\n'
                       'Full privacy notice: https://noidabus.netlify.app/privacy.html',
                     );
+                  },
+                ),
+                SwitchListTile(
+                  value: currentAnalyticsEnabled,
+                  secondary: const Icon(Icons.insights_outlined),
+                  title: const Text('Usage analytics'),
+                  subtitle: Text(
+                    currentAnalyticsEnabled
+                        ? 'Enabled · app usage, device details and approximate network area'
+                        : 'Disabled · no new app analytics events will be sent',
+                  ),
+                  onChanged: (value) async {
+                    setSheetState(() => currentAnalyticsEnabled = value);
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool('analytics_enabled', value);
+                    if (mounted) {
+                      setState(() => analyticsEnabled = value);
+                      if (value) await _recordAppOpen();
+                    }
                   },
                 ),
                 ListTile(
