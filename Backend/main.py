@@ -711,6 +711,20 @@ def admin_fleet(
         "medium": sum(1 for bus in buses if bus.get("position_confidence") == "medium"),
         "low": sum(1 for bus in buses if bus.get("position_confidence") == "low"),
     }
+    prediction_confidences = []
+    for bus in buses:
+        if not bus.get("prediction_available"):
+            continue
+        try:
+            confidence = float(bus.get("prediction_confidence"))
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(confidence) and 0 <= confidence <= 1:
+            prediction_confidences.append(confidence)
+    average_prediction_confidence = (
+        round(sum(prediction_confidences) / len(prediction_confidences), 3)
+        if prediction_confidences else None
+    )
 
     return {
         "total": total,
