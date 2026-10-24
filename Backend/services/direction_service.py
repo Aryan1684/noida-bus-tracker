@@ -18,7 +18,7 @@ LANDMARKS = {
     "Kisan Chowk": (28.6050, 77.4370),
     "Chaar Murti": (28.603653, 77.425343),
     "Ek Murti": (28.600000, 77.447500),
-    "Advant": (28.6205, 77.3785),
+    "Advant": (28.50066, 77.41031),
     "Surajpur Collectorate": (28.5095, 77.4770),
     "Surajpur": (28.5185, 77.4990),
     "Kasna Village": (28.4300, 77.5150),
@@ -29,26 +29,37 @@ LANDMARKS = {
     "Akshardham": (28.6127, 77.2773),
     "Kaushambi": (28.6450, 77.3210),
     "Anand Vihar Bus Station": (28.6469, 77.3168),
-    "Noida International Airport": (28.17556, 77.60500)
+    "Noida International Airport": (28.17556, 77.60500),
+    "Noida Sector 18": (28.570843, 77.326088),
+    "Okhla Bird Sanctuary": (28.55292, 77.32156),
+    "HCL Gate No. 1": (28.54470, 77.32725),
+    "Amity University": (28.5442, 77.3347),
+    "Lotus Valley": (28.5386, 77.3445),
+    "Panchsheel Balak Inter College": (28.50975, 77.39266),
+    "Sector 137": (28.5029, 77.4076),
+    "Galgotias University": (28.36715, 77.54208),
+    "Dankaur": (28.3510, 77.5540),
+    "Rabupura": (28.25132, 77.6009)
 }
 
 
 
 CITY_ROUTES = {
     "R1": {
-        "name": "Botanical Garden ↔ Pari Chowk via Surajpur",
+        "name": "Botanical Garden ↔ Pari Chowk via Advant",
         "stops": [
-            "Botanical Garden", "Golf Course", "Noida City Center",
-            "Hoshiyarpur", "Sector 51", "Parthala", "Gaur Chowk",
-            "Ek Murti", "Surajpur Collectorate", "Pari Chowk"
+            "Botanical Garden", "Noida Sector 18", "Okhla Bird Sanctuary",
+            "HCL Gate No. 1", "Amity University", "Lotus Valley",
+            "Panchsheel Balak Inter College", "Sector 137", "Advant",
+            "Pari Chowk"
         ]
     },
     "R2": {
-        "name": "Botanical Garden ↔ Jewar Airport",
+        "name": "Botanical Garden ↔ Noida International Airport via Chaar Murti",
         "stops": [
-            "Botanical Garden", "Sector 44", "Chhalera", "Amity School",
-            "Expressway", "Pari Chowk", "Galgotias University",
-            "Dankaur", "Rabupura", "Jewar Airport"
+            "Botanical Garden", "Chaar Murti", "Surajpur", "Pari Chowk",
+            "Galgotias University", "Dankaur", "Rabupura",
+            "Noida International Airport"
         ]
     },
     "R3": {
@@ -201,6 +212,70 @@ ROUTES = [
         "name": "Kasna Village ↔ Surajpur ↔ Chaar Murti ↔ Botanical",
         "points": [
             "Kasna Village",
+            "Surajpur",
+            "Chaar Murti",
+            "Botanical Garden"
+        ],
+        "buses": GR01_BUSES
+    },
+    {
+        "id": "N-R02-ADVANT-OUT",
+        "name": "Botanical Garden ↔ Pari Chowk via Advant",
+        "points": [
+            "Botanical Garden",
+            "Noida Sector 18",
+            "Okhla Bird Sanctuary",
+            "HCL Gate No. 1",
+            "Amity University",
+            "Lotus Valley",
+            "Panchsheel Balak Inter College",
+            "Sector 137",
+            "Advant",
+            "Pari Chowk"
+        ],
+        "buses": R01_BUSES
+    },
+    {
+        "id": "N-R02-ADVANT-RETURN",
+        "name": "Pari Chowk ↔ Botanical Garden via Advant",
+        "points": [
+            "Pari Chowk",
+            "Advant",
+            "Sector 137",
+            "Panchsheel Balak Inter College",
+            "Lotus Valley",
+            "Amity University",
+            "HCL Gate No. 1",
+            "Okhla Bird Sanctuary",
+            "Noida Sector 18",
+            "Botanical Garden"
+        ],
+        "buses": R01_BUSES
+    },
+    {
+        "id": "GR01-AIRPORT-OUT",
+        "name": "Botanical Garden ↔ Chaar Murti ↔ Pari Chowk ↔ Galgotias University ↔ Noida International Airport",
+        "points": [
+            "Botanical Garden",
+            "Chaar Murti",
+            "Surajpur",
+            "Pari Chowk",
+            "Galgotias University",
+            "Dankaur",
+            "Rabupura",
+            "Noida International Airport"
+        ],
+        "buses": GR01_BUSES
+    },
+    {
+        "id": "GR01-AIRPORT-RETURN",
+        "name": "Noida International Airport ↔ Galgotias University ↔ Pari Chowk ↔ Chaar Murti ↔ Botanical Garden",
+        "points": [
+            "Noida International Airport",
+            "Rabupura",
+            "Dankaur",
+            "Galgotias University",
+            "Pari Chowk",
             "Surajpur",
             "Chaar Murti",
             "Botanical Garden"
@@ -443,8 +518,10 @@ def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=
     terminal_stop = route_stops[-1]
 
     return {
-        "route_id": "R1" if best_route["id"].startswith("N-R01") else (
-            "GR01" if best_route["id"].startswith("GR01") else best_route["id"]
+        "route_id": "R2" if best_route["id"].startswith("N-R02") else (
+            "R1" if best_route["id"].startswith("N-R01") else (
+                "GR01" if best_route["id"].startswith("GR01") else best_route["id"]
+            )
         ),
         "route_path_id": best_route["id"],
         "route_segment_from": previous_stop,
