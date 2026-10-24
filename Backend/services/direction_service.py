@@ -36,7 +36,10 @@ LANDMARKS = {
     "Amity University": (28.5442, 77.3347),
     "Lotus Valley": (28.5386, 77.3445),
     "Panchsheel Balak Inter College": (28.50975, 77.39266),
-    "Sector 137": (28.5029, 77.4076),
+    "Sector 137": (28.51087, 77.403453),
+    "Sector 105": (28.5315704, 77.369177),
+    "Sector 163": (28.47908, 77.43663),
+    "Sector 159": (28.4668, 77.4509),
     "Galgotias University": (28.36715, 77.54208),
     "Dankaur": (28.3510, 77.5540),
     "Rabupura": (28.25132, 77.6009)
@@ -49,9 +52,9 @@ CITY_ROUTES = {
         "name": "Botanical Garden ↔ Pari Chowk via Advant",
         "stops": [
             "Botanical Garden", "Noida Sector 18", "Okhla Bird Sanctuary",
-            "HCL Gate No. 1", "Amity University", "Lotus Valley",
+            "HCL Gate No. 1", "Amity University", "Sector 105",
             "Panchsheel Balak Inter College", "Sector 137", "Advant",
-            "Pari Chowk"
+            "Sector 163", "Sector 159", "Pari Chowk"
         ]
     },
     "R2": {
@@ -227,10 +230,12 @@ ROUTES = [
             "Okhla Bird Sanctuary",
             "HCL Gate No. 1",
             "Amity University",
-            "Lotus Valley",
+            "Sector 105",
             "Panchsheel Balak Inter College",
             "Sector 137",
             "Advant",
+            "Sector 163",
+            "Sector 159",
             "Pari Chowk"
         ],
         "buses": R01_BUSES
@@ -240,10 +245,12 @@ ROUTES = [
         "name": "Pari Chowk ↔ Botanical Garden via Advant",
         "points": [
             "Pari Chowk",
+            "Sector 159",
+            "Sector 163",
             "Advant",
             "Sector 137",
             "Panchsheel Balak Inter College",
-            "Lotus Valley",
+            "Sector 105",
             "Amity University",
             "HCL Gate No. 1",
             "Okhla Bird Sanctuary",
