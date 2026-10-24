@@ -516,6 +516,17 @@ def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=
     next_stop = segment["to"]
     route_stops = best_route["points"]
     terminal_stop = route_stops[-1]
+    destination_ambiguous = any(
+        candidate_route["points"][-1] != terminal_stop
+        and score - best_score <= 2.5
+        and candidate_difference <= 35
+        and difference <= 35
+        for score, candidate_route, candidate_segment, candidate_difference in candidates[1:]
+    )
+    if destination_ambiguous:
+        confidence = "Low"
+        terminal_stop = None
+    route_name = "Shared corridor; destination not yet confirmed" if destination_ambiguous else best_route["name"]
 
     return {
         "route_id": "R2" if best_route["id"].startswith("N-R02") else (
@@ -531,8 +542,9 @@ def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=
         "likely_next_stop": next_stop,
         "likely_towards": next_stop,
         "likely_destination": terminal_stop,
+        "destination_confidence": "Unknown" if destination_ambiguous else confidence,
         "last_stop_confidence": confidence,
-        "route": best_route["name"],
+        "route": route_name,
         "route_confidence": confidence,
         "route_distance_km": round(segment["distance"], 2)
     }
