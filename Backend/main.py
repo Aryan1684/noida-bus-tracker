@@ -9,13 +9,16 @@ import secrets
 import threading
 import time
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import FastAPI, Query, HTTPException, Header, Response, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from datetime import datetime, timezone
-from dotenv import load_dotenv
 
 from services.gps_service import get_cached_direct_live_buses, get_direct_bus_histories, refresh_direct_snapshot
 from services.prediction_collector import collector_running, start_collector, stop_collector
@@ -23,8 +26,6 @@ from utils.distance import calculate_distance
 from services.direction_service import ROUTES, LANDMARKS, update_bus_history
 from services.analytics_service import dashboard as get_analytics_dashboard, mobile_dashboard as get_mobile_analytics_dashboard, record_consented_location, record_event, verify_admin_token, _connect as analytics_connect, _init_db as init_analytics_db, DATABASE_URL as ANALYTICS_DATABASE_URL
 from services.gps_service import get_ingestion_stats, get_direct_snapshot_status
-
-load_dotenv()
 
 MAPTILER_API_KEY = os.getenv("MAPTILER_API_KEY")
 WEB3FORMS_API = "https://api.web3forms.com/submit"
@@ -316,6 +317,7 @@ def _ensure_maintenance_table(connection):
                 )
             """)
             cursor.execute("ALTER TABLE maintenance_settings ADD COLUMN IF NOT EXISTS expires_at BIGINT")
+            cursor.execute("ALTER TABLE public.maintenance_settings ENABLE ROW LEVEL SECURITY")
             cursor.execute("""
                 INSERT INTO maintenance_settings (id, enabled)
                 VALUES (1, FALSE) ON CONFLICT (id) DO NOTHING
@@ -816,8 +818,9 @@ def _recent_bus_history(bus, stored_history):
             })
 
     history.sort(key=lambda point: point["time"])
+    current_fix_time = sample_time - age_seconds if age_seconds is not None else None
     current_point = {
-        "time": sample_time,
+        "time": current_fix_time if current_fix_time is not None else sample_time,
         "latitude": latitude,
         "longitude": longitude,
         "speed": speed,
@@ -825,9 +828,9 @@ def _recent_bus_history(bus, stored_history):
 
     if not history:
         history.append(current_point)
-    elif sample_time > history[-1]["time"] + 2:
+    elif current_fix_time is not None and current_fix_time > history[-1]["time"] + 1:
         history.append(current_point)
-    elif abs(sample_time - history[-1]["time"]) <= 2:
+    elif current_fix_time is not None and abs(current_fix_time - history[-1]["time"]) <= 1:
         history[-1] = current_point
 
     return history[-36:], sample_time

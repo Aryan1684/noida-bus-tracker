@@ -258,19 +258,14 @@ def _record_direct_history(buses):
 
             history = _direct_history.setdefault(bus_id, [])
             point = {
-                "time": now,
+                "time": source_time,
                 "latitude": latitude,
                 "longitude": longitude,
                 "speed": speed,
             }
 
-            if history:
-                previous = history[-1]
-                if now < previous["time"] - 1:
-                    continue
-                if abs(now - previous["time"]) <= 1:
-                    history[-1] = point
-                    continue
+            if history and source_time <= history[-1]["time"]:
+                continue
 
             history.append(point)
             if len(history) > DIRECT_HISTORY_LIMIT:

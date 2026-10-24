@@ -69,15 +69,15 @@ jobs:
           APK="mobile/build/app/outputs/flutter-apk/app-release.apk"
           RELEASE_APK="mobile/build/app/outputs/flutter-apk/noida-bus-tracker.apk"
           cp "$APK" "$RELEASE_APK"
-          VERSION="$(sed -n 's/^version: *\\([^+]*\\)+.*/\\1/p' mobile/pubspec.yaml)"
+          VERSION="$(sed -n 's/^version: *\([^+]*\)+.*/\1/p' mobile/pubspec.yaml)"
           NOTES="App version: $VERSION
 
           Latest Android APK for Noida Bus Tracker. Download noida-bus-tracker.apk and install it to update the app."
           if gh release view mobile-latest >/dev/null 2>&1; then
             CURRENT_NOTES="$(gh release view mobile-latest --json body --jq .body)"
-            CURRENT_VERSION="$(printf '%s\\n' "$CURRENT_NOTES" | sed -n 's/^App version: *//p' | head -n 1)"
+            CURRENT_VERSION="$(printf '%s\n' "$CURRENT_NOTES" | sed -n 's/^App version: *//p' | head -n 1)"
             if [ -n "$CURRENT_VERSION" ] && [ "$CURRENT_VERSION" != "$VERSION" ]; then
-              NEWEST="$(printf '%s\\n' "$CURRENT_VERSION" "$VERSION" | sort -V | tail -n 1)"
+              NEWEST="$(printf '%s\n' "$CURRENT_VERSION" "$VERSION" | sort -V | tail -n 1)"
               if [ "$NEWEST" = "$CURRENT_VERSION" ]; then
                 echo "Skipping stale build $VERSION because release already has $CURRENT_VERSION."
                 exit 0

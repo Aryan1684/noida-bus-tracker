@@ -130,6 +130,7 @@ def _init_db():
                 cursor.execute(
                     "CREATE INDEX IF NOT EXISTS idx_analytics_events_source ON analytics_events(source)"
                 )
+                cursor.execute("ALTER TABLE public.analytics_events ENABLE ROW LEVEL SECURITY")
         else:
             connection.execute(
                 """
@@ -958,7 +959,7 @@ def dashboard(days=30, hours=None):
     location_visitors = defaultdict(set)
 
     for row in rows:
-        if row["event_name"] not in {"location_shared", "page_view", "app_open"}:
+        if row["event_name"] != "location_shared":
             continue
 
         if row["coarse_lat"] is None or row["coarse_lon"] is None or not row["visitor_id"]:

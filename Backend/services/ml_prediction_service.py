@@ -83,6 +83,9 @@ def _connect():
                     )
                     """
                 )
+                cursor.execute("ALTER TABLE public.bus_positions ENABLE ROW LEVEL SECURITY")
+                cursor.execute("ALTER TABLE public.gps_validation_log ENABLE ROW LEVEL SECURITY")
+                cursor.execute("ALTER TABLE public.ingestion_log ENABLE ROW LEVEL SECURITY")
             connection.commit()
             _initialized = True
 
