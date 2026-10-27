@@ -330,6 +330,60 @@ function dailyChartInto(id, items) {
     });
 }
 
+function renderForecastModel(data) {
+    const status = document.getElementById("forecastModelStatus");
+    const trainingStatus = document.getElementById("forecastTrainingStatus");
+    const button = document.getElementById("trainForecastButton");
+    const lastAttempt = data.last_attempt_status || data.status;
+    status.textContent = data.active ? "ACTIVE" : String(data.status || "Unavailable").replaceAll("_", " ").toUpperCase();
+    document.getElementById("forecastModelType").textContent = data.model_type || "Random Forest";
+    document.getElementById("forecastTrainingSamples").textContent = data.training_samples ?? data.samples ?? "—";
+    document.getElementById("forecastValidationSamples").textContent = data.validation_samples ?? "—";
+    document.getElementById("forecastModelMae").textContent = data.model_mae_km == null ? "—" : Number(data.model_mae_km).toFixed(3) + " km";
+    document.getElementById("forecastBaselineMae").textContent = data.baseline_mae_km == null ? "—" : Number(data.baseline_mae_km).toFixed(3) + " km";
+    document.getElementById("forecastImprovement").textContent = data.improvement_percent == null ? "—" : Number(data.improvement_percent).toFixed(1) + "%";
+    if (data.error) trainingStatus.textContent = "Model status unavailable: " + data.error;
+    else if (lastAttempt === "not_promoted_baseline_better") trainingStatus.textContent = "Latest candidate did not beat the baseline by at least 3%, so it was not promoted.";
+    else if (lastAttempt === "promoted") trainingStatus.textContent = "A model passed time-based validation and was promoted.";
+    else if (data.status === "collecting_data") trainingStatus.textContent = "Collecting timestamped GPS history. Minimum sample target: " + (data.minimum_samples ?? "—") + ".";
+    else if (data.active) trainingStatus.textContent = "The active model is evaluated against later GPS timestamps before any replacement.";
+    else trainingStatus.textContent = String(data.status || "Model unavailable").replaceAll("_", " ");
+    button.disabled = data.status === "training_in_progress";
+}
+
+async function loadForecastModel() {
+    try {
+        renderForecastModel(await request("/api/admin/forecast-model"));
+    } catch (error) {
+        document.getElementById("forecastModelStatus").textContent = "UNAVAILABLE";
+        document.getElementById("forecastTrainingStatus").textContent = error.message;
+    }
+}
+
+async function trainForecastModelNow() {
+    const button = document.getElementById("trainForecastButton");
+    const note = document.getElementById("forecastTrainingStatus");
+    button.disabled = true;
+    button.textContent = "Training…";
+    note.textContent = "Building training samples and validating against the motion baseline…";
+    try {
+        const response = await fetch(API + "/api/admin/forecast-model/train", {
+            method: "POST",
+            headers: auth(),
+            cache: "no-store"
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.detail || "Training failed (HTTP " + response.status + ").");
+        renderForecastModel(data);
+        await loadForecastModel();
+    } catch (error) {
+        note.textContent = error.message;
+        button.disabled = false;
+    } finally {
+        button.textContent = "Train / retrain model";
+    }
+}
+
 function fleet(data) {
     document.getElementById("fleetTotal").textContent = data.total ?? "—";
     document.getElementById("fleetLive").textContent = data.live ?? "—";
@@ -405,7 +459,8 @@ async function load() {
             const results = await Promise.allSettled([
                 request("/api/admin/analytics?period=" + encodeURIComponent(days)),
                 request("/api/admin/fleet"),
-                request("/api/admin/mobile-analytics?period=" + encodeURIComponent(days))
+                request("/api/admin/mobile-analytics?period=" + encodeURIComponent(days)),
+                request("/api/admin/forecast-model")
             ]);
 
             if (results[0].status === "rejected") throw results[0].reason;
@@ -474,6 +529,13 @@ async function load() {
             tableRows("referrerTable", analytics.referrers, "name");
             recentTable(analytics.recent_events);
             demandMap(analytics.location_cells);
+
+            if (results[3].status === "fulfilled") {
+                renderForecastModel(results[3].value);
+            } else {
+                document.getElementById("forecastModelStatus").textContent = "UNAVAILABLE";
+                document.getElementById("forecastTrainingStatus").textContent = results[3].reason?.message || "Could not load forecast model status.";
+            }
 
             if (results[2].status === "fulfilled") {
                 renderMobileAnalytics(results[2].value);
@@ -583,6 +645,7 @@ async function setMaintenance(enabled) {
 
 document.getElementById("maintenanceToggle").addEventListener("click", () => setMaintenance(true));
 document.getElementById("maintenanceDisable").addEventListener("click", () => setMaintenance(false));
+document.getElementById("trainForecastButton").addEventListener("click", trainForecastModelNow);
 
 function login() {
     const value = document.getElementById("token").value.trim();

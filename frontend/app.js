@@ -1315,6 +1315,10 @@ function createPopupContent(bus) {
         ? "<br>Upcoming stop: " + escapeHtml(nextStop) + (routeMatched ? "" : " · unconfirmed")
         : "<br>Upcoming stop: Not route-matched yet";
     const etaLine = "<br>ETA: " + escapeHtml(String(bus.eta_label || "Unavailable").replace(/^ETA:\s*/i, ""));
+    const forecast = bus.forecast_3m;
+    const forecastLine = forecast && Number.isFinite(Number(forecast.latitude)) && Number.isFinite(Number(forecast.longitude))
+        ? "<br>Model forecast (~3 min): " + Number(forecast.latitude).toFixed(5) + ", " + Number(forecast.longitude).toFixed(5) + " · " + escapeHtml(forecast.model_type || "ML model")
+        : "";
     const statusText = freshness.stale
         ? "Location update delayed"
         : movementState === "moving"
@@ -1342,6 +1346,7 @@ function createPopupContent(bus) {
         ${movementStats}
         ${historySummary}
         ${etaLine}
+        ${forecastLine}
         <br>
         Status: ${escapeHtml(statusText)}
         <br>

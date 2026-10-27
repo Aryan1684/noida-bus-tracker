@@ -800,7 +800,13 @@ def refresh_noida_electric_buses():
 
 def refresh_direct_snapshot():
     data = _fetch_live_data()
-    return get_direct_live_buses(data, include_persisted_history=False)
+    buses = get_direct_live_buses(data, include_persisted_history=False)
+    try:
+        from services.ml_prediction_service import record_positions
+        record_positions(buses)
+    except Exception as error:
+        print(f"Persistent forecast history write failed; live tracking will continue: {type(error).__name__}", flush=True)
+    return buses
 
 
 def get_latest_raw_electric_buses():

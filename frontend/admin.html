@@ -182,6 +182,21 @@
     </div>
   </section>
 
+  <section class="panel" id="forecastModelPanel">
+    <div class="panel-head"><div><span class="eyebrow">SUPERVISED MACHINE LEARNING</span><h2>Three-minute GPS forecast model</h2></div><span id="forecastModelStatus" class="badge">Checking model…</span></div>
+    <p id="forecastModelNote">The model trains on persisted GPS history and is promoted only when it beats a simple motion baseline on a later time window. Predictions remain unavailable until enough useful history has accumulated.</p>
+    <div class="cards fleet">
+      <div><span>Model</span><b id="forecastModelType">Random Forest</b></div>
+      <div><span>Training samples</span><b id="forecastTrainingSamples">—</b></div>
+      <div><span>Validation samples</span><b id="forecastValidationSamples">—</b></div>
+      <div><span>Model MAE</span><b id="forecastModelMae">—</b></div>
+      <div><span>Baseline MAE</span><b id="forecastBaselineMae">—</b></div>
+      <div><span>Improvement</span><b id="forecastImprovement">—</b></div>
+    </div>
+    <div class="maintenance-actions"><button id="trainForecastButton" type="button">Train / retrain model</button></div>
+    <p id="forecastTrainingStatus" role="status" aria-live="polite"></p>
+  </section>
+
   <section class="panel">
     <div class="panel-head"><div><span class="eyebrow">FLEET TABLE</span><h2>Every detected electric bus</h2></div><span id="fleetUpdated"></span></div>
     <div id="fleetTable" class="fleet-table"></div>
@@ -190,6 +205,6 @@
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="admin.js?v=8"></script>
+<script src="admin.js?v=9"></script>
 </body>
 </html>

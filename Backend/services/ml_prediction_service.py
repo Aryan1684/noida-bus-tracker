@@ -14,6 +14,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 ALLOW_SQLITE_DEV = os.getenv("ALLOW_SQLITE_DEV", "").strip().lower() in {"1", "true", "yes"}
 SQLITE_PATH = os.getenv("PREDICTION_DB_PATH", "/tmp/noidabus_prediction_history.sqlite3")
 MAX_HISTORY = 10
+PERSISTED_HISTORY_LIMIT = max(180, min(360, int(os.getenv("PERSISTED_GPS_HISTORY_POINTS", "180"))))
 MODEL_HISTORY = 10
 MAX_VALIDATION_LOG_ROWS = 1000
 MAX_INGESTION_LOG_ROWS = 300
@@ -346,7 +347,7 @@ def _prune_positions(connection, bus_ids):
                     SELECT id FROM ranked WHERE position_rank > %s
                 )
                 """,
-                (bus_ids, MAX_HISTORY),
+                (bus_ids, PERSISTED_HISTORY_LIMIT),
             )
         return
 
@@ -367,7 +368,7 @@ def _prune_positions(connection, bus_ids):
                   LIMIT ?
               )
             """,
-            (bus_id, bus_id, MAX_HISTORY),
+            (bus_id, bus_id, PERSISTED_HISTORY_LIMIT),
         )
 
 

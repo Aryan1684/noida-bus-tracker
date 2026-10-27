@@ -26,6 +26,7 @@ from utils.distance import calculate_distance
 from services.direction_service import ROUTES, LANDMARKS, update_bus_history
 from services.analytics_service import dashboard as get_analytics_dashboard, mobile_dashboard as get_mobile_analytics_dashboard, record_consented_location, record_event, verify_admin_token, _connect as analytics_connect, _init_db as init_analytics_db, DATABASE_URL as ANALYTICS_DATABASE_URL
 from services.gps_service import get_ingestion_stats, get_direct_snapshot_status
+from services.forecast_training_service import forecast_model_status, predict_three_minute, train_forecast_model
 
 MAPTILER_API_KEY = os.getenv("MAPTILER_API_KEY")
 WEB3FORMS_API = "https://api.web3forms.com/submit"
@@ -742,6 +743,20 @@ def admin_fleet(
     }
 
 
+@app.get("/api/admin/forecast-model")
+def admin_forecast_model(x_admin_token: str | None = Header(default=None)):
+    if not verify_admin_token(x_admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    return forecast_model_status()
+
+
+@app.post("/api/admin/forecast-model/train")
+def admin_train_forecast_model(x_admin_token: str | None = Header(default=None)):
+    if not verify_admin_token(x_admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    return train_forecast_model(force=True)
+
+
 @app.get("/api/admin/ingestion")
 def admin_ingestion(
     x_admin_token: str | None = Header(default=None),
@@ -995,6 +1010,9 @@ def _enrich_nearby_buses_with_history(buses):
 
         bus["last_passed_stop"] = bus.get("last_passed_stop") or bus.get("last_stop")
         bus["likely_next_stop"] = bus.get("likely_next_stop") or bus.get("likely_towards")
+        forecast = predict_three_minute(history)
+        bus["forecast_3m"] = forecast
+        bus["forecast_3m_available"] = forecast is not None
         _set_eta_estimate(bus, history)
 
     return buses
