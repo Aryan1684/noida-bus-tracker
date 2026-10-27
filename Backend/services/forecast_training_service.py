@@ -23,6 +23,8 @@ MIN_HISTORY_SPAN_SECONDS = 20 * 60
 MAX_TRAINING_SAMPLES = 6000
 MAX_VALIDATION_SAMPLES = 2000
 RETRAIN_INTERVAL_SECONDS = max(3600, int(os.getenv("FORECAST_RETRAIN_INTERVAL_SECONDS", "21600")))
+NON_PROMOTION_RETRY_SECONDS = max(3600, int(os.getenv("FORECAST_NON_PROMOTION_RETRY_SECONDS", "3600")))
+TRAINING_ERROR_RETRY_SECONDS = max(900, int(os.getenv("FORECAST_TRAINING_ERROR_RETRY_SECONDS", "1800")))
 MODEL_CACHE_SECONDS = 300
 LAG_COUNT = 4
 
@@ -461,10 +463,36 @@ def train_forecast_model(force=False):
 
     try:
         artifact = _read_artifact()
-        if not force and artifact and artifact["model_payload"] is not None:
-            trained_at = float(artifact["model_trained_at"] or 0.0)
-            if time.time() - trained_at < RETRAIN_INTERVAL_SECONDS:
-                return {"status": "skipped_recently_trained", "active": True, "trained_at": trained_at}
+        now = time.time()
+        if not force and artifact:
+            last_attempt_at = float(artifact["last_attempt_at"] or 0.0)
+            last_attempt_status = artifact["last_attempt_status"]
+            elapsed_since_attempt = now - last_attempt_at
+
+            if (
+                last_attempt_status == "not_promoted_baseline_better"
+                and elapsed_since_attempt < NON_PROMOTION_RETRY_SECONDS
+            ):
+                return {
+                    "status": "skipped_recently_evaluated",
+                    "active": artifact["model_payload"] is not None,
+                    "last_attempt_status": last_attempt_status,
+                }
+
+            if (
+                last_attempt_status == "training_error"
+                and elapsed_since_attempt < TRAINING_ERROR_RETRY_SECONDS
+            ):
+                return {
+                    "status": "skipped_recent_training_error",
+                    "active": artifact["model_payload"] is not None,
+                    "last_attempt_status": last_attempt_status,
+                }
+
+            if artifact["model_payload"] is not None:
+                trained_at = float(artifact["model_trained_at"] or 0.0)
+                if now - trained_at < RETRAIN_INTERVAL_SECONDS:
+                    return {"status": "skipped_recently_trained", "active": True, "trained_at": trained_at}
 
         histories = _load_training_histories()
         span = max((points[-1]["time"] - points[0]["time"] for points in histories.values() if len(points) > 1), default=0.0)
