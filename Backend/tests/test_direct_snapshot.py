@@ -23,6 +23,21 @@ class DirectSnapshotTests(unittest.TestCase):
         self.assertEqual(len(buses), 1)
         self.assertEqual(buses[0]["bus_id"], "TEST-SNAPSHOT-001")
 
+    def test_only_local_electric_depots_enter_snapshot(self):
+        base = {"latitude": 28.4652, "longitude": 77.508, "speed": 0}
+        rows = [
+            ("N1", "NOIDA ELECTRIC", None),
+            ("G1", "Greater Noida Electric", "Electric"),
+            ("D1", "GREATER NOIDA ELECTRIC", "Diesel"),
+            ("D2", "NOIDA", "Diesel"),
+            ("A1", "AGRA ELECTRIC", "Electric"),
+        ]
+        buses = get_direct_live_buses([
+            dict(base, bus_id=bus_id, depot_name=depot, fuel_type=fuel)
+            for bus_id, depot, fuel in rows
+        ])
+        self.assertEqual({bus["bus_id"] for bus in buses}, {"N1", "G1"})
+
     def test_repeated_source_fix_is_not_added_twice_to_history(self):
         timestamp = datetime.now(timezone.utc).isoformat()
         bus = {

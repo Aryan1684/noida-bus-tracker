@@ -14,6 +14,7 @@ from io import BytesIO
 
 import dns.resolver
 
+from services.validation_service import is_local_electric_bus
 from utils.distance import calculate_distance
 
 GPS_API_URL = "https://margdarshi.upsrtcvlt.com/php/getGpsLiveData.php"
@@ -318,7 +319,7 @@ def get_direct_live_buses(data=None, include_persisted_history=False):
     for item in data:
         if not isinstance(item, dict):
             continue
-        if str(item.get("depot_name") or "").strip().upper() != "NOIDA ELECTRIC":
+        if not is_local_electric_bus(item):
             continue
 
         bus_id = str(item.get("bus_id") or "").strip().upper()
@@ -491,7 +492,7 @@ def _process_live_buses(data, upstream_latency_ms=None):
         item
         for item in data
         if isinstance(item, dict)
-        and str(item.get("depot_name") or "").strip().upper() == "NOIDA ELECTRIC"
+        and is_local_electric_bus(item)
     ]
 
     raw_electric_count = len(electric_buses)
@@ -538,7 +539,7 @@ def _process_live_buses(data, upstream_latency_ms=None):
 
     print(
         f"GPS feed received {len(data)} raw records; "
-        f"{raw_electric_count} NOIDA ELECTRIC records; "
+        f"{raw_electric_count} local electric fleet records; "
         f"{len(electric_buses)} unique buses after dedupe",
         flush=True,
     )
@@ -767,7 +768,7 @@ def refresh_noida_electric_buses():
             dict(item)
             for item in data
             if isinstance(item, dict)
-            and str(item.get("depot_name") or "").strip().upper() == "NOIDA ELECTRIC"
+            and is_local_electric_bus(item)
         ]
 
         with _cache_lock:

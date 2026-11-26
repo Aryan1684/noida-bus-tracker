@@ -16,53 +16,7 @@ let routeCatalog = [];
 let selectedRouteLayer = null;
 let favoriteBusIds = new Set(JSON.parse(localStorage.getItem("noidaBusFavorites") || "[]"));
 
-const API_BASE_URL = "https://noida-bus-tracker.onrender.com";
-
-const BUS_ROUTES = {
-    "UP80KT3702": "R1",
-    "UP80KT4582": "R1",
-    "UP70PT6077": "R1",
-    "UP70PT6268": "R1",
-    "UP80LT4113": "R1",
-    "UP80LT4117": "R1",
-    "UP80LT4126": "R1",
-    "UP80KT3630": "R1",
-    "UP80KT3703": "R1",
-    "UP70PT6330": "R1",
-    "UP80LT4114": "R1",
-    "UP80LT4120": "R1"
-};
-
-let maintenanceRedirecting = false;
-
-function monitorMaintenanceStatus() {
-    const check = async () => {
-        if (maintenanceRedirecting || window.location.pathname.endsWith("/maintenance.html")) return;
-        try {
-            const response = await fetch(API_BASE_URL + "/api/maintenance?_=" + Date.now(), {
-                cache: "no-store",
-                headers: { "Cache-Control": "no-cache" }
-            });
-            if (!response.ok) return;
-            const state = await response.json();
-            if (state.enabled && !maintenanceRedirecting) {
-                maintenanceRedirecting = true;
-                if (refreshInterval) {
-                    clearInterval(refreshInterval);
-                    refreshInterval = null;
-                }
-                document.documentElement.style.visibility = "hidden";
-                window.location.replace("./maintenance.html");
-            }
-        } catch (_) {}
-    };
-    check();
-    window.setInterval(check, 15000);
-}
-
-function getBusRoute(busId) {
-    return BUS_ROUTES[String(busId || "").trim().toUpperCase()] || null;
-}
+const API_BASE_URL = TRACKER_API;
 
 function getBusFreshness(bus) {
     const rawAge = bus && bus.gps_age_seconds;
@@ -195,7 +149,6 @@ document.addEventListener(
         initializeRouteCatalog();
         initializeAppComingSoon();
         initializeWarningModal();
-monitorMaintenanceStatus();
 
         const locationButton = document.getElementById("locationBtn");
         if (locationButton) {
@@ -786,16 +739,20 @@ async function loadNearbyBuses(
             data.count = data.buses.length;
             console.warn("Using client-side nearby filtering fallback.", {total: data.total_buses, nearby: data.count});
         }
-        displayBuses(data.buses || []);
+        const { loadNetwork, eligibleBus } = await import("./fleet-motion.mjs");
+        const network = await loadNetwork();
+        data.buses = (data.buses || []).filter(bus => eligibleBus(bus, network));
+        data.count = data.buses.length;
+        displayBuses(data.buses);
 
         updateLastRefreshed();
 
         if (data.fallback) {
             updateLocationMessage("Showing " + data.count + " nearby buses using the direct GPS feed.");
         } else if (data.count === 0 && data.total_buses === 0) {
-            updateLocationMessage("No Noida Electric buses are currently present in the live feed. The feed may be temporarily empty.");
+            updateLocationMessage("No local electric buses are currently present in the live feed. The feed may be temporarily empty.");
         } else if (data.count === 0) {
-            updateLocationMessage(`No electric buses found within ${radius} km. ${data.total_buses} buses are present in the wider feed.`);
+            updateLocationMessage(`No electric buses in the Noida or Greater Noida service area were found within ${radius} km.`);
         } else if (data.data_stale || (data.buses || []).some(bus => bus.data_stale)) {
             updateLocationMessage(
                 `Live GPS temporarily unavailable. Showing the last available bus positions (${data.count} buses within ${radius} km).`

@@ -45,7 +45,7 @@ h1{font-size:clamp(30px,6vw,42px);line-height:1.1;letter-spacing:-.045em;margin:
 </main>
 <script>
 (function(){
-  var endpoint="https://noida-bus-tracker.onrender.com/api/maintenance";
+  var endpoint=/^deploy-preview-\d+--noidabus\.netlify\.app$/.test(location.hostname) ? "/fleet-data/api/maintenance" : "https://noida-bus-tracker.onrender.com/api/maintenance";
   var feedbackEndpoint="https://api.web3forms.com/submit";
   var feedbackAccessKey="9f660460-b738-4ab4-88ae-2f986f049c5d";
   var endAt=null;

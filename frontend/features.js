@@ -792,7 +792,7 @@
         document.head.appendChild(manifest);
 
         if("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")){
-            navigator.serviceWorker.register("sw.js?v=24").catch(function(e){console.error(e);});
+            navigator.serviceWorker.register("sw.js?v=25").catch(function(e){console.error(e);});
         }
 
         window.addEventListener("beforeinstallprompt",function(event){

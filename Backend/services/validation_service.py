@@ -10,6 +10,14 @@ MAX_JUMP_DISTANCE_KM = 0.5
 MAX_JUMP_INTERVAL_SECONDS = 5.0
 
 
+def is_local_electric_bus(bus):
+    depot = " ".join(str(bus.get("depot_name") or "").upper().split())
+    if depot not in {"NOIDA ELECTRIC", "GREATER NOIDA ELECTRIC"}:
+        return False
+    fuel = str(bus.get("fuel_type") or "").strip().upper()
+    return not fuel or fuel in {"ELECTRIC", "ELECTRICITY", "EV", "BEV", "BATTERY ELECTRIC"}
+
+
 def _parse_timestamp(value):
     if not value:
         return None
@@ -69,7 +77,7 @@ def validate_gps_batch(raw_buses, previous_points=None):
         bus = dict(raw or {})
         stages = []
 
-        if str(bus.get("depot_name") or "").strip().upper() != "NOIDA ELECTRIC":
+        if not is_local_electric_bus(bus):
             rejected.append(_reject(bus, "wrong_depot"))
             continue
 
