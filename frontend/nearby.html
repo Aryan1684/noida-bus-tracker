@@ -27,11 +27,20 @@
     <script src="site-status.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="style.css?v=20">
+    <style>
+        #routeWarning { box-sizing: border-box; width: min(26rem, calc(100% - 2rem)); padding: 1.4rem; border: 1px solid #adbbb2; border-radius: 1rem; background: #fff; color: #18342e; }
+        #routeWarning::backdrop { background: rgb(8 24 21 / 60%); }
+        #routeWarning h2 { margin: 0 0 .5rem; font-size: 1.25rem; }
+        #routeWarning p { margin: 0 0 1.25rem; line-height: 1.55; }
+        #routeWarning form { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+        #routeWarning button { padding: .65rem 1rem; border: 1px solid #527568; border-radius: .5rem; background: #fff; color: #18342e; font: inherit; cursor: pointer; }
+        #routeWarning button[value="open"] { background: #185740; color: #fff; }
+    </style>
 </head>
 <body>
     <header class="topbar">
         <div class="topbar-inner">
-            <a class="brand" href="./">
+            <a class="brand" href="./" data-open-fleet>
                 <img class="brand-symbol brand-logo" src="assets/noida-bus-tracker-mark.svg" alt="Noida Bus Tracker">
                 <span>
                     <strong>Noida Bus Tracker</strong>
@@ -39,13 +48,38 @@
                 </span>
             </a>
             <nav class="top-actions" aria-label="Site actions">
-                <a class="small-button" href="./">Fleet map</a>
+                <a class="small-button" href="./" data-open-fleet aria-haspopup="dialog">Fleet map</a>
                 <button id="appComingSoonBtn" class="get-app-button" type="button"><span>↓</span><span>Android app</span></button>
                 <button id="themeToggle" class="icon-button" aria-label="Toggle dark mode" title="Toggle dark mode"><span id="themeIcon">Dark</span></button>
             </nav>
         </div>
     </header>
 
+    <dialog id="routeWarning" aria-labelledby="routeWarningTitle" aria-describedby="routeWarningText" lang="hi-Latn">
+        <h2 id="routeWarningTitle">Map routes galat ho sakte hain</h2>
+        <p id="routeWarningText">Map par dikhaya gaya route andaaza hai. Bus ka asli raasta alag ho sakta hai.</p>
+        <form method="dialog">
+            <button value="cancel" autofocus>Wapas</button>
+            <button value="open">Map kholo</button>
+        </form>
+    </dialog>
+    <script>
+        (() => {
+            const warning = document.getElementById("routeWarning");
+            let destination;
+            document.querySelectorAll("[data-open-fleet]").forEach(link => {
+                link.addEventListener("click", event => {
+                    event.preventDefault();
+                    destination = link.href;
+                    warning.returnValue = "";
+                    warning.showModal();
+                });
+            });
+            warning.addEventListener("close", () => {
+                if (warning.returnValue === "open") location.assign(destination);
+            });
+        })();
+    </script>
     <main>
         <section class="workspace-heading">
             <div>
