@@ -538,101 +538,42 @@ footer span:nth-child(2) {
 footer a:hover {
     text-decoration: underline;
 }
+/* A low-floor electric coach. The shell rotates in street coordinates under a fixed camera. */
 .vehicle {
-    width: 32px;
-    height: 38px;
-    cursor: pointer;
-    background: transparent;
-    overflow: visible;
-    transform-style: preserve-3d;
-    --paint: #079775;
-    --trim: #005741;
+    width: 32px; height: 38px; padding: 0; overflow: visible; background: transparent;
+    --body: #059b78; --skirt: #006856; --glass: #1c364b; --accent: #c6ff79;
 }
-.vehicle.stationary {
-    --paint: #d89c34;
-    --trim: #865919;
-}
-.vehicle.stale {
-    --paint: #8d9995;
-    --trim: #53605d;
-}
+.vehicle.stationary { --body: #d89827; --skirt: #916216; --accent: #fff2ac; }
+.vehicle.stale { --body: #91a09b; --skirt: #61736e; --accent: #d6e0da; }
 .coach {
-    position: absolute;
-    inset: 3px 9px;
-    display: block;
-    transform-style: preserve-3d;
+    position: absolute; left: calc(50% - 7px); top: calc(50% - 24px);
+    width: 14px; height: 48px; transform-style: preserve-3d;
+    transform: scale(var(--coach-scale, 1)) rotateX(var(--coach-pitch, 45deg))
+        rotateZ(calc(var(--heading, 0deg) - var(--camera-bearing, 0deg)));
 }
-.coach:before,
-.coach:after,
-.roof,
-.flank,
-.nose,
-.tail {
-    position: absolute;
-    display: block;
-}
-.coach:before {
-    content: "";
-    inset: 0;
-    border-radius: 4px;
-    background: #223a33;
-    box-shadow: 2px 2px 3px #163b2e66;
-}
-.roof {
-    inset: 0;
-    border: 1px solid var(--trim);
-    border-radius: 4px 4px 3px 3px;
-    background: linear-gradient(
-        to bottom,
-        #ebffae 0 5%,
-        #214c5b 6% 22%,
-        var(--paint) 23% 76%,
-        #c6ded6 76% 82%,
-        var(--paint) 83% 93%,
-        #b64b42 94%
-    );
-    transform: translateZ(5px);
-}
-.roof:after {
-    content: "";
-    position: absolute;
-    inset: 9px 3px 9px;
-    border-radius: 2px;
-    background: repeating-linear-gradient(#eff7ed 0 2px, #8ea9a2 2px 3px);
-}
-.flank {
-    top: 3px;
-    bottom: 2px;
-    width: 5px;
-    background: repeating-linear-gradient(to bottom, #23494f 0 4px, var(--paint) 4px 6px);
-    border-right: 1px solid var(--trim);
-    transform-origin: left;
-    transform: rotateY(-90deg);
-}
-.flank.right {
-    left: 100%;
-}
-.nose,
-.tail {
-    height: 5px;
-    left: 2px;
-    right: 2px;
-    background: var(--trim);
-    transform-origin: top;
-    transform: rotateX(90deg);
-}
-.tail {
-    top: 100%;
-}
-.vehicle.selected:after {
-    content: "";
-    position: absolute;
-    inset: -3px;
-    border-radius: 50%;
-    border: 2px solid #075e4c;
-    box-shadow: 0 0 0 3px #ffffffb8;
-    pointer-events: none;
-}
+.coach:before { content: ""; position: absolute; inset: 1px -1px; border-radius: 4px;
+    background: #1728296b; box-shadow: 2px 3px 4px #20352866; }
+.coach i { position:absolute; display:block; }
+.roof { inset:0; border-radius:3px; transform:translateZ(11px);
+    background:linear-gradient(to right,#cad7cb,#f3f4df 22%,#e5e8d9 80%,#b4c7bb); border:1px solid #83968c; }
+.roof:before,.roof:after { content:""; position:absolute; left:2px; right:2px; border-radius:2px; }
+.roof:before { top:9px;height:15px;background:repeating-linear-gradient(0deg,#84948c 0 1px,#c6d0c4 1px 3px);box-shadow:0 1px 1px #56695a; }
+.roof:after { bottom:6px;height:7px;background:radial-gradient(circle,#566d68 30%,#9faf9f 34% 49%,#ccd3c4 52%); }
+.flank { top:0;left:0;width:11px;height:48px;transform-origin:left;transform:rotateY(-90deg);
+    background:linear-gradient(to right,var(--skirt) 0 22%,var(--body) 22% 36%,var(--accent) 36% 44%,transparent 44% 88%,var(--body) 88%),
+        repeating-linear-gradient(0deg,var(--glass) 0 5px,#7298a2 5px 6px,#172e36 6px 7px); }
+.flank.right { left:100%; }
+.nose,.tail { left:0;top:0;width:14px;height:11px;transform-origin:top;transform:rotateX(90deg);
+    background:linear-gradient(to top,var(--body) 0 12%,#1c373e 13% 28%,#95b6bc 29% 38%,#264756 39% 67%,var(--body) 68% 86%,var(--skirt) 87%); }
+.tail { top:100%;background:linear-gradient(to top,var(--body) 16%,var(--glass) 17% 50%,var(--body) 51% 76%,var(--skirt) 77%); }
+.nose:after,.tail:after {content:"";position:absolute;bottom:2px;left:1px;width:3px;height:2px;background:#fff7c9;box-shadow:9px 0 #fff7c9;}
+.tail:after {background:#ff6049;box-shadow:9px 0 #ff6049}
+.axle { width:15px;height:5px;left:-.5px;transform-style:preserve-3d; }
+.axle.front {top:8px}.axle.rear{bottom:8px}
+.axle:before,.axle:after {content:"";position:absolute;width:6px;height:6px;top:0;left:-3px;border-radius:50%;
+    background:radial-gradient(circle,#a8b5b4 0 28%,#202b32 35% 100%);transform:translateZ(2px) rotateY(90deg);}
+.axle:after {left:12px}
+.vehicle.selected:after {content:"";position:absolute;z-index:-1;inset:-8px -12px;border:2px solid #087660;border-radius:50%;background:#15ac7d14;box-shadow:0 0 0 3px #ffffff9c;}
 .stop-pin {
     padding: 0;
     background: white;
@@ -802,7 +743,7 @@ footer a:hover {
 }
 
 .model-view .vehicle {
-    transform: perspective(160px) rotateX(48deg) scale(1.24);
+    --coach-pitch: 68deg;
 }
 .leaflet-marker-icon:has(.vehicle) {
     z-index: 9000 !important;
@@ -819,3 +760,19 @@ footer a:hover {
 #routeWarning h2 { margin: 0; font-size: 1.3rem; }
 #routeWarning p { line-height: 1.5; }
 #routeWarning form { text-align: right; }
+
+@media (min-width:691px) {
+    .workspace { display:block; position:relative; isolation:isolate; }
+    .map-area { position:absolute;inset:0; }
+    .explorer { position:absolute; left:16px; top:16px; width:clamp(270px,24vw,335px);
+        max-height:calc(100% - 78px); border:1px solid #bdcbc1; border-radius:15px;
+        box-shadow:0 7px 26px #12352a26; overflow:hidden; }
+    .explorer-head { padding:15px 17px; }
+    .title-line h1 {font-size:28px;letter-spacing:-1px}
+    .sheet-toggle { display:block; padding:7px 10px; border-radius:20px; background:#e5f2e3; font-size:12px; font-weight:650; }
+    .explorer:not(.open) .explore-body { display:none; }
+    .explorer.open .explore-body {min-height:0;overflow:hidden;}
+    .map-notice {left:auto;right:72px;}
+}
+
+.city-scale .stop-pin { opacity: .7; border-width: 1px; width: 7px; height: 7px; }

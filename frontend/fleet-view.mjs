@@ -41,6 +41,14 @@ function stopButton(name, select) {
 }
 function glView(map, network, select, onDrag) {
     const markers = [];
+    const container = map.getContainer();
+    const syncCamera = () => {
+        container.classList.toggle("city-scale", map.getZoom() < 13);
+        container.style.setProperty("--camera-bearing", map.getBearing() + "deg");
+        container.style.setProperty("--coach-scale", Math.min(1.65, Math.max(0.48, (map.getZoom() - 9) / 4)));
+    };
+    map.on("zoom rotate", syncCamera);
+    syncCamera();
     const roads = roadFeatures(network);
     const visible = { routes: true, stops: true };
     let selectedRoute = null;
@@ -96,8 +104,8 @@ function glView(map, network, select, onDrag) {
         marker(el, point, vehicle = false) {
             const marker = new maplibregl.Marker({
                 element: el,
-                rotationAlignment: vehicle ? "map" : "viewport",
-                pitchAlignment: vehicle ? "map" : "viewport",
+                rotationAlignment: "viewport",
+                pitchAlignment: "viewport",
             })
                 .setLngLat(point)
                 .addTo(map);
@@ -157,6 +165,13 @@ async function flatView(network, select, onDrag) {
         attribution:
             '© <a href="https://www.maptiler.com/copyright/">MapTiler</a> · © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
+    const syncScale = () => {
+        const container = map.getContainer();
+        container.classList.toggle("city-scale", map.getZoom() < 13);
+        container.style.setProperty("--coach-scale", Math.min(1.65, Math.max(0.48, (map.getZoom() - 9) / 4)));
+    };
+    map.on("zoomend", syncScale);
+    syncScale();
     map.on("dragstart", onDrag);
     const stops = L.layerGroup().addTo(map),
         roads = L.layerGroup().addTo(map);
@@ -180,7 +195,10 @@ async function flatView(network, select, onDrag) {
     document.getElementById("pitch").title = "Tilt electric bus models";
     return {
         marker: (el, p, v) => marker(el, p, map, v),
-        focus: (p, z) => map.setView(toLatLng(p), z ?? map.getZoom(), { animate: false }),
+        focus: (p, z) => {
+            if (matchMedia("(prefers-reduced-motion: reduce)").matches) map.setView(toLatLng(p), z ?? map.getZoom(), {animate:false});
+            else map.flyTo(toLatLng(p), z ?? map.getZoom(), {duration:0.75});
+        },
         track: (p) => map.panTo(toLatLng(p), { animate: false }),
         fit: (points) =>
             map.fitBounds((points || region).map(toLatLng), {

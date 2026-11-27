@@ -68,7 +68,7 @@ function place(entry, point, heading) {
     entry.point = point;
     if (Number.isFinite(heading)) entry.angle += shortestTurn(entry.angle, heading);
     entry.marker?.move(point);
-    if (entry.coach) entry.coach.style.transform = "rotateZ(" + entry.angle + "deg)";
+    if (entry.coach) entry.coach.style.setProperty("--heading", entry.angle + "deg");
     if (following && selection?.kind === "bus" && selection.id === entry.fix.id) view?.track(point);
 }
 function settle(entry) {
@@ -91,7 +91,7 @@ function attach(entry) {
     el.type = "button";
     const coach = node("span", "coach");
     coach.setAttribute("aria-hidden", "true");
-    ["flank", "flank right", "nose", "tail", "roof"].forEach((cls) => coach.append(node("i", cls)));
+    ["flank", "flank right", "nose", "tail", "roof", "axle front", "axle rear"].forEach((cls) => coach.append(node("i", cls)));
     el.append(coach);
     el.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -113,7 +113,9 @@ function animate(now) {
             settle(entry);
             continue;
         }
-        const pose = poseAt(entry.leg, t);
+        // Ease into and out of each observed leg without overshooting its last GPS fix.
+        const eased = t * t * (3 - 2 * t);
+        const pose = poseAt(entry.leg, eased);
         // Give the coach a short steering transition around bends and across north.
         const turn = shortestTurn(entry.angle, pose.heading);
         const dt = Math.max(0, now - entry.lastFrame);
@@ -150,7 +152,7 @@ function accept(fix) {
     if (path) {
         e.leg = makeLeg(path);
         e.start = e.lastFrame = performance.now();
-        e.duration = Math.min(25000, Math.max(1200, fix.time - previous.time));
+        e.duration = Math.min(30000, Math.max(1200, fix.time - previous.time));
     } else settle(e);
     styleVehicle(e);
 }
