@@ -807,3 +807,15 @@ footer a:hover {
 .leaflet-marker-icon:has(.vehicle) {
     z-index: 9000 !important;
 }
+
+#routeWarning {
+    width: min(25rem, calc(100% - 2rem));
+    padding: 1.5rem;
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+#routeWarning::backdrop { background: rgb(10 32 28 / 58%); }
+#routeWarning h2 { margin: 0; font-size: 1.3rem; }
+#routeWarning p { line-height: 1.5; }
+#routeWarning form { text-align: right; }

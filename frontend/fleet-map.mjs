@@ -469,6 +469,7 @@ function locate() {
 }
 async function init() {
     if (!(await trackerReady)) return;
+    $("routeWarning").showModal();
     $("sheetToggle").onclick = () => expand(!document.querySelector(".explorer").classList.contains("open"));
     document.querySelectorAll("[data-tab]").forEach(
         (button) =>

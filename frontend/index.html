@@ -36,6 +36,11 @@
     <nav aria-label="Tracker views"><a class="active" aria-current="page" href="./"><svg><use href="#i-map"/></svg>Fleet map</a><a href="nearby.html"><svg><use href="#i-locate"/></svg>Nearby buses</a></nav>
     <a class="admin" href="admin.html"><svg><use href="#i-settings"/></svg>Admin</a>
   </header>
+  <dialog id="routeWarning" aria-labelledby="routeWarningTitle" aria-describedby="routeWarningText">
+    <h2 id="routeWarningTitle">Current routes are inaccurate</h2>
+    <p id="routeWarningText">The route lines shown on this map are incorrect. Please confirm your route before travelling.</p>
+    <form method="dialog"><button class="follow" autofocus>Got it</button></form>
+  </dialog>
   <main class="workspace">
     <aside class="explorer" aria-label="Fleet explorer">
       <div class="explorer-head">
