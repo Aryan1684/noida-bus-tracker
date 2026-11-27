@@ -996,7 +996,7 @@ def _enrich_nearby_buses_with_history(buses):
             bus["nearby_place_source"] = place["source"]
             bus["nearby_landmark"] = place.get("landmark")
 
-        if len(history) >= 2:
+        if history:
             movement = update_bus_history(bus, history)
             if movement:
                 bus.update(movement)
@@ -1010,7 +1010,8 @@ def _enrich_nearby_buses_with_history(buses):
 
         bus["last_passed_stop"] = bus.get("last_passed_stop") or bus.get("last_stop")
         bus["likely_next_stop"] = bus.get("likely_next_stop") or bus.get("likely_towards")
-        forecast = predict_three_minute(history)
+        packet_heading = bus["heading"] if bus.get("heading_source") == "gps_packet" else None
+        forecast = predict_three_minute(history, packet_heading=packet_heading)
         bus["forecast_3m"] = forecast
         bus["forecast_3m_available"] = forecast is not None
         _set_eta_estimate(bus, history)

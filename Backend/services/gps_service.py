@@ -14,7 +14,7 @@ from io import BytesIO
 
 import dns.resolver
 
-from services.direction_service import calculate_bearing
+from services.direction_service import calculate_bearing, moving_packet_heading
 from services.validation_service import is_local_electric_bus
 from utils.distance import calculate_distance
 
@@ -357,16 +357,6 @@ def get_direct_live_buses(data=None, include_persisted_history=False):
         else:
             freshness = "stale"
 
-        try:
-            device_heading = float(item.get("heading"))
-        except (TypeError, ValueError):
-            device_heading = None
-        if (device_heading is None or not 0 <= device_heading <= 360
-                or freshness != "fresh" or vehicle_status != "live" or not speed >= 2):
-            device_heading = None
-        else:
-            device_heading %= 360
-
         bus = {
             "bus_id": bus_id,
             "depot_name": item.get("depot_name"),
@@ -383,13 +373,14 @@ def get_direct_live_buses(data=None, include_persisted_history=False):
             "location_label": "Last known location" if freshness in {"stale", "unknown"} or vehicle_status == "no_signal" else "GPS location",
             "movement_status": "unknown",
             "direction": None,
-            "gps_heading": device_heading,
-            "heading": device_heading,
+            "gps_heading": item.get("heading"),
             "likely_towards": None,
             "prediction_available": False,
             "prediction_applied": False,
             "source": "MARGDARSHI",
         }
+
+        bus["gps_heading"] = bus["heading"] = moving_packet_heading(bus, min_speed=2)
 
         old = latest.get(bus_id)
         if old is None:
@@ -464,6 +455,8 @@ def get_cached_direct_live_buses():
     for bus in buses:
         bus["snapshot_age_seconds"] = int(age)
         bus["snapshot_stale"] = snapshot_stale
+        if snapshot_stale or bus["gps_age_seconds"] is None or bus["gps_age_seconds"] + age > 120:
+            bus["gps_heading"] = bus["heading"] = None
         if snapshot_stale:
             bus["is_stale"] = True
             bus["data_stale"] = True

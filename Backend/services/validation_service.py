@@ -236,6 +236,7 @@ def validate_gps_batch(raw_buses, previous_points=None):
             "longitude": longitude,
             "speed": round(speed, 1),
             "speed_valid": True,
+            "gps_heading": bus.get("heading"),
             "timestamp": timestamp,
             "timestamp_status": timestamp_status,
             "fix_unchanged": temporal_status == "unchanged_fix",
