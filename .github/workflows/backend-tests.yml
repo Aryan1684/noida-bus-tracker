@@ -5,12 +5,14 @@ on:
     paths:
       - "Backend/**"
       - "frontend/**"
+      - "tests/fleet-motion.test.mjs"
       - ".github/workflows/backend-tests.yml"
       - ".python-version"
   pull_request:
     paths:
       - "Backend/**"
       - "frontend/**"
+      - "tests/fleet-motion.test.mjs"
       - ".github/workflows/backend-tests.yml"
       - ".python-version"
 
@@ -31,4 +33,7 @@ jobs:
       - run: python -m pip install -r requirements.txt
       - run: python -m unittest discover -s tests -v
       - name: Check frontend JavaScript syntax
-        run: for file in ../frontend/*.js; do node --check "$file" || exit 1; done
+        run: for file in ../frontend/*.js ../frontend/*.mjs; do node --check "$file" || exit 1; done
+
+      - name: Check electric fleet filtering and motion
+        run: node --test ../tests/fleet-motion.test.mjs

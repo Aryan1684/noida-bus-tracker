@@ -14,7 +14,8 @@ from io import BytesIO
 
 import dns.resolver
 
-from services.direction_service import moving_packet_heading
+from services.direction_service import calculate_bearing, moving_packet_heading
+from services.validation_service import is_local_electric_bus
 from utils.distance import calculate_distance
 
 GPS_API_URL = "https://margdarshi.upsrtcvlt.com/php/getGpsLiveData.php"
@@ -319,7 +320,7 @@ def get_direct_live_buses(data=None, include_persisted_history=False):
     for item in data:
         if not isinstance(item, dict):
             continue
-        if str(item.get("depot_name") or "").strip().upper() != "NOIDA ELECTRIC":
+        if not is_local_electric_bus(item):
             continue
 
         bus_id = str(item.get("bus_id") or "").strip().upper()
@@ -372,15 +373,14 @@ def get_direct_live_buses(data=None, include_persisted_history=False):
             "location_label": "Last known location" if freshness in {"stale", "unknown"} or vehicle_status == "no_signal" else "GPS location",
             "movement_status": "unknown",
             "direction": None,
-            "heading": None,
+            "gps_heading": item.get("heading"),
             "likely_towards": None,
             "prediction_available": False,
             "prediction_applied": False,
             "source": "MARGDARSHI",
         }
 
-        bus["gps_heading"] = item.get("heading")
-        bus["gps_heading"] = bus["heading"] = moving_packet_heading(bus)
+        bus["gps_heading"] = bus["heading"] = moving_packet_heading(bus, min_speed=2)
 
         old = latest.get(bus_id)
         if old is None:
@@ -392,6 +392,23 @@ def get_direct_live_buses(data=None, include_persisted_history=False):
                 latest[bus_id] = bus
 
     buses = list(latest.values())
+    _record_direct_history(buses)
+    histories = get_direct_bus_histories(latest, limit=2)
+    for bus in buses:
+        history = histories.get(bus["bus_id"], [])
+        if bus["heading"] is not None or len(history) < 2 or bus["gps_freshness"] != "fresh" or bus["is_stale"]:
+            continue
+        if bus["vehicle_status"] == "stationary" or bus["speed"] < 2:
+            continue
+        previous, current = history
+        seconds = current["time"] - previous["time"]
+        if current["time"] != _parse_timestamp(bus["timestamp"]) or not 0 < seconds <= 120:
+            continue
+        coordinates = (previous["latitude"], previous["longitude"], current["latitude"], current["longitude"])
+        metres = calculate_distance(*coordinates) * 1000
+        if 5 < metres <= 25 * seconds:
+            bus["heading"] = calculate_bearing(*coordinates)
+
     checked_at = time.time()
 
     with _cache_lock:
@@ -399,8 +416,6 @@ def get_direct_live_buses(data=None, include_persisted_history=False):
         _direct_snapshot_at = checked_at
         _direct_feed_checked_at = checked_at
         _direct_feed_state = "available" if buses else "empty"
-
-    _record_direct_history(buses)
 
     print(
         f"Raw MARGDARSHI GPS parsed: buses={len(buses)}; history-backed movement analysis follows",
@@ -440,7 +455,8 @@ def get_cached_direct_live_buses():
     for bus in buses:
         bus["snapshot_age_seconds"] = int(age)
         bus["snapshot_stale"] = snapshot_stale
-        bus["heading"] = moving_packet_heading(bus)
+        if snapshot_stale or bus["gps_age_seconds"] is None or bus["gps_age_seconds"] + age > 120:
+            bus["gps_heading"] = bus["heading"] = None
         if snapshot_stale:
             bus["is_stale"] = True
             bus["data_stale"] = True
@@ -496,7 +512,7 @@ def _process_live_buses(data, upstream_latency_ms=None):
         item
         for item in data
         if isinstance(item, dict)
-        and str(item.get("depot_name") or "").strip().upper() == "NOIDA ELECTRIC"
+        and is_local_electric_bus(item)
     ]
 
     raw_electric_count = len(electric_buses)
@@ -543,7 +559,7 @@ def _process_live_buses(data, upstream_latency_ms=None):
 
     print(
         f"GPS feed received {len(data)} raw records; "
-        f"{raw_electric_count} NOIDA ELECTRIC records; "
+        f"{raw_electric_count} local electric fleet records; "
         f"{len(electric_buses)} unique buses after dedupe",
         flush=True,
     )
@@ -772,7 +788,7 @@ def refresh_noida_electric_buses():
             dict(item)
             for item in data
             if isinstance(item, dict)
-            and str(item.get("depot_name") or "").strip().upper() == "NOIDA ELECTRIC"
+            and is_local_electric_bus(item)
         ]
 
         with _cache_lock:

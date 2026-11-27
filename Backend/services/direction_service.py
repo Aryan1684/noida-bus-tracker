@@ -656,12 +656,12 @@ def _safe_speed(value):
         return 0.0
 
 
-def moving_packet_heading(bus):
+def moving_packet_heading(bus, min_speed=3):
     """Compass degrees from a recent moving GPS fix; zero is due north."""
     if bus.get("is_stale") or bus.get("data_stale") or bus.get("snapshot_stale"):
         return None
     status = str(bus.get("vehicle_status") or "").lower().replace("-", "_").replace(" ", "_")
-    if status in {"stationary", "no_signal", "nosignal", "offline", "unavailable"} or _safe_speed(bus.get("speed")) < 3:
+    if status in {"stationary", "no_signal", "nosignal", "offline", "unavailable"} or _safe_speed(bus.get("speed")) < min_speed:
         return None
     value = bus.get("gps_heading")
     if isinstance(value, bool):
