@@ -67,8 +67,7 @@ function visualState(entry) {
 function place(entry, point, heading) {
     entry.point = point;
     if (Number.isFinite(heading)) entry.angle += shortestTurn(entry.angle, heading);
-    entry.marker?.move(point);
-    if (entry.el) entry.el.style.setProperty("--heading", entry.angle + "deg");
+    entry.marker?.move(point,entry.angle);
     if (following && selection?.kind === "bus" && selection.id === entry.fix.id) view?.track(point);
 }
 function settle(entry) {
@@ -89,9 +88,10 @@ function attach(entry) {
     if (!view || entry.marker) return;
     const el = node("button", "vehicle");
     el.type = "button";
-    const coach = node("span", "coach");
-    coach.setAttribute("aria-hidden", "true");
-    ["flank", "flank right", "nose", "tail", "roof", "axle front", "axle rear"].forEach((cls) => coach.append(node("i", cls)));
+    const coach = document.createElementNS("http://www.w3.org/2000/svg","svg");
+    coach.classList.add("coach");
+    coach.setAttribute("viewBox","0 0 128 128");
+    coach.setAttribute("aria-hidden","true");
     el.append(coach);
     el.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -127,7 +127,7 @@ function animate(now) {
 function accept(fix) {
     let e = fleet.get(fix.id);
     if (!e) {
-        e = { fix, point: fix.point, angle: fix.heading ?? 0 };
+        e = { fix, point: fix.point, angle: fix.heading ?? -55 };
         fleet.set(fix.id, e);
         attach(e);
         return;

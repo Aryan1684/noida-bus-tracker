@@ -1,3 +1,4 @@
+import { drawCoach } from "./coach-model.mjs";
 // MapTiler's public browser key is shared with the existing nearby map.
 const mapKey = "zDrcI9pwHS3FLOHuWQm3";
 export const routeColors = {
@@ -35,6 +36,24 @@ function updateStreetScale(map, tilePixels, zoom = map.getZoom()) {
     map.getContainer().classList.toggle("city-scale", level < 13.5);
 }
 
+function vehicleMarker(el, map, gl, move, remove) {
+    const coach = el.querySelector(".coach");
+    let heading = -55;
+    const events = gl ? ["rotate","pitch","zoom"] : ["zoomend","coachpitch"];
+    function redraw() {
+        const z = map.getZoom() + (gl ? 1 : 0);
+        const tilt = 45 + Math.min(18,Math.max(0,z-13)*3);
+        const camera = gl ? map.getPitch() : map.getContainer().classList.contains("model-view") ? 70 : 0;
+        drawCoach(coach,heading-(gl ? map.getBearing() : 0),Math.max(camera,tilt));
+    }
+    events.forEach(event => map.on(event,redraw));
+    redraw();
+    return {
+        move(point,angle) { heading=angle; move(point); redraw(); },
+        remove() { events.forEach(event => map.off(event,redraw)); remove(); }
+    };
+}
+
 function roadFeatures(network) {
     return network.routes.flatMap((route) =>
         route.paths.map((path) => ({
@@ -64,7 +83,7 @@ function glView(map, network, select, onDrag) {
         container.style.setProperty("--camera-bearing", map.getBearing() + "deg");
         container.style.setProperty("--camera-tilt", map.getPitch() + "deg");
     };
-    map.on("zoom rotate pitch", syncCamera);
+    for (const event of ["zoom","rotate","pitch"]) map.on(event,syncCamera);
     syncCamera();
     const roads = roadFeatures(network);
     const visible = { routes: true, stops: true };
@@ -126,6 +145,7 @@ function glView(map, network, select, onDrag) {
             })
                 .setLngLat(point)
                 .addTo(map);
+            if (vehicle) return vehicleMarker(el,map,true,p=>marker.setLngLat(p),()=>marker.remove());
             return { move: (p) => marker.setLngLat(p), remove: () => marker.remove() };
         },
         streetZoom: 18.75,
@@ -207,6 +227,7 @@ async function flatView(network, select, onDrag) {
             icon: L.divIcon({ html: el, className: "", iconSize: size }),
             keyboard: false,
         }).addTo(group);
+        if (vehicle) return vehicleMarker(el,map,false,p=>pin.setLatLng(toLatLng(p)),()=>pin.remove());
         return { move: (p) => pin.setLatLng(toLatLng(p)), remove: () => pin.remove() };
     }
     for (const [name, point] of Object.entries(network.stops)) marker(stopButton(name, select), point, stops);
@@ -226,7 +247,7 @@ async function flatView(network, select, onDrag) {
                 animate: false,
             }),
         zoom: (delta) => map.setZoom(map.getZoom() + delta),
-        pitch: (enabled) => map.getContainer().classList.toggle("model-view", enabled),
+        pitch: enabled => { map.getContainer().classList.toggle("model-view", enabled); map.fire("coachpitch"); },
         layers(toggles, route) {
             lines.forEach(([id, line]) => {
                 if (toggles.routes && (!route || route === id)) roads.addLayer(line);
