@@ -213,7 +213,7 @@ function row(kind, id, title, sub, tag) {
     return b;
 }
 function routeRow(r) {
-    return row("route", r.id, r.name, r.stops.length + (r.paths.length ? " mapped stops" : " reported stops"));
+    return row("route", r.id, r.name, r.stops.length + " stops");
 }
 function empty(title, desc) {
     const box = node("div", "empty");
@@ -365,7 +365,7 @@ function renderDetail() {
             node(
                 "p",
                 "detail-body",
-                r.note || "Road links are approximate. Only mapped stops in the service area are shown.",
+                r.note || "Road lines are approximate. Select a pinned stop to see it on the map.",
             ),
         );
         const list = node("ol", "stop-list");
