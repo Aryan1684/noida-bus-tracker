@@ -14,6 +14,7 @@ from io import BytesIO
 
 import dns.resolver
 
+from services.direction_service import calculate_bearing
 from services.validation_service import is_local_electric_bus
 from utils.distance import calculate_distance
 
@@ -389,6 +390,23 @@ def get_direct_live_buses(data=None, include_persisted_history=False):
                 latest[bus_id] = bus
 
     buses = list(latest.values())
+    _record_direct_history(buses)
+    histories = get_direct_bus_histories(latest, limit=2)
+    for bus in buses:
+        history = histories.get(bus["bus_id"], [])
+        if len(history) < 2 or bus["gps_freshness"] != "fresh" or bus["is_stale"]:
+            continue
+        if bus["vehicle_status"] == "stationary" or bus["speed"] < 2:
+            continue
+        previous, current = history
+        seconds = current["time"] - previous["time"]
+        if current["time"] != _parse_timestamp(bus["timestamp"]) or not 0 < seconds <= 120:
+            continue
+        coordinates = (previous["latitude"], previous["longitude"], current["latitude"], current["longitude"])
+        metres = calculate_distance(*coordinates) * 1000
+        if 5 < metres <= 25 * seconds:
+            bus["heading"] = calculate_bearing(*coordinates)
+
     checked_at = time.time()
 
     with _cache_lock:
@@ -396,8 +414,6 @@ def get_direct_live_buses(data=None, include_persisted_history=False):
         _direct_snapshot_at = checked_at
         _direct_feed_checked_at = checked_at
         _direct_feed_state = "available" if buses else "empty"
-
-    _record_direct_history(buses)
 
     print(
         f"Raw MARGDARSHI GPS parsed: buses={len(buses)}; history-backed movement analysis follows",

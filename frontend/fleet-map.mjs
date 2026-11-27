@@ -5,6 +5,8 @@ import {
     observation,
     stateOf,
     movementPath,
+    matchRoad,
+    bearing,
     makeLeg,
     poseAt,
     shortestTurn,
@@ -70,13 +72,20 @@ function place(entry, point, heading) {
     entry.marker?.move(point,entry.angle);
     if (following && selection?.kind === "bus" && selection.id === entry.fix.id) view?.track(point);
 }
+function roadPosition(fix, heading) {
+    const streets = view?.nearbyRoads?.(fix.point) || [];
+    const route = network.routes.find(r=>r.id===routeFor(fix));
+    const paths = streets.length ? streets : route?.paths || network.routes.flatMap(r=>r.paths);
+    return matchRoad(fix.point,paths,heading);
+}
 function settle(entry) {
     entry.leg = null;
-    place(entry, entry.fix.point, entry.fix.heading ?? entry.angle);
+    place(entry, entry.road?.point ?? entry.fix.point, entry.road?.heading ?? entry.direction ?? entry.angle);
 }
 function styleVehicle(entry) {
     if (!entry.el) return;
     const status = visualState(entry);
+    entry.el.classList.toggle("has-direction",status==="Moving" && Number.isFinite(entry.direction));
     entry.el.classList.toggle("stationary", status === "Stationary");
     entry.el.classList.toggle("stale", status === "Last known");
     entry.el.classList.toggle("selected", selection?.kind === "bus" && selection.id === entry.fix.id);
@@ -92,7 +101,9 @@ function attach(entry) {
     coach.classList.add("coach");
     coach.setAttribute("viewBox","0 0 128 128");
     coach.setAttribute("aria-hidden","true");
-    el.append(coach);
+    const arrow=node("span","travel-arrow");
+    arrow.setAttribute("aria-hidden","true");
+    el.append(coach,arrow);
     el.addEventListener("click", (e) => {
         e.stopPropagation();
         select("bus", entry.fix.id);
@@ -127,7 +138,8 @@ function animate(now) {
 function accept(fix) {
     let e = fleet.get(fix.id);
     if (!e) {
-        e = { fix, point: fix.point, angle: fix.heading ?? -55 };
+        const road=roadPosition(fix,fix.heading);
+        e = { fix, road, direction:fix.heading, point:road?.point ?? fix.point, angle:road?.heading ?? fix.heading ?? -55 };
         fleet.set(fix.id, e);
         attach(e);
         return;
@@ -143,11 +155,11 @@ function accept(fix) {
         return;
     }
     e.fix = fix;
-    const route = network.routes.find((r) => r.id === routeFor(fix));
-    const path =
-        view && !reduced.matches && !document.hidden && canAnimate(previous, fix)
-            ? movementPath(e.point, fix.point, route)
-            : null;
+    const movingFixes = canAnimate(previous,fix);
+    e.direction = fix.heading ?? (movingFixes ? bearing(previous.point,fix.point) : null);
+    e.road = roadPosition(fix,e.direction);
+    const path = view && !reduced.matches && !document.hidden && movingFixes && e.road
+        ? movementPath(e.point,e.road.point,{paths:[e.road.path]}) : null;
     if (path) {
         e.leg = makeLeg(path);
         e.start = e.lastFrame = performance.now();
@@ -531,6 +543,16 @@ async function init() {
             .then((v) => {
                 view = v;
                 for (const e of fleet.values()) attach(e);
+                view.onStreetViewChange?.(() => {
+                    for (const entry of fleet.values()) {
+                        if (entry.leg) continue;
+                        entry.road = roadPosition(entry.fix, entry.direction);
+                        const point = entry.road?.point ?? entry.fix.point;
+                        entry.point = point;
+                        entry.angle = entry.road?.heading ?? entry.direction ?? entry.angle;
+                        entry.marker?.move(point, entry.angle);
+                    }
+                });
                 layers();
                 if (selection?.kind === "bus" && fleet.has(selection.id))
                     view.focus(fleet.get(selection.id).point, view.streetZoom);

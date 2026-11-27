@@ -8,6 +8,7 @@ import {
     shortestTurn,
     stateOf,
     movementPath,
+    matchRoad,
     makeLeg,
     poseAt,
     distance,
@@ -79,4 +80,16 @@ test("street interpolation preserves bends, distance and endpoints in either dir
     assert.equal(shortestTurn(359, 2), 3);
     assert.equal(shortestTurn(1079, 2), 3);
     assert.equal(movementPath(a, [77.32, 28.55], null), null);
+});
+
+test("road matching accepts opposite travel, rejects cross streets, ambiguity and distant fixes", () => {
+    const street=[[77.30,28.5],[77.31,28.5]],p=[77.305,28.50008];
+    const hit=matchRoad(p,[street],270);
+    assert.ok(distance(hit.point,[p[0],28.5])<0.1);
+    assert.equal(Math.abs(shortestTurn(hit.heading,270)),0);
+    assert.equal(matchRoad(p,[street],0),null);
+    assert.equal(matchRoad([p[0],28.51],[street],90),null);
+    assert.equal(matchRoad(p,[street,street.map(([x,y])=>[x,y+.00016])],90),null);
+    assert.equal(movementPath(p,[77.3051,p[1]],null),null);
+    assert.equal(movementPath(p,hit.point,{ paths: [street] }),null);
 });

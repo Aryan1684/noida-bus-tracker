@@ -115,9 +115,29 @@ function nearest(path, point) {
         const t = Math.max(0, Math.min(1, projection));
         const projected = mix(a, b, t),
             gap = distance(point, projected);
-        if (gap < best.distance) best = { distance: gap, index: i - 1 + t, point: projected };
+        if (gap < best.distance) best = { distance: gap, index: i - 1 + t, point: projected, bearing: bearing(a,b) };
     }
     return best;
+}
+
+// Match only nearby roads with a compatible axis. At ambiguous junctions keep the observed fix.
+export function matchRoad(point, paths, heading) {
+    let best = null, runnerUp = null;
+    for (const path of paths) {
+        if (path.length < 2) continue;
+        const hit = nearest(path, point);
+        if (hit.distance > 22) continue;
+        const turn = heading == null ? 0 : Math.abs(shortestTurn(heading,hit.bearing));
+        const error = Math.min(turn,180-turn);
+        if (error > 45) continue;
+        const score = hit.distance + error / 6;
+        const candidate = {...hit, path, score, heading: heading == null ? null : hit.bearing + (turn>90 ? 180 : 0)};
+        if (!best || score < best.score) {
+            if (best && distance(hit.point,best.point)>4) runnerUp=best;
+            best=candidate;
+        } else if (distance(hit.point,best.point)>4 && (!runnerUp || score<runnerUp.score)) runnerUp=candidate;
+    }
+    return best && (!runnerUp || runnerUp.score-best.score>3) ? best : null;
 }
 
 // Use a mapped road only when both real fixes agree with the same short section.
@@ -126,7 +146,7 @@ export function movementPath(start, end, route) {
     for (const path of route?.paths || []) {
         const a = nearest(path, start),
             b = nearest(path, end);
-        if (Math.max(a.distance, b.distance) > 35) continue;
+        if (!direct || Math.max(a.distance, b.distance) > 3) continue;
         const forward = a.index <= b.index;
         const lo = forward ? a : b,
             hi = forward ? b : a;
@@ -135,7 +155,7 @@ export function movementPath(start, end, route) {
         const length = via.slice(1).reduce((n, p, i) => n + distance(via[i], p), 0);
         if (length <= direct * 1.65 + 12) return via;
     }
-    return direct <= 350 ? [start, end] : null;
+    return null;
 }
 
 export function makeLeg(points) {

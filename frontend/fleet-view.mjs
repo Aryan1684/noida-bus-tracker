@@ -44,7 +44,11 @@ function vehicleMarker(el, map, gl, move, remove) {
         const z = map.getZoom() + (gl ? 1 : 0);
         const tilt = 45 + Math.min(18,Math.max(0,z-13)*3);
         const camera = gl ? map.getPitch() : map.getContainer().classList.contains("model-view") ? 70 : 0;
-        drawCoach(coach,heading-(gl ? map.getBearing() : 0),Math.max(camera,tilt));
+        const relative = heading - (gl ? map.getBearing() : 0);
+        drawCoach(coach,relative,Math.max(camera,tilt));
+        const radians = relative * Math.PI / 180;
+        const screenBearing = Math.atan2(Math.sin(radians),Math.cos(radians)*Math.cos((gl ? camera : 0)*Math.PI/180));
+        el.style.setProperty("--arrow-angle",screenBearing+"rad");
     }
     events.forEach(event => map.on(event,redraw));
     redraw();
@@ -147,6 +151,28 @@ function glView(map, network, select, onDrag) {
                 .addTo(map);
             if (vehicle) return vehicleMarker(el,map,true,p=>marker.setLngLat(p),()=>marker.remove());
             return { move: (p) => marker.setLngLat(p), remove: () => marker.remove() };
+        },
+        onStreetViewChange(refresh) {
+            let changed = true;
+            map.on("moveend", () => { changed = true; });
+            map.on("idle", () => {
+                if (changed) {
+                    changed = false;
+                    refresh();
+                }
+            });
+        },
+        nearbyRoads(point) {
+            if (map.getZoom()<14 || !map.isStyleLoaded() || !map.getBounds().contains(point)) return [];
+            const layers = map.getStyle().layers.filter(l=>l.type==="line" && l["source-layer"]==="transportation").map(l=>l.id);
+            if (!layers.length) return [];
+            const center=map.project(point);
+            const radius=24*512*2**map.getZoom()/(40075017*Math.cos(point[1]*Math.PI/180));
+            const box=[[center.x-radius,center.y-radius],[center.x+radius,center.y+radius]];
+            return map.queryRenderedFeatures(box,{layers}).filter(f=>
+                ["motorway","trunk","primary","secondary","tertiary","minor","residential","service","unclassified"].includes(f.properties.class)
+            ).flatMap(f=>f.geometry.type==="MultiLineString" ? f.geometry.coordinates :
+                f.geometry.type==="LineString" ? [f.geometry.coordinates] : []);
         },
         streetZoom: 18.75,
         focus(point, zoom) {

@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from services import gps_service
 from services.gps_service import get_direct_live_buses, get_direct_snapshot_status
@@ -57,6 +57,19 @@ class DirectSnapshotTests(unittest.TestCase):
 
         history = gps_service.get_direct_bus_histories(["TEST-HISTORY-001"])
         self.assertEqual(len(history["TEST-HISTORY-001"]), 1)
+
+    def test_heading_uses_recent_motion_and_clears_when_stopped(self):
+        now = datetime.now(timezone.utc)
+        bus = dict(bus_id="EAST-01", latitude=28.51, longitude=77.41,
+                   speed=20, depot_name="NOIDA ELECTRIC", vehicle_status="moving")
+        with gps_service._cache_lock:
+            gps_service._direct_history.pop(bus["bus_id"], None)
+        def sample(seconds, longitude, speed):
+            return get_direct_live_buses([dict(bus, timestamp=(now + timedelta(seconds=seconds)).isoformat(),
+                                               longitude=longitude, speed=speed)])[0]
+        self.assertIsNone(sample(-40, 77.41, 20)["heading"])
+        self.assertAlmostEqual(sample(-20, 77.411, 20)["heading"], 90, delta=1)
+        self.assertIsNone(sample(0, 77.411, 0)["heading"])
 
     def test_empty_feed_is_recorded_as_empty_not_outage(self):
         buses = get_direct_live_buses([], include_persisted_history=False)
