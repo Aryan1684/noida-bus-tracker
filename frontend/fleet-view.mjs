@@ -22,19 +22,17 @@ const toLatLng = ([x, y]) => [y, x];
 export function streetScale(zoom, tilePixels, latitude) {
     const metresPerPixel = 40075017 * Math.cos(latitude * Math.PI / 180) / (tilePixels * 2 ** zoom);
     const lengthPixels = 12 / metresPerPixel;
-    return {
-        scale: Math.max(0.42, Math.min(5, lengthPixels / 48)),
-        detail: Math.max(0, Math.min(1, (zoom + Math.log2(tilePixels / 256) - 13) / 1.1)),
-    };
+    return Math.min(5, 0.78 + lengthPixels / 48);
 }
 
 function updateStreetScale(map, tilePixels, zoom = map.getZoom()) {
-    const { scale, detail } = streetScale(zoom, tilePixels, map.getCenter().lat);
+    const scale = streetScale(zoom, tilePixels, map.getCenter().lat);
     const style = map.getContainer().style;
     style.setProperty("--coach-scale", scale);
-    style.setProperty("--coach-detail", detail);
-    style.setProperty("--overview-opacity", 1 - detail);
-    map.getContainer().classList.toggle("city-scale", detail < 0.5);
+    const level = zoom + Math.log2(tilePixels / 256);
+    const tilt = 26 + Math.min(22, Math.max(0, level - 13) * 3.5);
+    style.setProperty("--zoom-tilt", tilt + "deg");
+    map.getContainer().classList.toggle("city-scale", level < 13.5);
 }
 
 function roadFeatures(network) {
@@ -64,7 +62,7 @@ function glView(map, network, select, onDrag) {
     const syncCamera = () => {
         updateStreetScale(map, 512);
         container.style.setProperty("--camera-bearing", map.getBearing() + "deg");
-        container.style.setProperty("--coach-pitch", map.getPitch() + "deg");
+        container.style.setProperty("--camera-tilt", map.getPitch() + "deg");
     };
     map.on("zoom rotate pitch", syncCamera);
     syncCamera();

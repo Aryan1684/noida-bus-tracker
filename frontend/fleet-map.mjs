@@ -92,13 +92,12 @@ function attach(entry) {
     const coach = node("span", "coach");
     coach.setAttribute("aria-hidden", "true");
     ["flank", "flank right", "nose", "tail", "roof", "axle front", "axle rear"].forEach((cls) => coach.append(node("i", cls)));
-    el.append(node("span", "fleet-beacon"), coach);
+    el.append(coach);
     el.addEventListener("click", (e) => {
         e.stopPropagation();
         select("bus", entry.fix.id);
     });
     entry.el = el;
-    entry.coach = coach;
     entry.marker = view.marker(el, entry.point, true);
     styleVehicle(entry);
     place(entry, entry.point, entry.angle);
