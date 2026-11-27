@@ -148,8 +148,12 @@ function accept(fix) {
     if (previous.time && (!fix.time || fix.time < previous.time)) return;
     const duplicate = previous.time !== null && fix.time === previous.time;
     if (duplicate) {
-        // Repeated poll data may mark a fix stale, but cannot move the bus.
-        e.fix = { ...fix, point: previous.point, heading: previous.heading };
+        e.fix = { ...fix, point: previous.point, heading: fix.heading ?? previous.heading };
+        if (fix.heading != null && fix.heading !== e.direction) {
+            e.direction = fix.heading;
+            e.road = roadPosition(e.fix, e.direction);
+            if (!e.leg) settle(e);
+        }
         if (stateOf(e.fix) === "Last known" || fix.parked) settle(e);
         styleVehicle(e);
         return;
@@ -409,22 +413,31 @@ function select(kind, id) {
     } else view?.focus(network.stops[id], 16);
     $("detail").querySelector(".back")?.focus({ preventScroll: true });
 }
+async function readFleet(path) {
+    const response = await fetch(TRACKER_API + path, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(18000),
+    });
+    const body = await response.json();
+    if (body?.maintenance === true) return body;
+    if (!response.ok || !Array.isArray(body?.buses)) throw new Error("Fleet unavailable");
+    return body;
+}
+
 async function refresh() {
     if (pending || document.hidden) return;
     pending = true;
     $("refreshBtn").disabled = true;
     try {
         network = await loadNetwork();
-        const res = await fetch(TRACKER_API + "/api/buses", {
-            cache: "no-store",
-            signal: AbortSignal.timeout(18000),
-        });
-        const body = await res.json();
+        // This circle covers both service areas. The nearby feed includes bearings from
+        // fixes collected before the visitor opened the map.
+        const body = await readFleet("/api/buses/nearby?lat=28.495&lon=77.447&radius=25")
+            .catch(() => readFleet("/api/buses"));
         if (body?.maintenance === true) {
             location.replace("./maintenance.html");
             return;
         }
-        if (!res.ok || !Array.isArray(body?.buses)) throw new Error("Fleet unavailable");
         feedState = "online";
         lastRead = Date.now();
         const seen = new Set();

@@ -93,3 +93,9 @@ test("road matching accepts opposite travel, rejects cross streets, ambiguity an
     assert.equal(movementPath(p,[77.3051,p[1]],null),null);
     assert.equal(movementPath(p,hit.point,{ paths: [street] }),null);
 });
+
+test("first observation prefers device north and accepts a saved travel bearing", () => {
+    assert.equal(observation({ ...raw, gps_heading: 0, heading: 190 }, now).heading, 0);
+    assert.equal(observation({ ...raw, gps_heading: 361, heading: "240" }, now).heading, 240);
+    assert.equal(observation({ ...raw, heading: "   " }, now).heading, null);
+});

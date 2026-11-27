@@ -71,6 +71,18 @@ class DirectSnapshotTests(unittest.TestCase):
         self.assertAlmostEqual(sample(-20, 77.411, 20)["heading"], 90, delta=1)
         self.assertIsNone(sample(0, 77.411, 0)["heading"])
 
+    def test_first_moving_fix_preserves_valid_device_heading(self):
+        base = dict(depot_name="NOIDA ELECTRIC", latitude=28.51, longitude=77.41,
+                    speed=18, timestamp=datetime.now(timezone.utc).isoformat())
+        for index, (device, expected) in enumerate([(0, 0), ("273.5", 273.5), (360, 0),
+                                                    (-1, None), ("nan", None), ("", None)]):
+            row = dict(base, bus_id=f"DEVICE-{index}", heading=device)
+            bus = get_direct_live_buses([row])[0]
+            self.assertEqual(bus["heading"], expected)
+            self.assertEqual(bus["gps_heading"], expected)
+        stopped = get_direct_live_buses([dict(base, bus_id="DEVICE-STOP", speed=0, heading=94)])[0]
+        self.assertIsNone(stopped["heading"])
+
     def test_empty_feed_is_recorded_as_empty_not_outage(self):
         buses = get_direct_live_buses([], include_persisted_history=False)
         status = get_direct_snapshot_status()

@@ -65,6 +65,10 @@ export function observation(bus, now = Date.now()) {
               );
     const status = String(bus.vehicle_status || "").toLowerCase();
     const speed = bus.speed == null || bus.speed === "" ? null : Number(bus.speed);
+    const heading = [bus.gps_heading, bus.heading]
+        .filter(value => typeof value === "number" || (typeof value === "string" && value.trim()))
+        .map(Number)
+        .find(value => value >= 0 && value <= 360);
     return {
         id: String(bus.bus_id).trim().toUpperCase(),
         point: [Number(bus.longitude), Number(bus.latitude)],
@@ -73,10 +77,7 @@ export function observation(bus, now = Date.now()) {
         speed: Number.isFinite(speed) ? speed : null,
         stale: !!(bus.data_stale || bus.snapshot_stale || bus.is_stale || status === "no_signal"),
         parked: status === "stationary" || (speed != null && speed < 2),
-        heading:
-            bus.heading == null || bus.heading === "" || !Number.isFinite(Number(bus.heading))
-                ? null
-                : Number(bus.heading),
+        heading: heading == null ? null : heading % 360,
         depot: String(bus.depot_name).trim(),
         route: bus.route_id || null,
     };

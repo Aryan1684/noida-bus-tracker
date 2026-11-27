@@ -357,6 +357,16 @@ def get_direct_live_buses(data=None, include_persisted_history=False):
         else:
             freshness = "stale"
 
+        try:
+            device_heading = float(item.get("heading"))
+        except (TypeError, ValueError):
+            device_heading = None
+        if (device_heading is None or not 0 <= device_heading <= 360
+                or freshness != "fresh" or vehicle_status != "live" or not speed >= 2):
+            device_heading = None
+        else:
+            device_heading %= 360
+
         bus = {
             "bus_id": bus_id,
             "depot_name": item.get("depot_name"),
@@ -373,7 +383,8 @@ def get_direct_live_buses(data=None, include_persisted_history=False):
             "location_label": "Last known location" if freshness in {"stale", "unknown"} or vehicle_status == "no_signal" else "GPS location",
             "movement_status": "unknown",
             "direction": None,
-            "heading": None,
+            "gps_heading": device_heading,
+            "heading": device_heading,
             "likely_towards": None,
             "prediction_available": False,
             "prediction_applied": False,
@@ -394,7 +405,7 @@ def get_direct_live_buses(data=None, include_persisted_history=False):
     histories = get_direct_bus_histories(latest, limit=2)
     for bus in buses:
         history = histories.get(bus["bus_id"], [])
-        if len(history) < 2 or bus["gps_freshness"] != "fresh" or bus["is_stale"]:
+        if bus["heading"] is not None or len(history) < 2 or bus["gps_freshness"] != "fresh" or bus["is_stale"]:
             continue
         if bus["vehicle_status"] == "stationary" or bus["speed"] < 2:
             continue
