@@ -235,7 +235,7 @@ function renderResults() {
             a.fix.id.localeCompare(b.fix.id),
     );
     const buses = all.filter((e) => match(e.fix.id, routeFor(e.fix), visualState(e)));
-    const routes = (network?.routes || []).filter((r) => match(r.name, r.id, r.note, ...r.stops));
+    const routes = (network?.routes || []).filter((r) => match(r.name, r.id, r.note, ...r.stops, ...(r.landmarks || [])));
     const stops = Object.keys(network?.stops || {})
         .filter((n) => match(n))
         .sort();
@@ -381,6 +381,10 @@ function renderDetail() {
             list.append(li);
         });
         nodes.push(list);
+        if (r.landmarks?.length) {
+            nodes.push(heading("Landmarks along the expressway"),
+                node("p", "detail-body", r.landmarks.join(" · ")));
+        }
     } else {
         nodes.push(
             node("p", "kicker", "Mapped stop"),
