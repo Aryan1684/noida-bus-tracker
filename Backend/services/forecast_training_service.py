@@ -628,7 +628,7 @@ def _load_model():
         return _model_cache
 
 
-def predict_three_minute(history):
+def predict_three_minute(history, packet_heading=None):
     cleaned = _clean_history(history or [])
     if len(cleaned) < LAG_COUNT + 1:
         return None
@@ -645,6 +645,11 @@ def predict_three_minute(history):
         speed_kmh = max(0.0, min(120.0, current["speed"]))
         max_distance_m = max(350.0, speed_kmh * 50.0 * 1.6 + 200.0)
         distance_m = math.hypot(north_m, east_m)
+        if packet_heading is not None and distance_m >= 100:
+            forecast_heading = math.degrees(math.atan2(east_m, north_m))
+            difference = abs((forecast_heading - packet_heading + 180) % 360 - 180)
+            if difference > 120:
+                return None
         if distance_m > max_distance_m and distance_m > 0:
             scale = max_distance_m / distance_m
             north_m *= scale

@@ -1,6 +1,7 @@
 import unittest
+from unittest.mock import Mock, patch
 
-from services.forecast_training_service import build_training_samples, _clean_history
+from services.forecast_training_service import build_training_samples, _clean_history, predict_three_minute
 
 
 def make_history(count=40, start=1800000000.0, interval=60):
@@ -21,6 +22,14 @@ class ForecastTrainingTests(unittest.TestCase):
         self.assertGreater(len(samples), 10)
         self.assertEqual(len(samples[0]["features"]), 23)
         self.assertEqual(len(samples[0]["target"]), 2)
+
+    def test_forecast_behind_current_heading_is_withheld(self):
+        model = Mock()
+        model.predict.return_value = [(400, 0)]
+        with patch("services.forecast_training_service._load_model", return_value={"model": model}):
+            self.assertIsNotNone(predict_three_minute(make_history(), packet_heading=359))
+            self.assertIsNone(predict_three_minute(make_history(), packet_heading=180))
+            self.assertIsNotNone(predict_three_minute(make_history()))
 
     def test_duplicate_timestamps_are_deduplicated(self):
         history = make_history(8)

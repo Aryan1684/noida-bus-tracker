@@ -5,6 +5,8 @@ from services.direction_service import (
     ROUTES,
     calculate_bearing,
     get_route_prediction,
+    update_bus_history,
+    moving_packet_heading,
 )
 
 
@@ -26,6 +28,33 @@ def predict_on_segment(bus_id, route_id, segment_index):
 
 
 class RoutePredictionTests(unittest.TestCase):
+    def test_single_packet_selects_the_forward_or_reverse_segment(self):
+        a, b = "Advant", "Sector 163"
+        lat, lon = midpoint(a, b)
+        bus = dict(bus_id="UP80KT3703", latitude=lat, longitude=lon, speed=28,
+                   vehicle_status="live", gps_age_seconds=4)
+        point = dict(time=100, latitude=lat, longitude=lon, speed=28)
+        for start, end in [(a, b), (b, a)]:
+            bus["gps_heading"] = calculate_bearing(*LANDMARKS[start], *LANDMARKS[end])
+            result = update_bus_history(bus, [point])
+            self.assertEqual(result["likely_next_stop"], end)
+            self.assertEqual(result["heading_source"], "gps_packet")
+
+    def test_packet_heading_handles_north_staleness_and_history_fallback(self):
+        bus = dict(bus_id="TEST", speed=20, latitude=28.5, longitude=77.401,
+                   gps_heading="0", gps_age_seconds=5)
+        for patch in [{}, {"gps_heading": 360}]:
+            self.assertEqual(moving_packet_heading(dict(bus, **patch)), 0)
+        for patch in [{"gps_heading": 999}, {"gps_heading": None}, {"gps_heading": "nan"},
+                      {"speed": 0}, {"vehicle_status": "no_signal"}, {"snapshot_age_seconds": 116}]:
+            self.assertIsNone(moving_packet_heading(dict(bus, **patch)))
+        history = [dict(latitude=28.5, longitude=lon, time=t, speed=20)
+                   for lon, t in [(77.40, 100), (77.401, 120)]]
+        self.assertEqual(update_bus_history(bus, history)["heading"], 0)
+        fallback = update_bus_history(dict(bus, gps_heading=None), history)
+        self.assertAlmostEqual(fallback["heading"], 90, delta=1)
+        self.assertEqual(fallback["heading_source"], "position_history")
+
     def test_advant_is_at_sector_142_not_the_sector_62_area(self):
         latitude, longitude = LANDMARKS["Advant"]
         self.assertGreater(latitude, 28.49)

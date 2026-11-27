@@ -656,6 +656,24 @@ def _safe_speed(value):
         return 0.0
 
 
+def moving_packet_heading(bus):
+    """Compass degrees from a recent moving GPS fix; zero is due north."""
+    if bus.get("is_stale") or bus.get("data_stale") or bus.get("snapshot_stale"):
+        return None
+    status = str(bus.get("vehicle_status") or "").lower().replace("-", "_").replace(" ", "_")
+    if status in {"stationary", "no_signal", "nosignal", "offline", "unavailable"} or _safe_speed(bus.get("speed")) < 3:
+        return None
+    value = bus.get("gps_heading")
+    if isinstance(value, bool):
+        return None
+    try:
+        heading = float(value)
+        age = float(bus.get("gps_age_seconds")) + float(bus.get("snapshot_age_seconds", 0))
+    except (TypeError, ValueError):
+        return None
+    return heading % 360 if 0 <= heading <= 360 and 0 <= age <= 120 else None
+
+
 def update_bus_history(bus, history_points=None):
     bus_id = bus.get("bus_id")
 
@@ -664,7 +682,10 @@ def update_bus_history(bus, history_points=None):
 
     history = list(history_points or [])
 
-    if len(history) < 2:
+    packet_heading = moving_packet_heading(bus)
+    if history and (history[-1]["latitude"], history[-1]["longitude"]) != (bus.get("latitude"), bus.get("longitude")):
+        packet_heading = None
+    if not history or (len(history) < 2 and packet_heading is None):
         return {
             "direction": None,
             "heading": None,
@@ -692,13 +713,14 @@ def update_bus_history(bus, history_points=None):
     current_speed = _safe_speed(bus.get("speed"))
     current_status = str(bus.get("vehicle_status") or "").strip().lower()
 
+    previous_fix = history[-2] if len(history) >= 2 else last
     recent_distance_km = calculate_distance(
-        history[-2]["latitude"],
-        history[-2]["longitude"],
+        previous_fix["latitude"],
+        previous_fix["longitude"],
         history[-1]["latitude"],
         history[-1]["longitude"],
     )
-    recent_interval_seconds = max(1.0, history[-1]["time"] - history[-2]["time"])
+    recent_interval_seconds = max(1.0, history[-1]["time"] - previous_fix["time"])
     recent_implied_speed = recent_distance_km / (recent_interval_seconds / 3600.0)
     movement_evidence = (
         current_speed >= 3
@@ -707,7 +729,7 @@ def update_bus_history(bus, history_points=None):
         or recent_implied_speed >= 3
     )
 
-    bearing = _history_movement_bearing(history)
+    bearing = packet_heading if packet_heading is not None else _history_movement_bearing(history)
 
     if not movement_evidence and (current_status == "stationary" or current_speed < 3):
         return {
@@ -773,7 +795,8 @@ def update_bus_history(bus, history_points=None):
 
     result = {
         "direction": get_direction_name(bearing),
-        "heading": round(bearing, 1),
+        "heading": round(bearing, 1) % 360,
+        "heading_source": "gps_packet" if packet_heading is not None else "position_history",
         "likely_towards": None,
         "route": None,
         "route_id": None,
@@ -787,7 +810,7 @@ def update_bus_history(bus, history_points=None):
     if prediction:
         result.update(prediction)
 
-    if not result.get("likely_towards"):
+    if len(history) >= 2 and not result.get("likely_towards"):
         destination_prediction = _infer_nearest_destination(
             last["latitude"],
             last["longitude"],

@@ -14,6 +14,7 @@ from io import BytesIO
 
 import dns.resolver
 
+from services.direction_service import moving_packet_heading
 from utils.distance import calculate_distance
 
 GPS_API_URL = "https://margdarshi.upsrtcvlt.com/php/getGpsLiveData.php"
@@ -378,6 +379,9 @@ def get_direct_live_buses(data=None, include_persisted_history=False):
             "source": "MARGDARSHI",
         }
 
+        bus["gps_heading"] = item.get("heading")
+        bus["gps_heading"] = bus["heading"] = moving_packet_heading(bus)
+
         old = latest.get(bus_id)
         if old is None:
             latest[bus_id] = bus
@@ -436,6 +440,7 @@ def get_cached_direct_live_buses():
     for bus in buses:
         bus["snapshot_age_seconds"] = int(age)
         bus["snapshot_stale"] = snapshot_stale
+        bus["heading"] = moving_packet_heading(bus)
         if snapshot_stale:
             bus["is_stale"] = True
             bus["data_stale"] = True
