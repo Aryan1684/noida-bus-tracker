@@ -50,8 +50,15 @@ export function coachArtwork(heading, tilt) {
     end(y,-1.2,1.2,2.2,2.72,"#62818b");
     for(const sign of [-1,1])end(y,sign*.84,sign*1.26,1,1.2,y<0?"#fff3bc":"#fa654d");
     top(3.2,-1.42,1.42,-5.9,5.9,"#dbe5db");
-    top(3.23,-1.02,1.02,-2.3,1.6,"#aab9b8");
-    for(let j=0;j<10;j++)top(3.25,-.84,.84,-2+j*.34,-1.88+j*.34,"#798c8c");
+    top(3.23,-1.02,1.02,1.8,5.2,"#aab9b8");
+    for(let j=0;j<9;j++)top(3.25,-.84,.84,2+j*.34,2.12+j*.34,"#798c8c");
+    // Paint the arrow in the roof plane with its tip towards the windscreen (negative y).
+    svg += '<g opacity="var(--roof-arrow-opacity,0)">';
+    polygon([[0,-5.1,3.21],[1.30,-1.45,3.21],[.65,-1.76,3.21],[.65,1.22,3.21],
+        [-.65,1.22,3.21],[-.65,-1.76,3.21],[-1.30,-1.45,3.21]],"#103f43");
+    polygon([[0,-4.48,3.21],[.91,-2.05,3.21],[.40,-2.30,3.21],[.40,.88,3.21],
+        [-.40,.88,3.21],[-.40,-2.30,3.21],[-.91,-2.05,3.21]],"#ffffff");
+    svg += '</g>';
     // Draw the outboard sidewall last, clear of the skirt, with the tread below the chassis.
     for(const axle of [-3.65,3.55])wheel(x,axle);
     cache.set(key,svg);

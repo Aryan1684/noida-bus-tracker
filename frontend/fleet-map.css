@@ -757,15 +757,4 @@ footer a:hover {
 .leaflet-zoom-anim .coach { transition:transform .25s cubic-bezier(0,0,.25,1); }
 @media (prefers-reduced-motion: reduce) { .leaflet-zoom-anim .coach { transition:none; } }
 
-.travel-arrow {
-    display:none; position:absolute; pointer-events:none; left:50%;
-    bottom:calc(50% + 24px * var(--coach-scale,1)); width:18px; height:18px;
-    transform:translateX(-50%); border:1px solid white; border-radius:50%;
-    background:#094d47; box-shadow:0 1px 3px #122d2c88;
-}
-.has-direction .travel-arrow { display:grid; place-items:center; }
-.travel-arrow::after {
-    content:""; width:10px; height:12px; background:#fff;
-    clip-path:polygon(50% 0,100% 92%,50% 69%,0 92%);
-    transform:rotate(var(--arrow-angle,0rad));
-}
+.vehicle.has-direction { --roof-arrow-opacity: 1; }

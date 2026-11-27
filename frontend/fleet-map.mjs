@@ -101,9 +101,7 @@ function attach(entry) {
     coach.classList.add("coach");
     coach.setAttribute("viewBox","0 0 128 128");
     coach.setAttribute("aria-hidden","true");
-    const arrow=node("span","travel-arrow");
-    arrow.setAttribute("aria-hidden","true");
-    el.append(coach,arrow);
+    el.append(coach);
     el.addEventListener("click", (e) => {
         e.stopPropagation();
         select("bus", entry.fix.id);

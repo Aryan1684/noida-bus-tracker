@@ -46,9 +46,6 @@ function vehicleMarker(el, map, gl, move, remove) {
         const camera = gl ? map.getPitch() : map.getContainer().classList.contains("model-view") ? 70 : 0;
         const relative = heading - (gl ? map.getBearing() : 0);
         drawCoach(coach,relative,Math.max(camera,tilt));
-        const radians = relative * Math.PI / 180;
-        const screenBearing = Math.atan2(Math.sin(radians),Math.cos(radians)*Math.cos((gl ? camera : 0)*Math.PI/180));
-        el.style.setProperty("--arrow-angle",screenBearing+"rad");
     }
     events.forEach(event => map.on(event,redraw));
     redraw();
