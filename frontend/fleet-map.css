@@ -548,7 +548,7 @@ footer a:hover {
 .coach {
     position: absolute; left: calc(50% - 7px); top: calc(50% - 24px);
     width: 14px; height: 48px; transform-style: preserve-3d;
-    transform: scale(var(--coach-scale, 1)) rotateX(var(--coach-pitch, 45deg))
+    transform: scale(var(--coach-scale, 1)) rotateX(var(--coach-pitch, 20deg))
         rotateZ(calc(var(--heading, 0deg) - var(--camera-bearing, 0deg)));
 }
 .coach:before { content: ""; position: absolute; inset: 1px -1px; border-radius: 4px;
@@ -776,3 +776,19 @@ footer a:hover {
 }
 
 .city-scale .stop-pin { opacity: .7; border-width: 1px; width: 7px; height: 7px; }
+
+/* Keep city markers legible, then reveal the street-sized body under the same anchor. */
+.coach { opacity: var(--coach-detail, 1); }
+.fleet-beacon {
+    position:absolute; left:50%; top:50%; width:15px; height:15px; border-radius:50%;
+    border:2px solid white; background:var(--body); box-shadow:0 1px 4px #122e3280;
+    opacity:var(--overview-opacity,0);
+    transform:translate(-50%,-50%) rotate(calc(var(--heading,0deg) - var(--camera-bearing,0deg)));
+}
+.fleet-beacon::before {
+    content:""; position:absolute; left:3px; top:1px; width:5px; height:5px;
+    border-top:2px solid white; border-left:2px solid white; transform:rotate(45deg);
+}
+.vehicle.stationary .fleet-beacon::before,.vehicle.stale .fleet-beacon::before { display:none; }
+.leaflet-zoom-anim .coach { transition:transform .25s cubic-bezier(0,0,.25,1); }
+@media (prefers-reduced-motion: reduce) { .leaflet-zoom-anim .coach { transition:none; } }

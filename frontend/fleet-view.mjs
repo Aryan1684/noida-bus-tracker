@@ -18,6 +18,25 @@ const limits = [
 ];
 const toLatLng = ([x, y]) => [y, x];
 
+// MapLibre counts 512px world tiles. Leaflet counts 256px tiles, one zoom level apart.
+export function streetScale(zoom, tilePixels, latitude) {
+    const metresPerPixel = 40075017 * Math.cos(latitude * Math.PI / 180) / (tilePixels * 2 ** zoom);
+    const lengthPixels = 12 / metresPerPixel;
+    return {
+        scale: Math.max(0.42, Math.min(5, lengthPixels / 48)),
+        detail: Math.max(0, Math.min(1, (zoom + Math.log2(tilePixels / 256) - 13) / 1.1)),
+    };
+}
+
+function updateStreetScale(map, tilePixels, zoom = map.getZoom()) {
+    const { scale, detail } = streetScale(zoom, tilePixels, map.getCenter().lat);
+    const style = map.getContainer().style;
+    style.setProperty("--coach-scale", scale);
+    style.setProperty("--coach-detail", detail);
+    style.setProperty("--overview-opacity", 1 - detail);
+    map.getContainer().classList.toggle("city-scale", detail < 0.5);
+}
+
 function roadFeatures(network) {
     return network.routes.flatMap((route) =>
         route.paths.map((path) => ({
@@ -43,11 +62,11 @@ function glView(map, network, select, onDrag) {
     const markers = [];
     const container = map.getContainer();
     const syncCamera = () => {
-        container.classList.toggle("city-scale", map.getZoom() < 13);
+        updateStreetScale(map, 512);
         container.style.setProperty("--camera-bearing", map.getBearing() + "deg");
-        container.style.setProperty("--coach-scale", Math.min(1.65, Math.max(0.48, (map.getZoom() - 9) / 4)));
+        container.style.setProperty("--coach-pitch", map.getPitch() + "deg");
     };
-    map.on("zoom rotate", syncCamera);
+    map.on("zoom rotate pitch", syncCamera);
     syncCamera();
     const roads = roadFeatures(network);
     const visible = { routes: true, stops: true };
@@ -111,8 +130,12 @@ function glView(map, network, select, onDrag) {
                 .addTo(map);
             return { move: (p) => marker.setLngLat(p), remove: () => marker.remove() };
         },
+        streetZoom: 18.75,
         focus(point, zoom) {
-            map.easeTo({ center: point, zoom: zoom ?? map.getZoom(), duration: reduced() ? 0 : 450 });
+            const target = zoom ?? map.getZoom();
+            map.flyTo({ center: point, zoom: target, duration: reduced() ? 0 : 850,
+                pitch: target >= 18 ? Math.max(map.getPitch(), 42) : map.getPitch() });
+            document.getElementById("pitch").setAttribute("aria-pressed", String(target >= 18 || map.getPitch() > 0));
         },
         track(point) {
             map.jumpTo({ center: point });
@@ -155,23 +178,20 @@ async function flatView(network, select, onDrag) {
         script.onerror = reject;
         document.head.append(script);
     });
-    const map = L.map("map", { zoomControl: false, maxBounds: limits.map(toLatLng), minZoom: 10 }).fitBounds(
+    const map = L.map("map", { zoomControl: false, maxBounds: limits.map(toLatLng), minZoom: 10, zoomSnap: 0.25, wheelPxPerZoomLevel: 100 }).fitBounds(
         region.map(toLatLng),
     );
     L.tileLayer("https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=" + mapKey, {
         tileSize: 512,
         zoomOffset: -1,
-        maxZoom: 20,
+        maxNativeZoom: 20,
+        maxZoom: 22,
         attribution:
             '© <a href="https://www.maptiler.com/copyright/">MapTiler</a> · © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
-    const syncScale = () => {
-        const container = map.getContainer();
-        container.classList.toggle("city-scale", map.getZoom() < 13);
-        container.style.setProperty("--coach-scale", Math.min(1.65, Math.max(0.48, (map.getZoom() - 9) / 4)));
-    };
-    map.on("zoomend", syncScale);
-    syncScale();
+    map.on("zoom zoomend", () => updateStreetScale(map, 256));
+    map.on("zoomanim", event => updateStreetScale(map, 256, event.zoom));
+    updateStreetScale(map, 256);
     map.on("dragstart", onDrag);
     const stops = L.layerGroup().addTo(map),
         roads = L.layerGroup().addTo(map);
@@ -195,6 +215,7 @@ async function flatView(network, select, onDrag) {
     document.getElementById("pitch").title = "Tilt electric bus models";
     return {
         marker: (el, p, v) => marker(el, p, map, v),
+        streetZoom: 19.75,
         focus: (p, z) => {
             if (matchMedia("(prefers-reduced-motion: reduce)").matches) map.setView(toLatLng(p), z ?? map.getZoom(), {animate:false});
             else map.flyTo(toLatLng(p), z ?? map.getZoom(), {duration:0.75});
@@ -230,7 +251,7 @@ export async function createView(network, select, onDrag) {
                 zoom: 11,
                 maxBounds: limits,
                 minZoom: 9,
-                maxZoom: 19,
+                maxZoom: 21,
                 attributionControl: { compact: true },
             });
             return glView(map, network, select, onDrag);

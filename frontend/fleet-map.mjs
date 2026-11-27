@@ -68,7 +68,7 @@ function place(entry, point, heading) {
     entry.point = point;
     if (Number.isFinite(heading)) entry.angle += shortestTurn(entry.angle, heading);
     entry.marker?.move(point);
-    if (entry.coach) entry.coach.style.setProperty("--heading", entry.angle + "deg");
+    if (entry.el) entry.el.style.setProperty("--heading", entry.angle + "deg");
     if (following && selection?.kind === "bus" && selection.id === entry.fix.id) view?.track(point);
 }
 function settle(entry) {
@@ -92,7 +92,7 @@ function attach(entry) {
     const coach = node("span", "coach");
     coach.setAttribute("aria-hidden", "true");
     ["flank", "flank right", "nose", "tail", "roof", "axle front", "axle rear"].forEach((cls) => coach.append(node("i", cls)));
-    el.append(coach);
+    el.append(node("span", "fleet-beacon"), coach);
     el.addEventListener("click", (e) => {
         e.stopPropagation();
         select("bus", entry.fix.id);
@@ -335,7 +335,7 @@ function renderDetail() {
             follow.dataset.item = "follow";
             follow.onclick = () => {
                 following = !following;
-                if (following) view.focus(e.point, 16);
+                if (following) view.focus(e.point, view.streetZoom);
                 renderDetail();
             };
             nodes.push(follow);
@@ -390,7 +390,7 @@ function select(kind, id) {
     if (kind === "bus") {
         const e = fleet.get(id);
         if (!e) return;
-        view?.focus(e.point, 16);
+        view?.focus(e.point, view.streetZoom);
         window.noidaBusAnalytics?.track("bus_selected", { bus_id: id });
     } else if (kind === "route") {
         const r = network.routes.find((r) => r.id === id);
@@ -534,7 +534,7 @@ async function init() {
                 for (const e of fleet.values()) attach(e);
                 layers();
                 if (selection?.kind === "bus" && fleet.has(selection.id))
-                    view.focus(fleet.get(selection.id).point, 16);
+                    view.focus(fleet.get(selection.id).point, view.streetZoom);
                 if (query.has("lat") && query.has("lon")) {
                     const p = [Number(query.get("lon")), Number(query.get("lat"))];
                     if (inArea(p, network)) view.focus(p, 15);
