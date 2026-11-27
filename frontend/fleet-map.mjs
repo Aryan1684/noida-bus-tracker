@@ -213,7 +213,7 @@ function row(kind, id, title, sub, tag) {
     return b;
 }
 function routeRow(r) {
-    return row("route", r.id, r.name, r.stops.length + " mapped stops");
+    return row("route", r.id, r.name, r.stops.length + (r.paths.length ? " mapped stops" : " reported stops"));
 }
 function empty(title, desc) {
     const box = node("div", "empty");
@@ -235,7 +235,7 @@ function renderResults() {
             a.fix.id.localeCompare(b.fix.id),
     );
     const buses = all.filter((e) => match(e.fix.id, routeFor(e.fix), visualState(e)));
-    const routes = (network?.routes || []).filter((r) => match(r.name, r.id, ...r.stops));
+    const routes = (network?.routes || []).filter((r) => match(r.name, r.id, r.note, ...r.stops));
     const stops = Object.keys(network?.stops || {})
         .filter((n) => match(n))
         .sort();
@@ -365,15 +365,19 @@ function renderDetail() {
             node(
                 "p",
                 "detail-body",
-                "Road links are approximate. Only mapped stops in the service area are shown.",
+                r.note || "Road links are approximate. Only mapped stops in the service area are shown.",
             ),
         );
         const list = node("ol", "stop-list");
         r.stops.forEach((name) => {
-            const li = node("li"),
-                b = node("button", "", name);
-            b.onclick = () => select("stop", name);
-            li.append(b);
+            const li = node("li");
+            if (network.stops[name]) {
+                const button = node("button", "", name);
+                button.onclick = () => select("stop", name);
+                li.append(button);
+            } else {
+                li.textContent = name;
+            }
             list.append(li);
         });
         nodes.push(list);
@@ -407,7 +411,7 @@ function select(kind, id) {
         window.noidaBusAnalytics?.track("bus_selected", { bus_id: id });
     } else if (kind === "route") {
         const r = network.routes.find((r) => r.id === id);
-        view?.fit(r.paths.flat().length ? r.paths.flat() : r.stops.map((n) => network.stops[n]));
+        view?.fit(r.paths.flat().length ? r.paths.flat() : r.stops.map((n) => network.stops[n]).filter(Boolean));
     } else view?.focus(network.stops[id], 16);
     $("detail").querySelector(".back")?.focus({ preventScroll: true });
 }

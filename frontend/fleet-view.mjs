@@ -7,6 +7,7 @@ export const routeColors = {
     R3: "#a34c1d",
     R4: "#2466a4",
     R5: "#906415",
+    "Via D-Mart": "#236c69",
     GR01: "#395fa4",
 };
 const region = [
