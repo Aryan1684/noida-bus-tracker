@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
@@ -207,7 +208,7 @@ class _Coach extends CustomPainter {
     box(4,2,15,35,4,status=='Fresh GPS'?const Color(0xff188773):status=='Stationary'?const Color(0xff9b680b):const Color(0xff657582));
     box(6,4,11,5,2,const Color(0xffc7e5ef));
     p.color=Colors.white;
-    canvas.drawPath(Path()..moveTo(12,12)..lineTo(17,20)..lineTo(13.5,19)..lineTo(13.5,28)..lineTo(10.5,28)..lineTo(10.5,19)..lineTo(7,20)..close(),p);
+    canvas.drawPath(ui.Path()..moveTo(12,12)..lineTo(17,20)..lineTo(13.5,19)..lineTo(13.5,28)..lineTo(10.5,28)..lineTo(10.5,19)..lineTo(7,20)..close(),p);
   }
   @override
   bool shouldRepaint(_Coach other)=>status!=other.status||selected!=other.selected;
