@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.2.2",
+  "latest_version": "1.3.0",
   "minimum_version": "1.0.0",
-  "message": "Noida Bus Tracker 1.2.2 improves mandatory update handling, provides a direct APK download, and includes clearer GPS status and privacy controls.",
+  "message": "Browse corrected city and Jewar airport routes, see expressway landmarks, and open the live Electric Fleet Map.",
   "download_url": "https://github.com/Aryan1684/noida-bus-tracker/releases/download/mobile-latest/noida-bus-tracker.apk"
 }

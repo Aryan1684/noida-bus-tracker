@@ -366,9 +366,10 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
  DateTime? analyticsLastActivity;
  bool _wasBackgrounded=false;
  final map=MapController(); final search=TextEditingController(); Timer? refreshTimer,searchTimer,maintenanceTimer; bool maintenanceMode=false,maintenanceCheckRunning=false; String maintenanceMessage='We are making a few improvements. Please check back shortly.'; int? maintenanceExpiresAt;
- LatLng location=const LatLng(28.4598,77.5184); List<dynamic> buses=[]; List<dynamic> suggestions=[]; List<dynamic> routeData=[]; Set<String> favs={}; Map<String,List<LatLng>> history={}; Map<String,List<DateTime>> historyTimes={}; List<LatLng> trail=[]; Map<String,DateTime> alertHistory={};
+ LatLng location=const LatLng(28.4598,77.5184); List<dynamic> buses=[]; List<dynamic> suggestions=[]; List<Map<String, dynamic>> routeData = [];
+ Map<String, LatLng> mappedStops = {};
+ String? selectedRouteId; Set<String> favs={}; Map<String,List<LatLng>> history={}; Map<String,List<DateTime>> historyTimes={}; List<LatLng> trail=[]; Map<String,DateTime> alertHistory={};
  double radius=5; bool loading=false,locating=false,movePin=false,stops=false,showRoutes=false,following=false,permissionBlocked=false,dontShowNotice=false,nearbyAlerts=false; String? error,selected,followed; String locationLabel='Use your current location'; DateTime? refreshed;
- final stopData=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060]];
  final searchPlaces=const [['Botanical Garden',28.5640,77.3340],['Sector 37',28.5700,77.3450],['Noida City Center',28.5740,77.3560],['Sector 52',28.5890,77.3730],['Sector 62',28.6280,77.3770],['Pari Chowk',28.4595,77.5082],['Chaar Murti',28.5650,77.4370],['Ek Murti',28.6040,77.4370],['Gaur Chowk',28.6150,77.4350],['Gaur City',28.6155,77.4240],['Surajpur',28.5140,77.4830],['Kasna Village',28.4050,77.5060],['Sector 90',28.5340,77.4380],['Noida International Airport',28.5562,77.5849]];
 
  @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);analyticsSessionId=DateTime.now().microsecondsSinceEpoch.toString()+'-'+hashCode.toString();_initAnalytics();_initApp();_loadRoutes();_checkForUpdate();_pollMaintenanceStatus();maintenanceTimer=Timer.periodic(const Duration(seconds:5),(_)=>_pollMaintenanceStatus());}
@@ -997,17 +998,45 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   );
 }
 
+ void _useCatalogue(String source) {
+  final data = jsonDecode(source) as Map<String, dynamic>;
+  final routes = List<Map<String, dynamic>>.from(data['routes'] as List);
+  LatLng coordinate(List pair) =>
+      LatLng((pair[1] as num).toDouble(), (pair[0] as num).toDouble());
+  final pins = (data['stops'] as Map<String, dynamic>).map(
+    (name, pair) => MapEntry(name, coordinate(pair as List)),
+  );
+  for (final route in routes) {
+    route['paths'] = [
+      for (final path in route['paths'] as List)
+        [for (final pair in path as List) coordinate(pair as List)],
+    ];
+  }
+  if (mounted && routes.isNotEmpty) {
+    setState(() { routeData = routes; mappedStops = pins; });
+  }
+ }
+
  Future<void> _loadRoutes() async {
+  final prefs = await SharedPreferences.getInstance();
   try {
-    final response = await http.get(Uri.parse(api + '/api/routes'), headers: await _appHeaders()).timeout(const Duration(seconds: 10));
+    final cached = prefs.getString('routeCatalogue');
+    if (cached != null) _useCatalogue(cached);
+  } catch (_) {}
+  try {
+    final response = await http.get(Uri.parse(
+      'https://noidabus.netlify.app/assets/noida-network.json',
+    )).timeout(const Duration(seconds: 10));
     if (response.statusCode != 200) return;
-    final data = jsonDecode(response.body);
-    final received = List<dynamic>.from(data['routes'] ?? []);
-    if (mounted) setState(() => routeData = received);
+    final source = utf8.decode(response.bodyBytes);
+    _useCatalogue(source);
+    await prefs.setString('routeCatalogue', source);
   } catch (_) {}
  }
 
- void _openRoutes() {
+ Future<void> _openRoutes() async {
+  if (routeData.isEmpty) await _loadRoutes();
+  if (!mounted) return;
   unawaited(_analytics('routes_opened'));
   showModalBottomSheet<void>(
     context: context,
@@ -1030,35 +1059,42 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     child: Text('Choose a route or tap a stop to centre the map and find nearby buses.', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
                   ),
                   ...routeData.map((route) {
-                    final points = List<dynamic>.from(route['points'] ?? []);
+                    final locations = List<String>.from(route['stops']);
+                    final paths = (route['paths'] as List).cast<List<LatLng>>();
+                    final landmarks = List<String>.from(route['landmarks'] ?? []);
                     return ExpansionTile(
                       leading: const Icon(Icons.route_rounded),
-                      title: Text((route['name'] ?? route['id'] ?? 'Route').toString(), style: const TextStyle(fontWeight: FontWeight.w800)),
-                      subtitle: Text('${points.length} mapped stops'),
-                      onExpansionChanged: (expanded) {
-                        if (!expanded || points.isEmpty) return;
-                        final coordinates = points.map((point) => LatLng(
-                          double.tryParse(point['latitude'].toString()) ?? 0,
-                          double.tryParse(point['longitude'].toString()) ?? 0,
-                        )).toList();
-                        setState(() => showRoutes = true);
-                        if (coordinates.length >= 2) {
-                          map.fitCamera(CameraFit.coordinates(coordinates: coordinates, padding: const EdgeInsets.all(35)));
-                        }
-                      },
-                      children: points.map((point) => ListTile(
-                        dense: true,
-                        leading: const Icon(Icons.location_on_outlined, size: 18),
-                        title: Text((point['name'] ?? 'Stop').toString()),
-                        onTap: () async {
-                          final latitude = double.tryParse(point['latitude'].toString());
-                          final longitude = double.tryParse(point['longitude'].toString());
-                          if (latitude == null || longitude == null) return;
-                          Navigator.pop(sheetContext);
-                          setState(() { showRoutes = true; stops = true; });
-                          await _set(LatLng(latitude, longitude), point['name'].toString(), true);
-                        },
-                      )).toList(),
+                      title: Text(route['name'] as String),
+                      subtitle: Text("${route['id']} · ${locations.length} listed locations"),
+                      children: [
+                        if (route['note'] != null) ListTile(title: Text(route['note'] as String)),
+                        if (landmarks.isNotEmpty) ListTile(
+                          title: const Text('Landmarks along the route'),
+                          subtitle: Text(landmarks.join(' · ')),
+                        ),
+                        if (paths.isNotEmpty) TextButton.icon(
+                          icon: const Icon(Icons.map_outlined),
+                          label: const Text('View route on map'),
+                          onPressed: () {
+                            Navigator.pop(sheetContext);
+                            setState(() { selectedRouteId = route['id']; showRoutes = true; });
+                            map.fitCamera(CameraFit.coordinates(
+                              coordinates: paths.expand((path) => path).toList(),
+                              padding: const EdgeInsets.all(30),
+                            ));
+                          },
+                        ),
+                        for (final name in locations) ListTile(
+                          dense: true,
+                          title: Text(name),
+                          trailing: mappedStops.containsKey(name) ? const Icon(Icons.location_on_outlined) : null,
+                          onTap: mappedStops.containsKey(name) ? () async {
+                            Navigator.pop(sheetContext);
+                            setState(() { selectedRouteId = route['id']; showRoutes = true; stops = true; });
+                            await _set(mappedStops[name]!, name, true);
+                          } : null,
+                        ),
+                      ],
                     );
                   }),
                 ],
@@ -1883,6 +1919,11 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
           final compact = constraints.maxWidth < 700;
           final content = <Widget>[
             if (compact) ...[
+              TextButton.icon(
+                onPressed: () => _openWebsitePage('fleet.html'),
+                icon: const Icon(Icons.directions_bus_outlined),
+                label: const Text('Electric Fleet Map · New'),
+              ),
               _mapCard(),
               const SizedBox(height: 10),
               _searchCard(),
@@ -1893,6 +1934,11 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
               const SizedBox(height: 12),
               _searchCard(),
               const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: () => _openWebsitePage('fleet.html'),
+                icon: const Icon(Icons.directions_bus_outlined),
+                label: const Text('Electric Fleet Map · New'),
+              ),
               _mapCard(),
             ],
             const SizedBox(height: 14),
@@ -2045,26 +2091,6 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
  Widget _searchCard(){return Card(elevation:0,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20)),child:Column(children:[Padding(padding:const EdgeInsets.fromLTRB(15,5,8,5),child:Row(children:[const Icon(Icons.search_rounded),const SizedBox(width:8),Expanded(child:TextField(controller:search,onChanged:_search,decoration:const InputDecoration(hintText:'Search Sector 62, Pari Chowk, Botanical Garden…',border:InputBorder.none))),if(search.text.isNotEmpty)IconButton(onPressed:(){search.clear();setState(()=>suggestions=[]);},icon:const Icon(Icons.close))])),...suggestions.map((x)=>ListTile(leading:const Icon(Icons.place_outlined),title:Text(x['name'].toString()),onTap:()=>_pick(x))) ]));}
  Widget _mapCard() {
   final markers = <Marker>[];
-  final stopByName = <String, Map<String, dynamic>>{};
-  for (final route in routeData) {
-    final points = route['points'];
-    if (points is! List) continue;
-    for (final point in points) {
-      if (point is! Map) continue;
-      final stop = Map<String, dynamic>.from(point);
-      final name = stop['name']?.toString() ?? '';
-      if (name.isNotEmpty) stopByName.putIfAbsent(name, () => stop);
-    }
-  }
-  final stopsToShow = stopByName.isNotEmpty
-      ? stopByName.values.toList()
-      : stopData.map((stop) => <String, dynamic>{
-          'name': stop[0],
-          'latitude': stop[1],
-          'longitude': stop[2],
-        }).toList();
-
-
   for (final bus in buses) {
     final lat = double.tryParse(bus['latitude'].toString());
     final lon = double.tryParse(bus['longitude'].toString());
@@ -2133,17 +2159,14 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   );
 
   if (stops) {
-    for (final stop in stopsToShow) {
-      final latitude = double.tryParse(stop['latitude'].toString());
-      final longitude = double.tryParse(stop['longitude'].toString());
-      if (latitude == null || longitude == null) continue;
+    for (final stop in mappedStops.entries) {
       markers.add(
         Marker(
-          point: LatLng(latitude, longitude),
+          point: stop.value,
           width: 32,
           height: 32,
           child: Tooltip(
-            message: stop['name'].toString(),
+            message: stop.key,
             child: const Icon(
               Icons.location_on,
               color: Color(0xFFB45309),
@@ -2181,7 +2204,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                 child: IconButton(
                   onPressed: () {
                     if (routeData.isEmpty) unawaited(_loadRoutes());
-                    setState(() => showRoutes = !showRoutes);
+                    setState(() { showRoutes = !showRoutes; selectedRouteId = null; });
                   },
                   icon: Icon(showRoutes ? Icons.alt_route : Icons.route_outlined),
                 ),
@@ -2255,17 +2278,12 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
               ),
               if (showRoutes && routeData.isNotEmpty)
                 PolylineLayer(
-                  polylines: routeData.map<Polyline>((route) {
-                    final points = List<dynamic>.from(route['points'] ?? []);
-                    return Polyline(
-                      points: points.map((point) => LatLng(
-                        double.tryParse(point['latitude'].toString()) ?? 0,
-                        double.tryParse(point['longitude'].toString()) ?? 0,
-                      )).toList(),
-                      strokeWidth: 3,
-                      color: const Color(0xFF668A2E).withOpacity(.75),
-                    );
-                  }).where((line) => line.points.length >= 2).toList(),
+                  polylines: [
+                    for (final route in routeData)
+                      if (selectedRouteId == null || selectedRouteId == route['id'])
+                        for (final path in (route['paths'] as List).cast<List<LatLng>>())
+                          Polyline(points: path, strokeWidth: 3, color: const Color(0xCC39745B)),
+                  ],
                 ),
               if (trail.length > 1)
                 PolylineLayer(
@@ -2446,11 +2464,11 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (lastStop != null && lastStop.isNotEmpty)
-                      Text('Last passed stop · $lastStop', style: const TextStyle(fontSize: 12)),
+                      Text('Previous route location · $lastStop', style: const TextStyle(fontSize: 12)),
                     if (nextStop != null && nextStop.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 5),
-                        child: Text('Next stop · $nextStop', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                        child: Text('Upcoming route location · $nextStop', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                       ),
                     if (destination.isNotEmpty)
                       Padding(
