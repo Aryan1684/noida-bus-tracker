@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'transit_ui.dart';
+import 'fleet_screen.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;import 'package:flutter/material.dart';
@@ -552,7 +553,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     headers: await _appHeaders({'Content-Type':'application/json','Accept':'application/json'}),
     body:jsonEncode({
      'event_name':name,
-     'path':'/mobile',
+     'path':name=='fleet_map_opened'?'/mobile/fleet':'/mobile',
      'session_id':analyticsSessionId,
      'visitor_id':visitor,
      'source':'android',
@@ -998,6 +999,17 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     _useCatalogue(source);
     await prefs.setString('routeCatalogue', source);
   } catch (_) {}
+ }
+
+ void _openFleet() {
+  unawaited(_analytics('fleet_map_opened'));
+  Navigator.of(context).push(MaterialPageRoute<void>(
+    settings: const RouteSettings(name: '/fleet'),
+    builder: (_) => FleetScreen(api: api, catalogue: () async {
+      if (routeData.isEmpty) await _loadRoutes();
+      return routeData;
+    }),
+  ));
  }
 
  Future<void> _openRoutes() async {
@@ -1871,7 +1883,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 900;
           final content = <Widget>[
-            RouteReveal(child: FleetBanner(open: () => _openWebsitePage('fleet.html'))),
+            RouteReveal(child: FleetBanner(open: _openFleet)),
             const SizedBox(height: 14),
             RouteReveal(milliseconds: 420, child: _searchCard()),
             const SizedBox(height: 12),

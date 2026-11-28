@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.4.1",
+  "latest_version": "1.5.0",
   "minimum_version": "1.0.0",
-  "message": "Usage analytics is always on in this version, including after updating from an earlier opt-out. The privacy notice explains what is collected.",
+  "message": "Explore the electric fleet, live bus positions and routes directly inside the app.",
   "download_url": "https://github.com/Aryan1684/noida-bus-tracker/releases/download/mobile-latest/noida-bus-tracker.apk"
 }

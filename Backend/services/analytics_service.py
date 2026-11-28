@@ -18,6 +18,7 @@ ALLOWED_EVENTS = {
     "first_open",
     "page_view",
     "routes_opened",
+    "fleet_map_opened",
     "favorite_added",
     "favorite_removed",
     "favorites_opened",
