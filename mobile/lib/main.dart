@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'transit_ui.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;import 'package:flutter/material.dart';
@@ -18,7 +19,7 @@ Future<void> main() async {
 }
 
 class App extends StatefulWidget { const App({super.key}); @override State<App> createState()=>_AppState(); }
-class _AppState extends State<App> { bool dark=false; @override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Noida Bus Tracker',themeMode:dark?ThemeMode.dark:ThemeMode.light,theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:const Color(0xFFF4F6F8),colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFFB8F26B))),darkTheme:ThemeData(useMaterial3:true,brightness:Brightness.dark,colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFFB8F26B),brightness:Brightness.dark)),home:StartupSplash(child:Home(dark:dark,toggle:()=>setState(()=>dark=!dark)))); }
+class _AppState extends State<App> { bool dark=false; @override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Noida Bus Tracker',themeMode:dark?ThemeMode.dark:ThemeMode.light,theme:transitTheme(Brightness.light),darkTheme:transitTheme(Brightness.dark),home:StartupSplash(child:Home(dark:dark,toggle:()=>setState(()=>dark=!dark)))); }
 
 class StartupSplash extends StatefulWidget {
   final Widget child;
@@ -57,7 +58,7 @@ class _StartupSplashState extends State<StartupSplash>
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => widget.child,
-          transitionDuration: const Duration(milliseconds: 320),
+          transitionDuration: motionTime(context, 320),
           transitionsBuilder: (_, animation, __, child) {
             final curved = CurvedAnimation(
               parent: animation,
@@ -81,6 +82,16 @@ class _StartupSplashState extends State<StartupSplash>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      intro.stop();
+      intro.value = 1;
+      travel.stop();
+    }
+  }
+
+  @override
   void dispose() {
     intro.dispose();
     travel.dispose();
@@ -90,7 +101,7 @@ class _StartupSplashState extends State<StartupSplash>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF070A10),
+      backgroundColor: const Color(0xFF121326),
       body: SafeArea(
         child: AnimatedBuilder(
           animation: Listenable.merge([intro, travel]),
@@ -136,13 +147,13 @@ class _StartupSplashState extends State<StartupSplash>
                               color: const Color(0xFF101722),
                               borderRadius: BorderRadius.circular(34),
                               border: Border.all(
-                                color: const Color(0xFFB8F26B)
+                                color: const Color(0xFFAFA8FF)
                                     .withOpacity(.72),
                                 width: 1.4,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFFB8F26B)
+                                  color: const Color(0xFFAFA8FF)
                                       .withOpacity(.10 + (.10 * logoFade)),
                                   blurRadius: 34,
                                   spreadRadius: 5 + (9 * logoFade),
@@ -151,7 +162,7 @@ class _StartupSplashState extends State<StartupSplash>
                             ),
                             child: const Icon(
                               Icons.directions_bus_rounded,
-                              color: Color(0xFFB8F26B),
+                              color: Color(0xFFAFA8FF),
                               size: 61,
                             ),
                           ),
@@ -179,7 +190,7 @@ class _StartupSplashState extends State<StartupSplash>
                               'LIVE ELECTRIC BUS TRACKING',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: Color(0xFFB8F26B),
+                                color: Color(0xFFAFA8FF),
                                 fontSize: 10,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 2.15,
@@ -265,7 +276,7 @@ class SplashRoutePainter extends CustomPainter {
     canvas.drawPath(path, routePaint);
 
     final dotPaint = Paint()
-      ..color = const Color(0xFFB8F26B).withOpacity(.7 * progress);
+      ..color = const Color(0xFFAFA8FF).withOpacity(.7 * progress);
 
     for (final t in const <double>[.08, .22, .36, .50, .64, .78, .92]) {
       final point = _point(start, control, end, t);
@@ -276,12 +287,12 @@ class SplashRoutePainter extends CustomPainter {
     final busPoint = _point(start, control, end, busT);
 
     final glow = Paint()
-      ..color = const Color(0xFFB8F26B).withOpacity(.12 * progress)
+      ..color = const Color(0xFFAFA8FF).withOpacity(.12 * progress)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15);
 
     canvas.drawCircle(busPoint, 22, glow);
 
-    final busPaint = Paint()..color = const Color(0xFFB8F26B);
+    final busPaint = Paint()..color = const Color(0xFFAFA8FF);
     final bus = RRect.fromRectAndRadius(
       Rect.fromCenter(
         center: busPoint,
@@ -324,7 +335,7 @@ class SplashRoutePainter extends CustomPainter {
     final sweep = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.4
-      ..color = const Color(0xFFB8F26B).withOpacity(.22 * progress);
+      ..color = const Color(0xFFAFA8FF).withOpacity(.22 * progress);
 
     canvas.drawCircle(sweepPoint, 12, sweep);
   }
@@ -647,7 +658,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       builder: (dialogContext) => PopScope(
         canPop: !mandatory,
         child: Dialog(
-          backgroundColor: const Color(0xFF151D16),
+          backgroundColor: const Color(0xFF19192F),
           insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
           child: ConstrainedBox(
@@ -663,13 +674,13 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                       width: 82,
                       height: 82,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFB8F26B),
+                        color: const Color(0xFFAFA8FF),
                         borderRadius: BorderRadius.circular(26),
                       ),
                       child: const Icon(
                         Icons.system_update_alt_rounded,
                         size: 43,
-                        color: Color(0xFF172016),
+                        color: Color(0xFF262544),
                       ),
                     ),
                   ),
@@ -700,20 +711,20 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF242E25),
+                      color: const Color(0xFF292747),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFF384439)),
+                      border: Border.all(color: const Color(0xFF3D3955)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.verified_rounded, color: Color(0xFFB8F26B), size: 21),
+                        const Icon(Icons.verified_rounded, color: Color(0xFFAFA8FF), size: 21),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             message,
                             style: const TextStyle(
-                              color: Color(0xFFE5EAE2),
+                              color: Color(0xFFE5E4F5),
                               fontSize: 12,
                               height: 1.45,
                             ),
@@ -731,23 +742,23 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF252E26),
+                          color: const Color(0xFF302C50),
                           borderRadius: BorderRadius.circular(30),
                         ),
                         child: Text(
                           'Installed: ${info.version}',
-                          style: const TextStyle(color: Color(0xFFE5EAE2), fontSize: 11, fontWeight: FontWeight.w700),
+                          style: const TextStyle(color: Color(0xFFE5E4F5), fontSize: 11, fontWeight: FontWeight.w700),
                         ),
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFB8F26B),
+                          color: const Color(0xFFAFA8FF),
                           borderRadius: BorderRadius.circular(30),
                         ),
                         child: Text(
                           'Latest: $latest',
-                          style: const TextStyle(color: Color(0xFF172016), fontSize: 11, fontWeight: FontWeight.w800),
+                          style: const TextStyle(color: Color(0xFF262544), fontSize: 11, fontWeight: FontWeight.w800),
                         ),
                       ),
                     ],
@@ -757,8 +768,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     height: 54,
                     child: FilledButton(
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFB8F26B),
-                        foregroundColor: const Color(0xFF172016),
+                        backgroundColor: const Color(0xFFAFA8FF),
+                        foregroundColor: const Color(0xFF262544),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
                       ),
@@ -811,7 +822,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     const Text(
                       'Update required to continue using the app',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Color(0xFFB8F26B), fontSize: 11, fontWeight: FontWeight.w700),
+                      style: TextStyle(color: Color(0xFFAFA8FF), fontSize: 11, fontWeight: FontWeight.w700),
                     ),
                   ],
                 ],
@@ -935,13 +946,13 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                       width: 88,
                       height: 88,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFB8F26B).withOpacity(.2),
+                        color: const Color(0xFFAFA8FF).withOpacity(.2),
                         borderRadius: BorderRadius.circular(26),
                       ),
                       child: const Icon(
                         Icons.construction_rounded,
                         size: 44,
-                        color: Color(0xFF668A2E),
+                        color: Color(0xFF6256AD),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -1876,7 +1887,10 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   if (maintenanceMode) return _maintenancePage();
   return Scaffold(
     appBar: AppBar(
-      titleSpacing: 16,
+      leading: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 0, 8),
+        child: DecoratedBox(decoration: BoxDecoration(color: const Color(0xff5144ad), borderRadius: BorderRadius.circular(13)),
+          child: const Icon(Icons.directions_bus_filled_rounded, color: Colors.white))),
+      titleSpacing: 12,
       title: const Text(
         'Noida Bus Tracker',
         maxLines: 1,
@@ -1916,31 +1930,21 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       onRefresh: _load,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final compact = constraints.maxWidth < 700;
+          final compact = constraints.maxWidth < 900;
           final content = <Widget>[
+            RouteReveal(child: FleetBanner(open: () => _openWebsitePage('fleet.html'))),
+            const SizedBox(height: 14),
+            RouteReveal(milliseconds: 420, child: _searchCard()),
+            const SizedBox(height: 12),
             if (compact) ...[
-              TextButton.icon(
-                onPressed: () => _openWebsitePage('fleet.html'),
-                icon: const Icon(Icons.directions_bus_outlined),
-                label: const Text('Electric Fleet Map · New'),
-              ),
-              _mapCard(),
-              const SizedBox(height: 10),
-              _searchCard(),
-              const SizedBox(height: 10),
-              _locationCard(),
-            ] else ...[
-              _locationCard(),
+              RouteReveal(milliseconds: 460, child: _mapCard()),
               const SizedBox(height: 12),
-              _searchCard(),
-              const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: () => _openWebsitePage('fleet.html'),
-                icon: const Icon(Icons.directions_bus_outlined),
-                label: const Text('Electric Fleet Map · New'),
-              ),
-              _mapCard(),
-            ],
+              _locationCard(),
+            ] else Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(flex: 3, child: RouteReveal(child: _mapCard())),
+              const SizedBox(width: 12),
+              Expanded(flex: 2, child: _locationCard()),
+            ]),
             const SizedBox(height: 14),
             _header(),
             if (error != null) _error(),
@@ -1950,7 +1954,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                 child: Center(child: CircularProgressIndicator()),
               ),
             if (!loading && buses.isEmpty && error == null) _empty(),
-            ...buses.map(_card),
+            for (final bus in buses)
+              RouteReveal(key: ValueKey(bus['bus_id']), child: _card(bus)),
             const SizedBox(height: 18),
             const Text(
               'Independent project. Not a government website.\n'
@@ -1991,10 +1996,10 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEAF8EF),
+                  color: const Color(0xFFE8E6FF),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.my_location_rounded, color: Color(0xFF15803D)),
+                child: const Icon(Icons.my_location_rounded, color: Color(0xFF5845AA)),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -2088,7 +2093,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   );
 }
 
- Widget _searchCard(){return Card(elevation:0,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20)),child:Column(children:[Padding(padding:const EdgeInsets.fromLTRB(15,5,8,5),child:Row(children:[const Icon(Icons.search_rounded),const SizedBox(width:8),Expanded(child:TextField(controller:search,onChanged:_search,decoration:const InputDecoration(hintText:'Search Sector 62, Pari Chowk, Botanical Garden…',border:InputBorder.none))),if(search.text.isNotEmpty)IconButton(onPressed:(){search.clear();setState(()=>suggestions=[]);},icon:const Icon(Icons.close))])),...suggestions.map((x)=>ListTile(leading:const Icon(Icons.place_outlined),title:Text(x['name'].toString()),onTap:()=>_pick(x))) ]));}
+ Widget _searchCard(){return Card(elevation:0,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20)),child:Column(children:[Padding(padding:const EdgeInsets.fromLTRB(15,5,8,5),child:Row(children:[const Icon(Icons.search_rounded),const SizedBox(width:8),Expanded(child:TextField(controller:search,onChanged:_search,decoration:const InputDecoration(hintText:'Search Sector 62, Pari Chowk, Botanical Garden…',border:InputBorder.none))),if(search.text.isNotEmpty)IconButton(onPressed:(){search.clear();setState(()=>suggestions=[]);},icon:const Icon(Icons.close))])),AnimatedSize(duration: motionTime(context, 200), alignment: Alignment.topCenter, child: Column(children: [...suggestions.map((x)=>ListTile(leading:const Icon(Icons.place_outlined),title:Text(x['name'].toString()),onTap:()=>_pick(x))) ])) ]));}
  Widget _mapCard() {
   final markers = <Marker>[];
   for (final bus in buses) {
@@ -2110,7 +2115,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
           child: Container(
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFFB8F26B)
+                  ? const Color(0xFFAFA8FF)
                   : const Color(0xFF111827),
               shape: BoxShape.circle,
               border: Border.all(
@@ -2206,7 +2211,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     if (routeData.isEmpty) unawaited(_loadRoutes());
                     setState(() { showRoutes = !showRoutes; selectedRouteId = null; });
                   },
-                  icon: Icon(showRoutes ? Icons.alt_route : Icons.route_outlined),
+                  icon: AnimatedSwitcher(duration: motionTime(context), child: Icon(showRoutes ? Icons.alt_route : Icons.route_outlined, key: ValueKey(showRoutes))),
                 ),
               ),
               Tooltip(
@@ -2282,7 +2287,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     for (final route in routeData)
                       if (selectedRouteId == null || selectedRouteId == route['id'])
                         for (final path in (route['paths'] as List).cast<List<LatLng>>())
-                          Polyline(points: path, strokeWidth: 3, color: const Color(0xCC39745B)),
+                          Polyline(points: path, strokeWidth: 3, color: const Color(0xCC6556B8)),
                   ],
                 ),
               if (trail.length > 1)
@@ -2334,7 +2339,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     shape:RoundedRectangleBorder(
       borderRadius:BorderRadius.circular(20),
       side:BorderSide(
-        color:isSelected?const Color(0xFFB8F26B):Theme.of(context).dividerColor,
+        color:isSelected?const Color(0xFFAFA8FF):Theme.of(context).dividerColor,
         width:isSelected?1.5:1,
       ),
     ),
@@ -2422,10 +2427,14 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                 ),
                 IconButton(
                   onPressed:()=>_fav(id),
-                  icon:Icon(
+                  tooltip: favs.contains(id) ? 'Remove favourite' : 'Add favourite',
+                  icon:AnimatedSwitcher(duration:motionTime(context, 200),
+                    transitionBuilder:(child, animation)=>ScaleTransition(scale:animation, child:child),
+                    child:Icon(
                     favs.contains(id)?Icons.star:Icons.star_border,
+                    key:ValueKey(favs.contains(id)),
                     color:favs.contains(id)?const Color(0xFFB45309):null,
-                  ),
+                  )),
                 ),
               ],
             ),
@@ -2516,7 +2525,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
               ),
               child:Row(
                 children:[
-                  const Icon(Icons.route_rounded,size:18,color:Color(0xFF15803D)),
+                  const Icon(Icons.route_rounded,size:18,color:Color(0xFF5845AA)),
                   const SizedBox(width:8),
                   Expanded(
                     child:Text(
