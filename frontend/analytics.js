@@ -117,7 +117,7 @@
         const source = sourceName();
         return {
             event_name: "",
-            path: location.pathname,
+            path: document.documentElement.dataset.analyticsPath || location.pathname,
             session_id: sessionId(),
             visitor_id: visitorId(),
             source: source,
@@ -177,7 +177,7 @@
                     body: JSON.stringify({
                         latitude: Number(position.coords.latitude),
                         longitude: Number(position.coords.longitude),
-                        path: location.pathname,
+                        path: document.documentElement.dataset.analyticsPath || location.pathname,
                         session_id: sessionId(),
                         visitor_id: visitorId(),
                         source: sourceName()

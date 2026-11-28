@@ -1,76 +1,371 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="en" data-analytics-path="/nearby.html">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#112a2a">
-  <meta name="description" content="Explore electric buses, stops and routes across Noida and Greater Noida. Follow recent GPS positions on an interactive fleet map.">
-  <title>Noida Bus Tracker · Electric fleet map</title>
-  <link rel="canonical" href="https://noidabus.netlify.app/">
-  <link rel="icon" href="assets/noida-bus-tracker-mark.svg">
-  <link rel="manifest" href="manifest.json">
-  <script src="site-status.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="fleet-map.css">
-  <script defer src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script defer src="fleet-routes.js"></script>
-  <script defer src="analytics.js?v=4"></script>
-  <script type="module" src="fleet-map.mjs"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f5f6f8">
+    <meta name="description" content="Track Noida electric buses with live GPS locations, nearby bus discovery, route context and movement information.">
+    <title>Noida Electric Bus Tracker</title>
+    <link rel="icon" href="assets/noida-bus-tracker-mark.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="assets/noida-bus-tracker-mark-light.svg">
+    <link rel="canonical" href="https://noidabus.netlify.app/">
+    <meta property="og:title" content="Noida Electric Bus Tracker">
+    <meta property="og:description" content="Find nearby Noida electric buses using live GPS locations.">
+    <meta property="og:url" content="https://noidabus.netlify.app/">
+    <meta property="og:type" content="website">
+    <script type="application/ld+json">
+    {
+      "@context":"https://schema.org",
+      "@type":"WebApplication",
+      "name":"Noida Electric Bus Tracker",
+      "url":"https://noidabus.netlify.app/",
+      "description":"Live GPS tracking for Noida electric buses with nearby bus discovery and route information.",
+      "applicationCategory":"TravelApplication",
+      "operatingSystem":"Web"
+    }
+    </script>
+    <script src="site-status.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="style.css?v=20">
+    <style>
+        .finder-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.65rem; }
+        .fleet-entry { display:inline-flex; align-items:center; gap:.65rem; min-height:44px;
+            padding:0 1rem; border-radius:12px; background:#075849; color:white;
+            font-weight:700; text-decoration:none; }
+        .fleet-entry:hover { background:#064538; }
+        .fleet-entry:focus-visible { outline:3px solid #e2a523; outline-offset:3px; }
+        .fleet-entry span { padding:.2rem .55rem; border-radius:1rem; background:#ffdc78;
+            color:#33290c; font-size:.75rem; }
+        @media (max-width:700px) {
+            .workspace-heading { display:block; }
+            .workspace-heading > div:first-child, .finder-actions #locationBtn { display:none; }
+            .finder-actions .fleet-entry { width:100%; justify-content:center; }
+        }
+    </style>
 </head>
 <body>
-  <svg class="symbols" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
-    <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 5 6-2 6 3 6-2v15l-6 2-6-3-6 2zM9 3v15m6-12v15"/></symbol>
-    <symbol id="i-bus" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="16" rx="3"/><path d="M5 11h14M8 19v2m8-2v2M8 15h1m6 0h1"/></symbol>
-    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
-    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
-    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5zM3 12l9 5 9-5M3 16l9 5 9-5"/></symbol>
-    <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3m10 7h-3m-7 10v-3M2 12h3"/></symbol>
-    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5m6 0h5v5m0 6v5h-5m-6 0H4v-5"/></symbol>
-    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19 9a7 7 0 1 0 .3 5M19 3v6h-6"/></symbol>
-    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="m14 2-9 12h6l-1 8 9-13h-6z"/></symbol>
-    <symbol id="i-stop" viewBox="0 0 24 24"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0z"/><circle cx="12" cy="10" r="2.5"/></symbol>
-    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h7m5 0h4M4 17h2m6 0h8"/><circle cx="13.5" cy="7" r="2.5"/><circle cx="8.5" cy="17" r="2.5"/></symbol>
-  </defs></svg>
-  <header class="masthead">
-    <a class="brand" href="./"><img src="assets/noida-bus-tracker-mark.svg" alt=""><span>Noida Bus Tracker</span></a>
-    <nav aria-label="Tracker views"><a class="active" aria-current="page" href="./"><svg><use href="#i-map"/></svg>Fleet map</a><a href="nearby.html"><svg><use href="#i-locate"/></svg>Nearby buses</a></nav>
-    <a class="admin" href="admin.html"><svg><use href="#i-settings"/></svg>Admin</a>
-  </header>
-  <dialog id="routeWarning" aria-labelledby="routeWarningTitle" aria-describedby="routeWarningText">
-    <h2 id="routeWarningTitle">Routes may be inaccurate</h2>
-    <p id="routeWarningText">Please confirm your route before travelling.</p>
-    <form method="dialog"><button class="follow" autofocus>Got it</button></form>
-  </dialog>
-  <main class="workspace">
-    <aside class="explorer" aria-label="Fleet explorer">
-      <div class="explorer-head">
-        <div class="area"><span class="area-line"></span>Noida &amp; Greater Noida</div>
-        <div class="title-line"><h1>Electric fleet</h1><button id="sheetToggle" class="sheet-toggle" type="button" aria-expanded="false" aria-controls="exploreBody">Explore ▴</button></div>
-      </div>
-      <div id="exploreBody" class="explore-body">
-        <label class="search"><svg><use href="#i-search"/></svg><input id="query" type="search" placeholder="Bus number, route or stop" aria-label="Search buses, routes and stops" autocomplete="off"></label>
-        <div class="tabs" aria-label="Explore by category"><button data-tab="Buses" aria-pressed="true">Buses</button><button data-tab="Routes" aria-pressed="false">Routes</button><button data-tab="Stops" aria-pressed="false">Stops</button></div>
-        <div class="list-scroll"><div id="detail" hidden></div><div id="results"></div></div>
-        <div class="source"><span class="source-dot"></span><span id="feed" role="status">Connecting to GPS…</span><button id="refreshBtn" type="button" aria-label="Refresh fleet"><svg><use href="#i-refresh"/></svg></button></div>
-      </div>
-    </aside>
-    <section class="map-area" aria-label="Electric bus map">
-      <div id="map" aria-label="Map of electric buses in Noida and Greater Noida"></div>
-      <div class="map-tools">
-        <div class="tool-group">
-          <button id="layersButton" title="Map layers" aria-label="Map layers" aria-controls="layers" aria-expanded="false"><svg><use href="#i-layers"/></svg></button>
-          <button id="pitch" title="Toggle three-dimensional view" aria-pressed="false">3D</button>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a class="brand" href="./">
+                <img class="brand-symbol brand-logo" src="assets/noida-bus-tracker-mark.svg" alt="Noida Bus Tracker">
+                <span>
+                    <strong>Noida Bus Tracker</strong>
+                    <small>Live electric buses</small>
+                </span>
+            </a>
+            <nav class="top-actions" aria-label="Site actions">
+                <button id="appComingSoonBtn" class="get-app-button" type="button"><span>↓</span><span>Android app</span></button>
+                <button id="themeToggle" class="icon-button" aria-label="Toggle dark mode" title="Toggle dark mode"><span id="themeIcon">Dark</span></button>
+            </nav>
         </div>
-        <div class="tool-group">
-          <button id="zoomIn" title="Zoom in" aria-label="Zoom in">+</button><button id="zoomOut" title="Zoom out" aria-label="Zoom out">−</button>
+    </header>
+
+    <main>
+        <section class="workspace-heading">
+            <div>
+                <p class="eyebrow">NOIDA · GREATER NOIDA</p>
+                <h1>Find your bus.</h1>
+                <p>Choose a location and scan the nearest live electric buses.</p>
+            </div>
+            <div class="finder-actions">
+                <a class="fleet-entry" href="fleet.html">Fleet Map <span>New</span></a>
+                <button id="locationBtn" class="button button-primary heading-location"><span>⌖</span> Use my location</button>
+            </div>
+        </section>
+
+
+
+        <section id="busMap" class="tracker-shell">
+            <aside class="fleet-panel">
+                <div class="fleet-top">
+                    <div>
+                        <p class="eyebrow">NEARBY</p>
+                        <h2>Electric buses</h2>
+                    </div>
+                    <span id="locationStatusDot" class="status-dot"></span>
+                </div>
+
+                <div class="location-picker map-search">
+                    <div class="search-wrap">
+                        <span class="search-icon">⌕</span>
+                        <input id="placeSearch" type="search" placeholder="Search Sector 62, Pari Chowk..." autocomplete="off" spellcheck="false">
+                        <button id="clearSearch" class="clear-search hidden" aria-label="Clear search">×</button>
+                        <div id="searchSuggestions" class="search-suggestions hidden"></div>
+                    </div>
+                    <button id="finderLocationBtn" class="location-use-button" type="button"><span>⌖</span><span>Use my location</span></button>
+                </div>
+
+                <div class="filter-row">
+                    <label class="select-shell">
+                        <span>Radius</span>
+                        <select id="radiusSelect" aria-label="Search radius">
+                            <option value="1">1 km</option>
+                            <option value="3">3 km</option>
+                            <option value="5" selected>5 km</option>
+                            <option value="10">10 km</option>
+                        </select>
+                    </label>
+                    <button id="adjustPinBtn" class="small-button" type="button">Move pin</button>
+                </div>
+
+                <div class="location-status">
+                    <span id="locationMessage">Search for a place or use your location.</span>
+                    <button id="shareApproxLocationBtn" class="small-button" type="button">Help improve this area</button>
+                </div>
+
+                <section class="results-section">
+                    <div class="section-header">
+                        <div>
+                            <span id="busCount" class="count-label">0 buses</span>
+                            <span class="results-label">nearby</span>
+                        </div>
+                        <div class="results-actions">
+                            <button id="feedbackBtn" class="small-button feedback-button" type="button">Feedback</button>
+                            <button id="refreshBtn" class="small-button refresh-button" disabled><span>↻</span> Refresh</button>
+                        </div>
+                    </div>
+
+                    <div id="loadingState" class="state hidden">
+                        <div class="loader" aria-hidden="true">
+                            <div class="busWrapper">
+                                <div class="busBody">
+                                    <svg viewBox="0 0 180 90" xmlns="http://www.w3.org/2000/svg" role="presentation">
+                                        <rect x="8" y="8" width="164" height="62" rx="10" fill="#1769d2" stroke="#282828" stroke-width="3"/>
+                                        <rect x="15" y="15" width="150" height="29" rx="6" fill="#0f2f52"/>
+                                        <rect x="21" y="21" width="34" height="17" rx="3" fill="#dff4ff"/>
+                                        <rect x="60" y="21" width="34" height="17" rx="3" fill="#dff4ff"/>
+                                        <rect x="99" y="21" width="30" height="17" rx="3" fill="#dff4ff"/>
+                                        <rect x="134" y="21" width="25" height="17" rx="3" fill="#dff4ff"/>
+                                        <rect x="15" y="49" width="40" height="12" rx="3" fill="#e8edf2"/>
+                                        <rect x="60" y="49" width="76" height="12" rx="3" fill="#0e5da9"/>
+                                        <rect x="142" y="49" width="23" height="12" rx="3" fill="#86f23f"/>
+                                        <rect x="19" y="69" width="142" height="5" rx="2.5" fill="#10243a"/>
+                                    </svg>
+                                </div>
+                                <div class="busTires" aria-hidden="true">
+                                    <span class="busWheel"></span>
+                                    <span class="busWheel"></span>
+                                </div>
+                                <div class="road" aria-hidden="true"></div>
+                                <svg class="lampPost" viewBox="0 0 453.459 453.459" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                    <path d="M252.882 0c-37.781 0-68.686 29.953-70.245 67.358h-6.917v8.954c-26.109 2.163-45.463 10.011-45.463 19.366h9.993c-1.65 5.146-2.507 10.54-2.507 16.017 0 28.956 23.558 52.514 52.514 52.514s52.514-23.558 52.514-52.514c0-5.478-.856-10.872-2.506-16.017h9.992c0-9.354-19.352-17.204-45.463-19.366v-8.954h-6.149C200.189 38.779 223.924 16 252.882 16c29.952 0 54.32 24.368 54.32 54.32 0 28.774-11.078 37.009-25.105 47.437-17.444 12.968-37.216 27.667-37.216 78.884v113.914h-.797c-5.068 0-9.174 4.108-9.174 9.177 0 2.844 1.293 5.383 3.321 7.066-3.432 27.933-26.851 95.744-8.226 115.459v11.202h45.75v-11.202c18.625-19.715-4.794-87.527-8.227-115.459 2.029-1.683 3.322-4.223 3.322-7.066 0-5.068-4.107-9.177-9.176-9.177h-.795V196.641c0-43.174 14.942-54.283 30.762-66.043 14.793-10.997 31.559-23.461 31.559-60.277C323.202 31.545 291.656 0 252.882 0Z" fill="#282828"/>
+                                    <circle cx="253" cy="89" r="12" fill="#f6d86b"/>
+                                    <circle cx="253" cy="89" r="20" fill="#f6d86b" opacity=".18"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <h3>Finding buses</h3>
+                        <p>Getting the latest GPS positions.</p>
+                    </div>
+
+                    <div id="errorState" class="state state-error hidden">
+                        <div class="state-mark">!</div>
+                        <h3>Couldn’t load buses</h3>
+                        <p id="errorMessage">The bus service is temporarily unavailable.</p>
+                        <button id="retryBtn" class="button button-primary">Try again</button>
+                    </div>
+
+                    <div class="bus-list-scroll">
+                        <div id="emptyState" class="state empty-bus-state hidden">
+                            <h3>0 nearby buses</h3>
+                        </div>
+                        <div id="busList" class="bus-grid"></div>
+                    </div>
+                </section>
+            </aside>
+
+            <section class="map-panel">
+                <div class="map-panel-head">
+                    <div>
+                        <p class="eyebrow">LIVE MAP</p>
+                        <h2>Where the buses are</h2>
+                    </div>
+                    <div class="map-actions">
+                        <span class="map-data-label"><i></i> Live GPS</span>
+                        <button id="mapLocateBtn" class="small-button" type="button">My location</button>
+                        <button id="shareLocationBtn" class="icon-button map-icon-button" type="button" aria-label="Share map location" title="Share map location">↗</button>
+                    </div>
+                </div>
+
+                <div class="map-shell">
+                    <div id="map"></div>
+                    <div class="map-overlay map-overlay-top">
+                        <span id="lastRefreshed">Waiting for a location</span>
+                        <span>•</span>
+                        <span>Auto refresh 45 sec</span>
+                    </div>
+                    <div class="map-legend" aria-label="Map legend">
+                        <span><i class="legend-dot legend-live"></i> Live</span>
+                        <span><i class="legend-dot legend-stationary"></i> Stationary</span>
+                        <span><i class="legend-dot legend-location"></i> You</span>
+                    </div>
+
+                    <div id="selectedBusPanel" class="selected-bus-panel hidden" aria-live="polite">
+                        <button id="selectedBusClose" class="selected-bus-close" type="button" aria-label="Close bus details">×</button>
+                        <p class="eyebrow">SELECTED BUS</p>
+                        <div class="selected-bus-heading">
+                            <div>
+                                <h3 id="selectedBusId">—</h3>
+                                <span id="selectedBusRoute" class="route-badge hidden"></span>
+                            </div>
+                            <span id="selectedBusStatus" class="selected-status">LIVE</span>
+                        </div>
+                        <div class="selected-direction">
+                            <span id="selectedBusArrow" class="selected-direction-arrow hidden" aria-hidden="true"></span>
+                            <div><small id="selectedBusDirectionLabel">TRAVEL DIRECTION</small><strong id="selectedBusDirection">Checking movement...</strong></div>
+                        </div>
+                        <div class="selected-metrics">
+                            <span id="selectedBusDistance">— km away</span>
+                            <span id="selectedBusSpeed">— km/h</span>
+                            <span id="selectedBusMovement">History unavailable</span>
+                        </div>
+                        <div class="selected-bus-location-note">
+                            <span>Currently near</span>
+                            <strong id="selectedBusPlace">Finding nearby place...</strong>
+                            <small id="selectedBusCoordinates"></small>
+                        </div>
+                        <div class="selected-bus-location-note selected-bus-last-stop">
+                            <span>Last passed stop</span>
+                            <strong id="selectedBusLastStop">Not enough route history</strong>
+                        </div>
+                        <div class="selected-bus-location-note">
+                            <span>Upcoming stop (estimate)</span>
+                            <strong id="selectedBusNextStop">No route-matched stop yet</strong>
+                        </div>
+                        <div class="selected-bus-location-note">
+                            <span>Estimated arrival</span>
+                            <strong id="selectedBusEta">ETA unavailable</strong>
+                        </div>
+                        <div class="selected-actions">
+                            <button id="selectedFollowBtn" class="button button-primary" type="button">Follow bus</button>
+                            <button id="selectedShareBtn" class="button button-secondary" type="button">Share</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </section>
+
+        <section class="info-grid">
+            <article class="info-card">
+                <p class="eyebrow">HOW IT WORKS</p>
+                <h2>Three things, then go.</h2>
+                <div class="info-steps">
+                    <div><span>01</span><p>Choose or detect your location.</p></div>
+                    <div><span>02</span><p>Scan buses sorted by distance.</p></div>
+                    <div><span>03</span><p>Select a bus to follow or share it.</p></div>
+                </div>
+            </article>
+            <article class="info-card">
+                <p class="eyebrow">DATA & TRUST</p>
+                <h2>Useful, with the caveats visible.</h2>
+                <p>Bus positions come from MARGDARSHI · UPSRTC. “Moving towards” and the likely last stop are estimates based on recent GPS movement and mapped stop coordinates, not confirmed dispatch information.</p>
+                <p>Some buses may not appear if they are missing from the source feed, have no recent GPS signal, or do not have enough recorded history. We cannot confirm the location of buses that the source does not provide.</p>
+                <p class="info-note">Independent project · Not affiliated with UPSRTC or any government department. Feedback and suggestions help improve coverage.</p>
+            </article>
+        </section>
+    </main>
+
+    <footer>
+        <strong>Noida Bus Tracker</strong>
+        <span>Independent project · Not affiliated with UPSRTC or any government department</span>
+        <span>Live data from MARGDARSHI · UPSRTC</span>
+        <nav class="footer-links" aria-label="Legal, information and developer links">
+            <a href="privacy.html">Privacy</a>
+            <a href="terms.html">Terms</a>
+            <a href="cookies.html">Cookies &amp; Storage</a>
+            <a href="accessibility.html">Accessibility</a>
+            <a href="data-sources.html">Data Sources</a>
+            <a href="admin.html">Admin</a>
+            <a href="https://connectwitharyan.in" rel="noopener noreferrer">Developer</a>
+        </nav>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+    <script src="fleet-routes.js" defer></script>
+    <script src="app.js?v=47" defer></script>
+    <script src="analytics.js?v=5" defer></script>
+    <script src="features.js?v=28" defer></script>
+    <script src="server-history.js?v=1" defer></script>
+    <script src="theme.js?v=9" defer></script>
+
+        <div id="warningModal" class="tracker-disclosure-modal hidden" role="dialog" aria-modal="true" aria-labelledby="trackerDisclosureTitle">
+        <div class="tracker-disclosure-card">
+            <button id="warningCloseBtn" class="tracker-disclosure-close" type="button" aria-label="Close welcome notice">×</button>
+            <header class="namaste-welcome">
+                <img class="namaste-art" src="data:image/webp;base64,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" alt="Black-and-white illustration of palms pressed together in Namaste" width="240" height="240">
+                <span class="namaste-word" aria-hidden="true">Namaste</span>
+                <p class="eyebrow">WELCOME TO NOIDA BUS TRACKER</p>
+                <h2 id="trackerDisclosureTitle">Namaste! Welcome aboard.</h2>
+            </header>
+            <section class="tracker-info-panel" aria-labelledby="trackerDisclosureNoteTitle">
+                <div class="tracker-info-row">
+                    <div class="tracker-info-icon" aria-hidden="true">
+                        <svg viewBox="0 0 32 32"><path d="M7 25V8.5C7 6.6 8.6 5 10.5 5h11C23.4 5 25 6.6 25 8.5V25M7 11h18M7 20h18M11 25v2m10-2v2M11 14h10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11" cy="24" r="1.3" fill="currentColor"/><circle cx="21" cy="24" r="1.3" fill="currentColor"/></svg>
+                    </div>
+                    <div>
+                        <h3 id="trackerDisclosureNoteTitle">A quick note before you track</h3>
+                        <p>Bus locations come from the MARGDARSHI · UPSRTC feed when available. Directions and likely last stops are estimates from recent GPS points and mapped routes, not confirmed dispatch information.</p>
+                    </div>
+                </div>
+                <div class="tracker-info-divider"></div>
+                <div class="tracker-info-row tracker-info-secondary">
+                    <div class="tracker-info-icon" aria-hidden="true">
+                        <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M16 14v8M16 9.5v.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg>
+                    </div>
+                    <p>Some buses may be missing due to feed gaps or weak GPS history. Predictions can be wrong near turns, diversions, or route changes.</p>
+                </div>
+            </section>
+            <section class="tracker-build-with-us" aria-label="Build with us">
+                <div class="tracker-build-copy">
+                    <p class="eyebrow">BUILD WITH US</p>
+                    <p>Help us improve bus tracking, route estimates, and data quality.</p>
+                </div>
+                <a class="tracker-build-email" href="mailto:raiaryan1684@gmail.com">Email to collaborate <span aria-hidden="true">↗</span></a>
+            </section>
+            <div class="tracker-disclosure-actions">
+                <button id="warningAcceptBtn" class="button button-primary" type="button">Continue to tracker <span aria-hidden="true">→</span></button>
+                <button id="warningFeedbackBtn" class="button button-secondary" type="button">Feedback &amp; suggestions</button>
+            </div>
+            <label class="tracker-warning-preference" for="warningDontShowAgain">
+                <input id="warningDontShowAgain" type="checkbox">
+                <span>Don’t show this notice again</span>
+            </label>
+            <p class="tracker-disclosure-footnote">Independent project · Not affiliated with UPSRTC or any government department.</p>
         </div>
-        <div class="tool-group"><button id="fit" title="Show service area" aria-label="Show service area"><svg><use href="#i-fit"/></svg></button><button id="mapLocateBtn" title="My location" aria-label="My location"><svg><use href="#i-locate"/></svg></button></div>
-        <fieldset id="layers" hidden><legend>Map layers</legend><label><input type="checkbox" value="routes" checked>Route corridors</label><label><input type="checkbox" value="stops" checked>Mapped stops</label><label><input type="checkbox" value="buses" checked>Electric buses</label></fieldset>
-      </div>
-      <div id="mapNotice" class="map-notice" role="status" hidden></div>
-      <div class="legend"><span><i class="dot moving"></i>Fresh GPS</span><span><i class="dot parked"></i>Stationary</span><span><i class="dot old"></i>Last known</span></div>
-    </section>
-  </main>
-  <footer><span><svg><use href="#i-bolt"/></svg> Noida Electric Bus Tracker</span><span>Independent tracker <b>·</b> MARGDARSHI / UPSRTC</span><a href="data-sources.html">Data sources</a><a href="privacy.html">Privacy</a></footer>
+    </div>
+
+    <div id="appComingSoonModal" class="app-coming-soon-modal hidden" role="dialog" aria-modal="true" aria-labelledby="appComingSoonTitle">
+        <div class="app-coming-soon-card">
+            <button id="appComingSoonClose" class="app-coming-soon-close" type="button" aria-label="Close">×</button>
+            <div class="app-coming-soon-visual" aria-hidden="true">
+                <div class="app-orbit orbit-one"></div>
+                <div class="app-orbit orbit-two"></div>
+                <div class="app-bus-icon">
+                    <span></span>
+                    <i></i>
+                    <b></b>
+                    <em></em>
+                </div>
+                <div class="app-spark spark-one">+</div>
+                <div class="app-spark spark-two">+</div>
+                <div class="app-spark spark-three">+</div>
+            </div>
+            <p class="eyebrow">ANDROID APP</p>
+            <h2 id="appComingSoonTitle">We’re building the app.</h2>
+            <p class="app-coming-soon-lead">The Noida Bus Tracker Android app is currently under development.</p>
+            <div class="app-progress-track"><span></span></div>
+            <div class="app-coming-soon-points">
+                <span>Live bus tracking</span>
+                <span>Nearby bus alerts</span>
+                <span>Faster mobile experience</span>
+            </div>
+            <div class="app-coming-soon-note">
+                <strong>For now, the web app is live.</strong>
+                <span>You can track electric buses, check movement, follow buses and share locations directly from your browser.</span>
+            </div>
+            <button id="appComingSoonOkay" class="button button-primary app-coming-soon-okay" type="button">Got it · Keep using the web app</button>
+        </div>
+    </div>
+
 </body>
 </html>

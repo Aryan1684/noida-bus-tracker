@@ -434,7 +434,8 @@ function recentTable(items) {
     }
     items.forEach(x => {
         const time = x.time ? new Date(x.time).toLocaleString() : "—";
-        const subject = x.bus_id || x.place || x.path || "—";
+        const view = {"/fleet.html": "Fleet Map", "/nearby.html": "Nearby Buses"}[x.path];
+        const subject = [view, x.bus_id || x.place].filter(Boolean).join(" · ") || x.path || "—";
         box.innerHTML +=
             "<div class='recent-row'><span>" + esc(time) + "</span><strong>" + esc(x.event) + "</strong><span>" +
             esc(x.source) + "</span><span>" + esc(x.device) + "</span><span>" + esc(subject) + "</span></div>";
