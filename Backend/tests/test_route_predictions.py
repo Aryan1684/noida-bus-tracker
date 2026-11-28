@@ -69,17 +69,16 @@ class RoutePredictionTests(unittest.TestCase):
         self.assertEqual(result["likely_destination"], "Pari Chowk")
 
     def test_airport_route_predicts_airport_after_branch(self):
-        result = predict_on_segment("UP14ST3546", "GR01-AIRPORT-OUT", 4)
+        result = predict_on_segment("UP14ST3546", "R2-JEWAR-OUT", 2)
         self.assertIsNotNone(result)
-        self.assertEqual(result["route_path_id"], "GR01-AIRPORT-OUT")
-        self.assertEqual(result["likely_destination"], "Noida International Airport")
+        self.assertEqual(result["route_path_id"], "R2-JEWAR-OUT")
+        self.assertEqual(result["likely_destination"], "Noida Airport Bus Stop (Jewar)")
 
-    def test_shared_chaar_murti_corridor_does_not_guess_terminal(self):
-        result = predict_on_segment("UP14ST3546", "GR01-AIRPORT-OUT", 1)
-        self.assertIsNotNone(result)
+    def test_chaar_murti_corridor_is_separate_from_jewar(self):
+        result = predict_on_segment("UP14ST3546", "GR01-LOOP", 1)
+        self.assertEqual(result["route_id"], "GR01")
         self.assertEqual(result["likely_next_stop"], "Surajpur")
-        self.assertIsNone(result["likely_destination"])
-        self.assertEqual(result["destination_confidence"], "Unknown")
+        self.assertNotEqual(result["likely_destination"], "Noida Airport Bus Stop (Jewar)")
 
 
 if __name__ == "__main__":

@@ -2,6 +2,13 @@ import { drawCoach } from "./coach-model.mjs";
 // MapTiler's public browser key is shared with the existing nearby map.
 const mapKey = "zDrcI9pwHS3FLOHuWQm3";
 export const routeColors = {
+    Expressway: "#306f4c",
+    "N-R8": "#0f766e",
+    "Y-R26": "#946f12",
+    "G-R17": "#15803d",
+    "N-R9": "#aa2052",
+    "N-R2": "#1d4ed8",
+    "G-R14": "#713f9a",
     R1: "#116953",
     R2: "#85388b",
     R3: "#a34c1d",

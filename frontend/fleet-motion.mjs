@@ -73,6 +73,7 @@ export function observation(bus, now = Date.now()) {
         heading: heading == null ? null : heading % 360,
         depot: String(bus.depot_name).trim(),
         route: bus.route_id || null,
+        routePath: bus.route_path_id || null,
     };
 }
 

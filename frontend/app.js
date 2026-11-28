@@ -1015,7 +1015,7 @@ function createBusCard(bus, rankIndex = 0) {
         directionHtml = "<div class='bus-direction'><span class='direction-wait stationary' aria-hidden='true'></span><div><small>STATUS</small><strong>" + (freshness.stale ? "Last known stationary" : "Stationary") + "</strong></div></div>";
     }
 
-    const route = getBusRoute(bus.bus_id);
+    const route = reportedRoute(bus);
     const status = freshness.stale
         ? "Location update delayed"
         : movementState === "moving"
@@ -1056,16 +1056,16 @@ function createBusCard(bus, rankIndex = 0) {
     const nextStop = String(bus && (bus.likely_next_stop || bus.likely_towards) || "").trim();
     const routeMatched = Boolean(bus && (bus.route_path_id || bus.route_id) && nextStop && bus.route_confidence);
     const routeStopLabel = routeMatched && /^(high|medium)$/i.test(String(bus.route_confidence))
-        ? "LIKELY NEXT STOP"
+        ? "LIKELY NEXT LOCATION"
         : routeMatched
-        ? "POSSIBLE NEXT STOP"
+        ? "POSSIBLE NEXT LOCATION"
         : "LIKELY TOWARDS";
     const nextStopHtml = nextStop && !/unknownroute|^unknown$/i.test(nextStop)
         ? "<div class='bus-terminal-stop'><small>" + routeStopLabel + "</small><strong>" + escapeHtml(nextStop) + "</strong></div>"
         : "";
     const lastPassedStop = String(bus && (bus.last_passed_stop || bus.last_stop) || "").trim();
     const lastStopHtml = lastPassedStop && !/not enough route history|unknownroute|^unknown$/i.test(lastPassedStop)
-        ? "<div class='bus-terminal-stop'><small>LAST PASSED STOP</small><strong>" + escapeHtml(lastPassedStop) + "</strong></div>"
+        ? "<div class='bus-terminal-stop'><small>PREVIOUS ROUTE LOCATION</small><strong>" + escapeHtml(lastPassedStop) + "</strong></div>"
         : "";
     const etaValue = String(bus && bus.eta_label || "").trim();
     const etaLabel = /disabled/i.test(etaValue)
@@ -1265,11 +1265,11 @@ function createPopupContent(bus) {
         ? "<br>History: " + Math.round(historyPoints) + " recent points"
         : "";
     const lastStopLine = lastPassedStop && !/not enough route history|unknownroute|^unknown$/i.test(lastPassedStop)
-        ? "<br>Last passed stop: " + escapeHtml(lastPassedStop)
+        ? "<br>Previous route location: " + escapeHtml(lastPassedStop)
         : "";
     const nextStopLine = nextStop && !/unknownroute|^unknown$/i.test(nextStop)
-        ? "<br>Upcoming stop: " + escapeHtml(nextStop) + (routeMatched ? "" : " · unconfirmed")
-        : "<br>Upcoming stop: Not route-matched yet";
+        ? "<br>Upcoming route location: " + escapeHtml(nextStop) + (routeMatched ? "" : " · unconfirmed")
+        : "<br>Upcoming route location: Not route-matched yet";
     const etaLine = "<br>ETA: " + escapeHtml(String(bus.eta_label || "Unavailable").replace(/^ETA:\s*/i, ""));
     const forecast = bus.forecast_3m;
     const forecastLine = forecast && Number.isFinite(Number(forecast.latitude)) && Number.isFinite(Number(forecast.longitude))
@@ -1312,7 +1312,7 @@ function createPopupContent(bus) {
 
 async function initializeRouteCatalog() {
     try {
-        const response = await fetch(API_BASE_URL + "/api/routes");
+        const response = await fetch("assets/noida-network.json");
         if (!response.ok) return;
         const data = await response.json();
         routeCatalog = Array.isArray(data.routes) ? data.routes : [];
@@ -1339,13 +1339,13 @@ function highlightSelectedRoute(bus) {
         selectedRouteLayer = null;
     }
 
-    if (!bus || !bus.route) return;
-
-    const route = routeCatalog.find(item => item.name === bus.route);
-    if (!route || !Array.isArray(route.points) || route.points.length < 2) return;
+    if (!bus) return;
+    const routeId = reportedRoute(bus);
+    const route = routeCatalog.find(item => item.id === routeId);
+    if (!route?.paths.length) return;
 
     selectedRouteLayer = L.polyline(
-        route.points.map(point => [point.latitude, point.longitude]),
+        route.paths.map(path => path.map(([lon, lat]) => [lat, lon])),
         {color:"#E85D26", weight:5, opacity:.72, lineCap:"round", lineJoin:"round", interactive:false}
     ).addTo(map);
 }
@@ -1925,7 +1925,7 @@ function updateSelectedBusPanel(bus) {
     if (idNode) idNode.textContent = bus.bus_id || "Unknown Bus";
 
     if (routeNode) {
-        const route = getBusRoute(bus.bus_id) || bus.route_id || "";
+        const route = reportedRoute(bus) || "";
         routeNode.textContent = route;
         routeNode.classList.toggle("hidden", !route);
     }
@@ -1969,11 +1969,11 @@ function updateSelectedBusPanel(bus) {
         const lastStop = String(bus.last_passed_stop || bus.last_stop || "").trim();
         const hasLastStop = Boolean(lastStop && !/not enough route history|unknownroute|^unknown$/i.test(lastStop));
         if (labelNode) labelNode.textContent = hasLastStop
-            ? String(bus.last_stop_confidence || "").toLowerCase() === "low" ? "Likely previous stop" : "Last passed stop · estimate"
-            : "Last passed stop";
+            ? String(bus.last_stop_confidence || "").toLowerCase() === "low" ? "Likely previous location" : "Previous route location · estimate"
+            : "Previous route location";
         lastStopNode.textContent = hasLastStop
             ? lastStop
-            : "No stop confirmed from recent history";
+            : "No location confirmed from recent history";
     }
 
     if (nextStopNode) {

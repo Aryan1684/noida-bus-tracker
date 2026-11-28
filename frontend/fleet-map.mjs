@@ -61,7 +61,7 @@ function expand(open) {
     $("sheetToggle").textContent = open ? "Collapse ▾" : "Explore ▴";
 }
 function routeFor(fix) {
-    return getBusRoute(fix.id) || fix.route;
+    return reportedRoute({ bus_id: fix.id, route_id: fix.route, route_path_id: fix.routePath });
 }
 function visualState(entry) {
     return feedState === "offline" ? "Last known" : stateOf(entry.fix);
@@ -213,7 +213,7 @@ function row(kind, id, title, sub, tag) {
     return b;
 }
 function routeRow(r) {
-    return row("route", r.id, r.name, r.stops.length + " stops");
+    return row("route", r.id, r.name, r.stops.length + " listed locations");
 }
 function empty(title, desc) {
     const box = node("div", "empty");
@@ -382,7 +382,7 @@ function renderDetail() {
         });
         nodes.push(list);
         if (r.landmarks?.length) {
-            nodes.push(heading("Landmarks along the expressway"),
+            nodes.push(heading("Landmarks along the route"),
                 node("p", "detail-body", r.landmarks.join(" · ")));
         }
     } else {
@@ -415,7 +415,8 @@ function select(kind, id) {
         window.noidaBusAnalytics?.track("bus_selected", { bus_id: id });
     } else if (kind === "route") {
         const r = network.routes.find((r) => r.id === id);
-        view?.fit(r.paths.flat().length ? r.paths.flat() : r.stops.map((n) => network.stops[n]).filter(Boolean));
+        const points = [...r.paths.flat(), ...r.stops.map(name => network.stops[name]).filter(Boolean)];
+        if (points.length) view?.fit(points);
     } else view?.focus(network.stops[id], 16);
     $("detail").querySelector(".back")?.focus({ preventScroll: true });
 }

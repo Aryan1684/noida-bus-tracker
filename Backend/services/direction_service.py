@@ -18,7 +18,7 @@ LANDMARKS = {
     "Kisan Chowk": (28.6050, 77.4370),
     "Chaar Murti": (28.603653, 77.425343),
     "Ek Murti": (28.600000, 77.447500),
-    "Advant": (28.50066, 77.41031),
+    "Advant": (28.499307, 77.409718),
     "Surajpur Collectorate": (28.5095, 77.4770),
     "Surajpur": (28.5185, 77.4990),
     "Kasna Village": (28.4300, 77.5150),
@@ -32,64 +32,20 @@ LANDMARKS = {
     "Noida International Airport": (28.17556, 77.60500),
     "Noida Sector 18": (28.570843, 77.326088),
     "Okhla Bird Sanctuary": (28.55292, 77.32156),
-    "HCL Gate No. 1": (28.54470, 77.32725),
-    "Amity University": (28.5442, 77.3347),
+    "HCL Gate No. 1": (28.549997, 77.332677),
+    "Amity University": (28.546008, 77.337068),
     "Lotus Valley": (28.5386, 77.3445),
-    "Panchsheel Balak Inter College": (28.50975, 77.39266),
-    "Sector 137": (28.51087, 77.403453),
-    "Sector 105": (28.5315704, 77.369177),
-    "Sector 163": (28.47908, 77.43663),
-    "Sector 159": (28.4668, 77.4509),
+    "Panchsheel Balak Inter College": (28.507264, 77.390518),
+    "Sector 137": (28.503141, 77.400087),
+    "Sector 105": (28.527578, 77.365719),
+    "Sector 163": (28.480766, 77.43899),
+    "Sector 159": (28.470061, 77.451768),
     "Galgotias University": (28.36715, 77.54208),
     "Dankaur": (28.3510, 77.5540),
     "Rabupura": (28.25132, 77.6009)
 }
 
 
-
-CITY_ROUTES = {
-    "R1": {
-        "name": "Botanical Garden ↔ Pari Chowk via Advant",
-        "stops": [
-            "Botanical Garden", "Noida Sector 18", "Okhla Bird Sanctuary",
-            "HCL Gate No. 1", "Amity University", "Sector 105",
-            "Panchsheel Balak Inter College", "Sector 137", "Advant",
-            "Sector 163", "Sector 159", "Pari Chowk"
-        ]
-    },
-    "R2": {
-        "name": "Botanical Garden ↔ Noida International Airport via Chaar Murti",
-        "stops": [
-            "Botanical Garden", "Chaar Murti", "Surajpur", "Pari Chowk",
-            "Galgotias University", "Dankaur", "Rabupura",
-            "Noida International Airport"
-        ]
-    },
-    "R3": {
-        "name": "Botanical Garden ↔ Surajpur via Sector 37",
-        "stops": [
-            "Botanical Garden", "Sector 37", "Chhalera", "Agahpur",
-            "Barola", "Sector 50", "Sector 75", "Sector 75 North",
-            "Sector 116", "Sector 78", "Samshang Phase 2",
-            "Phulmundi", "Kulesara", "Surajpur"
-        ]
-    },
-    "R4": {
-        "name": "Botanical Garden ↔ New Bus Adda Ghaziabad",
-        "stops": [
-            "Botanical Garden", "Golf Course", "Noida City Center",
-            "Sector 52", "Sain Mandir", "Sector 61", "Sector 62",
-            "Pratap Vihar Ghaziabad", "RRTS Ghaziabad", "New Bus Adda Ghaziabad"
-        ]
-    },
-    "R5": {
-        "name": "Botanical Garden ↔ Anand Vihar Bus Station",
-        "stops": [
-            "Botanical Garden", "Sector 16", "Noida Entry Gate",
-            "Sector 14A", "Akshardham", "Kaushambi", "Anand Vihar Bus Station"
-        ]
-    }
-}
 
 R01_BUSES = {
     "UP80KT3702", "UP80KT4582", "UP70PT6077", "UP70PT6268",
@@ -107,6 +63,7 @@ GR01_BUSES = {
 ROUTES = [
     {
         "id": "N-R01-OUT",
+        "catalog_id": "R1",
         "name": "Sector 90 ↔ Botanical ↔ Ek Murti ↔ Pari Chowk",
         "points": [
             "Sector 90",
@@ -125,6 +82,7 @@ ROUTES = [
     },
     {
         "id": "N-R01-RETURN",
+        "catalog_id": "R1",
         "name": "Pari Chowk ↔ Ek Murti ↔ Botanical ↔ Sector 90",
         "points": [
             "Pari Chowk",
@@ -143,6 +101,7 @@ ROUTES = [
     },
     {
         "id": "N-R01-BOTANICAL-OUT",
+        "catalog_id": "R1",
         "name": "Botanical ↔ Ek Murti ↔ Pari Chowk",
         "points": [
             "Botanical Garden",
@@ -160,6 +119,7 @@ ROUTES = [
     },
     {
         "id": "N-R01-PARI-RETURN",
+        "catalog_id": "R1",
         "name": "Pari Chowk ↔ Ek Murti ↔ Botanical",
         "points": [
             "Pari Chowk",
@@ -177,6 +137,7 @@ ROUTES = [
     },
     {
         "id": "GR01-OUT",
+        "catalog_id": "GR01",
         "name": "Sector 90 ↔ Botanical ↔ Chaar Murti ↔ Surajpur ↔ Kasna Village",
         "points": [
             "Sector 90",
@@ -189,6 +150,7 @@ ROUTES = [
     },
     {
         "id": "GR01-RETURN",
+        "catalog_id": "GR01",
         "name": "Kasna Village ↔ Surajpur ↔ Chaar Murti ↔ Botanical ↔ Sector 90",
         "points": [
             "Kasna Village",
@@ -201,6 +163,7 @@ ROUTES = [
     },
     {
         "id": "GR01-LOOP",
+        "catalog_id": "GR01",
         "name": "Botanical ↔ Chaar Murti ↔ Surajpur ↔ Kasna Village",
         "points": [
             "Botanical Garden",
@@ -212,6 +175,7 @@ ROUTES = [
     },
     {
         "id": "GR01-LOOP-RETURN",
+        "catalog_id": "GR01",
         "name": "Kasna Village ↔ Surajpur ↔ Chaar Murti ↔ Botanical",
         "points": [
             "Kasna Village",
@@ -223,6 +187,7 @@ ROUTES = [
     },
     {
         "id": "N-R02-ADVANT-OUT",
+        "catalog_id": "Expressway",
         "name": "Botanical Garden ↔ Pari Chowk via Advant",
         "points": [
             "Botanical Garden",
@@ -242,6 +207,7 @@ ROUTES = [
     },
     {
         "id": "N-R02-ADVANT-RETURN",
+        "catalog_id": "Expressway",
         "name": "Pari Chowk ↔ Botanical Garden via Advant",
         "points": [
             "Pari Chowk",
@@ -260,33 +226,19 @@ ROUTES = [
         "buses": R01_BUSES
     },
     {
-        "id": "GR01-AIRPORT-OUT",
-        "name": "Botanical Garden ↔ Chaar Murti ↔ Pari Chowk ↔ Galgotias University ↔ Noida International Airport",
-        "points": [
-            "Botanical Garden",
-            "Chaar Murti",
-            "Surajpur",
-            "Pari Chowk",
-            "Galgotias University",
-            "Dankaur",
-            "Rabupura",
-            "Noida International Airport"
-        ],
+        "id": "R2-JEWAR-OUT",
+        "catalog_id": "R2",
+        "name": "Botanical Garden ↔ Noida Airport Bus Stop via Dankaur and Rabupura",
+        "points": ["Pari Chowk", "Galgotias University", "Dankaur", "Rabupura"],
+        "terminal": "Noida Airport Bus Stop (Jewar)",
         "buses": GR01_BUSES
     },
     {
-        "id": "GR01-AIRPORT-RETURN",
-        "name": "Noida International Airport ↔ Galgotias University ↔ Pari Chowk ↔ Chaar Murti ↔ Botanical Garden",
-        "points": [
-            "Noida International Airport",
-            "Rabupura",
-            "Dankaur",
-            "Galgotias University",
-            "Pari Chowk",
-            "Surajpur",
-            "Chaar Murti",
-            "Botanical Garden"
-        ],
+        "id": "R2-JEWAR-RETURN",
+        "catalog_id": "R2",
+        "name": "Noida Airport Bus Stop ↔ Botanical Garden via Rabupura and Dankaur",
+        "points": ["Rabupura", "Dankaur", "Galgotias University", "Pari Chowk"],
+        "terminal": "Botanical Garden",
         "buses": GR01_BUSES
     }
 ]
@@ -522,9 +474,9 @@ def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=
     previous_stop = segment["from"]
     next_stop = segment["to"]
     route_stops = best_route["points"]
-    terminal_stop = route_stops[-1]
+    terminal_stop = best_route.get("terminal", route_stops[-1])
     destination_ambiguous = any(
-        candidate_route["points"][-1] != terminal_stop
+        candidate_route.get("terminal", candidate_route["points"][-1]) != terminal_stop
         and score - best_score <= 2.5
         and candidate_difference <= 35
         and difference <= 35
@@ -536,11 +488,7 @@ def get_route_prediction(bus_id, latitude, longitude, bearing, previous_bearing=
     route_name = "Shared corridor; destination not yet confirmed" if destination_ambiguous else best_route["name"]
 
     return {
-        "route_id": "R2" if best_route["id"].startswith("N-R02") else (
-            "R1" if best_route["id"].startswith("N-R01") else (
-                "GR01" if best_route["id"].startswith("GR01") else best_route["id"]
-            )
-        ),
+        "route_id": best_route["catalog_id"],
         "route_path_id": best_route["id"],
         "route_segment_from": previous_stop,
         "route_segment_to": next_stop,
