@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.5.0",
+  "latest_version": "1.6.0",
   "minimum_version": "1.0.0",
-  "message": "Explore the electric fleet, live bus positions and routes directly inside the app.",
+  "message": "Nearby and Fleet maps now open in perspective with zoom-scaled 3D electric coaches, wheels, windows and roof direction arrows.",
   "download_url": "https://github.com/Aryan1684/noida-bus-tracker/releases/download/mobile-latest/noida-bus-tracker.apk"
 }

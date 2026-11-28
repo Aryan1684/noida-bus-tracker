@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
-import 'dart:ui' as ui;
+import 'coach_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
@@ -166,7 +165,7 @@ class _FleetScreenState extends State<FleetScreen> with SingleTickerProviderStat
       IconButton(tooltip:'Refresh buses',onPressed:busy?null:_refresh,icon:const Icon(Icons.refresh)),
       IconButton(tooltip:'Show all buses',onPressed:(){setState((){selected=null;routeId=null;});_fit(buses.values.map((b)=>b.point).toList());},icon:const Icon(Icons.center_focus_strong)),
     ]),body:Column(children:[Expanded(child:Stack(children:[
-      FlutterMap(mapController:map,options:MapOptions(initialCenter:const LatLng(28.52,77.44),initialZoom:11,
+      TransitMapView(map: FlutterMap(mapController:map,options:MapOptions(initialCenter:const LatLng(28.52,77.44),initialZoom:11,
         onPositionChanged:(camera,_){if((zoom-camera.zoom).abs()>.05)setState(()=>zoom=camera.zoom);}),children:[
         TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.noidabus.noida_bus_tracker'),
         if(showLines)PolylineLayer(polylines:[
@@ -175,14 +174,11 @@ class _FleetScreenState extends State<FleetScreen> with SingleTickerProviderStat
               Polyline(points:path,strokeWidth:routeId==null?2:4,color:routeId==null?const Color(0x705145AD):const Color(0xff5145ad)),
         ]),
         AnimatedBuilder(animation:motion,builder:(_,__)=>MarkerLayer(markers:[
-          for(final b in buses.values)Marker(point:_position(b),width:58,height:58,child:Semantics(button:true,label:'${b.id}, ${b.status(issue!=null)}',
-            child:GestureDetector(behavior:HitTestBehavior.opaque,onTap:()=>setState(()=>selected=b.id),child:Center(child:Transform.rotate(angle:(angles[b.id]??0)*math.pi/180,child:CustomPaint(
-              size:Size(20+(zoom-11).clamp(0,8)*1.4,31+(zoom-11).clamp(0,8)*2.3),
-              painter:_Coach(b.status(issue!=null),b.id==selected),
-            )))))),
+          for(final b in buses.values)Marker(point:_position(b),width:108,height:108,rotate:true,child:Semantics(button:true,label:'${b.id}, ${b.status(issue!=null)}',
+            child:Center(child:GestureDetector(onTap:()=>setState(()=>selected=b.id),child:CoachView(
+              bearing:angles[b.id]??0,status:b.status(issue!=null),selected:b.id==selected))))),
         ])),
-        const SimpleAttributionWidget(source:Text('OpenStreetMap contributors')),
-      ]),
+      ])),
       Positioned(top:10,right:12,child:ActionChip(avatar:Icon(showLines?Icons.layers:Icons.layers_clear),label:Text(routeId??'Routes'),onPressed:()=>setState(()=>showLines=!showLines))),
     ])),SafeArea(top:false,child:ListTile(
       title:Text(bus?.id??issue??'${buses.length} electric buses'),
@@ -190,26 +186,4 @@ class _FleetScreenState extends State<FleetScreen> with SingleTickerProviderStat
       trailing:FilledButton(onPressed:_explore,child:const Text('Explore')),
     ))]));
   }
-}
-
-class _Coach extends CustomPainter {
-  final String status;final bool selected;
-  const _Coach(this.status,this.selected);
-  @override
-  void paint(Canvas canvas,Size size){
-    canvas.scale(size.width/24,size.height/42);
-    final p=Paint()..color=const Color(0xff20253a);
-    void box(double x,double y,double w,double h,double radius,Color c){
-      p.color=c;canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x,y,w,h),Radius.circular(radius)),p);
-    }
-    if(selected)box(0,0,24,42,6,const Color(0xff7363ff));
-    for(final y in [8.0,29.0]){box(1,y,4,7,2,Colors.black87);box(19,y,4,7,2,Colors.black87);}
-    box(3,1,18,40,5,const Color(0xff30364b));
-    box(4,2,15,35,4,status=='Fresh GPS'?const Color(0xff188773):status=='Stationary'?const Color(0xff9b680b):const Color(0xff657582));
-    box(6,4,11,5,2,const Color(0xffc7e5ef));
-    p.color=Colors.white;
-    canvas.drawPath(ui.Path()..moveTo(12,12)..lineTo(17,20)..lineTo(13.5,19)..lineTo(13.5,28)..lineTo(10.5,28)..lineTo(10.5,19)..lineTo(7,20)..close(),p);
-  }
-  @override
-  bool shouldRepaint(_Coach other)=>status!=other.status||selected!=other.selected;
 }

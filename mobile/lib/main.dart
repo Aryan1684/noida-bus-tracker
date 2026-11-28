@@ -1,3 +1,4 @@
+import 'coach_view.dart';
 import 'dart:async';
 import 'transit_ui.dart';
 import 'fleet_screen.dart';
@@ -2059,33 +2060,13 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     markers.add(
       Marker(
         point: LatLng(lat, lon),
-        width: isSelected ? 54 : 48,
-        height: isSelected ? 54 : 48,
+        width: 108, height: 108, rotate: true,
         child: GestureDetector(
           onTap: () => _center(bus, true),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? const Color(0xFFAFA8FF)
-                  : const Color(0xFF111827),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white,
-                width: 3,
-              ),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x33000000),
-                  blurRadius: 8,
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.directions_bus_rounded,
-              color: isSelected ? Colors.black : Colors.white,
-              size: 22,
-            ),
-          ),
+          child: CoachView(selected: isSelected,
+            bearing: double.tryParse("${bus['gps_heading'] ?? bus['heading']}") ?? 0,
+            status: bus['data_stale']==true || bus['vehicle_status']=='no_signal' || (double.tryParse("${bus['gps_age_seconds']}")??999)>120
+                ? 'Last known' : bus['vehicle_status']=='stationary' ? 'Stationary' : 'Fresh GPS'),
         ),
       ),
     );
@@ -2218,7 +2199,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
           ),
         SizedBox(
           height: 340,
-          child: FlutterMap(
+          child: TransitMapView(map: FlutterMap(
             mapController: map,
             options: MapOptions(
               initialCenter: location,
@@ -2254,7 +2235,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                 markers: markers,
               ),
             ],
-          ),
+          )),
         ),
       ],
     ),
