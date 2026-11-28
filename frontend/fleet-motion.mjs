@@ -15,19 +15,12 @@ export function loadNetwork() {
     return networkPromise;
 }
 
-export function inArea([x, y], network) {
-    return network.boundaries.some((ring) => {
-        let inside = false;
-        for (let i = 1; i < ring.length; i++) {
-            const [a, b] = ring[i - 1],
-                [c, d] = ring[i];
-            if (b > y !== d > y && x < ((c - a) * (y - b)) / (d - b) + a) inside = !inside;
-        }
-        return inside;
-    });
+export function validPosition([lon, lat]) {
+    return Number.isFinite(lon) && Math.abs(lon) <= 180 &&
+        Number.isFinite(lat) && Math.abs(lat) <= 90 && (lon !== 0 || lat !== 0);
 }
 
-export function eligibleBus(bus, network) {
+export function eligibleBus(bus) {
     if (!bus?.bus_id || !bus.latitude || !bus.longitude) return false;
     const depot = String(bus.depot_name || "")
         .trim()
@@ -39,7 +32,7 @@ export function eligibleBus(bus, network) {
     return (
         ["NOIDA ELECTRIC", "GREATER NOIDA ELECTRIC"].includes(depot) &&
         ["", "ELECTRIC", "ELECTRICITY", "BEV", "EV", "BATTERY ELECTRIC"].includes(fuel) &&
-        inArea([Number(bus.longitude), Number(bus.latitude)], network)
+        validPosition([Number(bus.longitude), Number(bus.latitude)])
     );
 }
 

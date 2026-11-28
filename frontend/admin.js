@@ -401,6 +401,7 @@ function fleet(data) {
     const box = document.getElementById("fleetTable");
     box.innerHTML = "";
     const buses = data.buses || [];
+    document.getElementById("fleetUpdated").textContent = buses.length + " buses in latest response";
     if (!buses.length) {
         emptyState(box);
         return;
@@ -422,10 +423,20 @@ function fleet(data) {
             "</div>";
     });
 
-    document.getElementById("fleetUpdated").textContent = "Live fleet response · " + buses.length + " buses";
+    const byDepot = new Map();
+    for (const bus of buses) {
+        const depot = String(bus.depot_name || "Depot unavailable").trim().toUpperCase();
+        byDepot.set(depot, (byDepot.get(depot) || 0) + 1);
+    }
+    document.getElementById("fleetUpdated").textContent = [...byDepot]
+        .map(([depot, count]) => depot + " · " + count).join("  /  ");
 }
 
 function recentTable(items) {
+    const picker = document.getElementById("activityPage");
+    const allItems = items || [];
+    picker.onchange = () => recentTable(allItems);
+    items = allItems.filter(item => !picker.value || item.path === picker.value);
     const box = document.getElementById("recentTable");
     box.innerHTML = "";
     if (!items || !items.length) {

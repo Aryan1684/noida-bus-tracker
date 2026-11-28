@@ -739,9 +739,8 @@ async function loadNearbyBuses(
             data.count = data.buses.length;
             console.warn("Using client-side nearby filtering fallback.", {total: data.total_buses, nearby: data.count});
         }
-        const { loadNetwork, eligibleBus } = await import("./fleet-motion.mjs");
-        const network = await loadNetwork();
-        data.buses = (data.buses || []).filter(bus => eligibleBus(bus, network));
+        const { eligibleBus } = await import("./fleet-motion.mjs");
+        data.buses = (data.buses || []).filter(eligibleBus);
         data.count = data.buses.length;
         displayBuses(data.buses);
 
@@ -752,7 +751,7 @@ async function loadNearbyBuses(
         } else if (data.count === 0 && data.total_buses === 0) {
             updateLocationMessage("No local electric buses are currently present in the live feed. The feed may be temporarily empty.");
         } else if (data.count === 0) {
-            updateLocationMessage(`No electric buses in the Noida or Greater Noida service area were found within ${radius} km.`);
+            updateLocationMessage(`No Noida or Greater Noida electric depot buses were found within ${radius} km.`);
         } else if (data.data_stale || (data.buses || []).some(bus => bus.data_stale)) {
             updateLocationMessage(
                 `Live GPS temporarily unavailable. Showing the last available bus positions (${data.count} buses within ${radius} km).`

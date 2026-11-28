@@ -15,10 +15,6 @@ const region = [
     [77.31, 28.35],
     [77.595, 28.64],
 ];
-const limits = [
-    [77.21, 28.24],
-    [77.72, 28.73],
-];
 const toLatLng = ([x, y]) => [y, x];
 
 // MapLibre counts 512px world tiles. Leaflet counts 256px tiles, one zoom level apart.
@@ -221,7 +217,7 @@ async function flatView(network, select, onDrag) {
         script.onerror = reject;
         document.head.append(script);
     });
-    const map = L.map("map", { zoomControl: false, maxBounds: limits.map(toLatLng), minZoom: 10, zoomSnap: 0.25, wheelPxPerZoomLevel: 100 }).fitBounds(
+    const map = L.map("map", { zoomControl: false, minZoom: 2, zoomSnap: 0.25, wheelPxPerZoomLevel: 100 }).fitBounds(
         region.map(toLatLng),
     );
     L.tileLayer("https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=" + mapKey, {
@@ -293,8 +289,7 @@ export async function createView(network, select, onDrag) {
                 style: "https://api.maptiler.com/maps/streets-v2/style.json?key=" + mapKey,
                 center: [77.431, 28.525],
                 zoom: 11,
-                maxBounds: limits,
-                minZoom: 9,
+                minZoom: 2,
                 maxZoom: 21,
                 attributionControl: { compact: true },
             });

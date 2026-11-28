@@ -1,7 +1,7 @@
 import {
     loadNetwork,
     eligibleBus,
-    inArea,
+    validPosition,
     observation,
     stateOf,
     movementPath,
@@ -269,7 +269,7 @@ function renderResults() {
                 nodes.push(
                     empty(
                         "No electric buses reported",
-                        "The latest feed has no vehicles in the service area. The map refreshes automatically.",
+                        "The latest feed has no buses from either electric depot. The map refreshes automatically.",
                     ),
                 );
         }
@@ -436,10 +436,7 @@ async function refresh() {
     $("refreshBtn").disabled = true;
     try {
         network = await loadNetwork();
-        // This circle covers both service areas. The nearby feed includes bearings from
-        // fixes collected before the visitor opened the map.
-        const body = await readFleet("/api/buses/nearby?lat=28.495&lon=77.447&radius=25")
-            .catch(() => readFleet("/api/buses"));
+        const body = await readFleet("/api/buses");
         if (body?.maintenance === true) {
             location.replace("./maintenance.html");
             return;
@@ -448,7 +445,7 @@ async function refresh() {
         lastRead = Date.now();
         const seen = new Set();
         for (const raw of body.buses) {
-            if (!eligibleBus(raw, network)) continue;
+            if (!eligibleBus(raw)) continue;
             const fix = observation(raw);
             seen.add(fix.id);
             accept(fix);
@@ -458,6 +455,7 @@ async function refresh() {
                 e.marker?.remove();
                 fleet.delete(id);
             }
+        fitOnFirstLoad();
         if (!frame) frame = requestAnimationFrame(animate);
         if (sharedBus && fleet.has(sharedBus)) {
             select("bus", sharedBus);
@@ -477,6 +475,17 @@ async function refresh() {
         else renderResults();
     }
 }
+function fitFleet() {
+    const points = [...fleet.values()].map(entry => entry.point);
+    view?.fit(points.length ? points : undefined);
+}
+
+let initialFitPending = true;
+function fitOnFirstLoad() {
+    if (!initialFitPending || !view || !fleet.size) return;
+    initialFitPending = false;
+    if (!selection && !sharedBus && !query.has("lat")) fitFleet();
+}
 function locate() {
     if (!navigator.geolocation) {
         notice("Location is unavailable on this device.");
@@ -485,10 +494,6 @@ function locate() {
     navigator.geolocation.getCurrentPosition(
         (pos) => {
             const point = [pos.coords.longitude, pos.coords.latitude];
-            if (!inArea(point, network)) {
-                notice("Your location is outside the Noida and Greater Noida service area.");
-                return;
-            }
             following = false;
             locationPin?.remove();
             locationPin = view.marker(node("span", "user-pin"), point);
@@ -537,7 +542,7 @@ async function init() {
     });
     $("fit").onclick = () => {
         clearSelection();
-        view?.fit();
+        fitFleet();
     };
     $("zoomIn").onclick = () => view?.zoom(1);
     $("zoomOut").onclick = () => view?.zoom(-1);
@@ -561,6 +566,7 @@ async function init() {
         })
             .then((v) => {
                 view = v;
+                fitOnFirstLoad();
                 for (const e of fleet.values()) attach(e);
                 view.onStreetViewChange?.(() => {
                     for (const entry of fleet.values()) {
@@ -577,7 +583,7 @@ async function init() {
                     view.focus(fleet.get(selection.id).point, view.streetZoom);
                 if (query.has("lat") && query.has("lon")) {
                     const p = [Number(query.get("lon")), Number(query.get("lat"))];
-                    if (inArea(p, network)) view.focus(p, 15);
+                    if (validPosition(p)) view.focus(p, 15);
                 }
             })
             .catch(() => {

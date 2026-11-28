@@ -25,7 +25,7 @@ const raw = {
     gps_age_seconds: 0,
 };
 
-test("both electric depots are allowed inside either city and other vehicles fail closed", () => {
+test("both electric depots remain visible beyond city limits and other vehicles fail closed", () => {
     assert.ok(eligibleBus(raw, network));
     assert.ok(
         eligibleBus(
@@ -33,12 +33,14 @@ test("both electric depots are allowed inside either city and other vehicles fai
             network,
         ),
     );
+    for (const [latitude, longitude] of [[28.17556,77.605],[28.67,77.416],[28.6469,77.3168]])
+        assert.ok(eligibleBus({...raw,latitude,longitude}));
     for (const patch of [
         { depot_name: "NOIDA" },
         { depot_name: "AGRA ELECTRIC" },
         { depot_name: null },
         { fuel_type: "Diesel" },
-        { latitude: 28.6469, longitude: 77.3168 },
+        { latitude: 91 },
         { latitude: null },
     ])
         assert.equal(eligibleBus({ ...raw, ...patch }, network), false);
