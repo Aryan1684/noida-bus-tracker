@@ -373,7 +373,6 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
  late String analyticsSessionId;
  String analyticsAppVersion='1.1.0';
  Map<String,Object> analyticsDeviceMetadata={};
- bool analyticsEnabled=false;
  DateTime? analyticsLastActivity;
  bool _wasBackgrounded=false;
  final map=MapController(); final search=TextEditingController(); Timer? refreshTimer,searchTimer,maintenanceTimer; bool maintenanceMode=false,maintenanceCheckRunning=false; String maintenanceMessage='We are making a few improvements. Please check back shortly.'; int? maintenanceExpiresAt;
@@ -394,7 +393,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   }
   if (state == AppLifecycleState.resumed && _wasBackgrounded) {
     _wasBackgrounded = false;
-    if (analyticsEnabled) unawaited(_recordAppOpen());
+    if (analyticsVisitorId != null) unawaited(_recordAppOpen());
     if (maintenanceMode) unawaited(_pollMaintenanceStatus());
   }
 }
@@ -415,7 +414,6 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     }
   }
 
-  await _requestAnalyticsConsent();
 }
 
  Future<void> _notice() async {
@@ -494,49 +492,9 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   }
 }
 
-  Future<void> _requestAnalyticsConsent() async {
-  final prefs = await SharedPreferences.getInstance();
-  if (prefs.containsKey('analytics_consent_v2') || !mounted) return;
-
-  final choice = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    builder: (dialogContext) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      title: const Text('Optional usage analytics'),
-      content: const SingleChildScrollView(
-        child: Text(
-          'Help improve Noida Bus Tracker by sharing app usage events, sessions, app version, phone brand and model, Android version, and an approximate area inferred from your network IP. IP-based area is not GPS and can be inaccurate. Analytics does not need your device GPS location.\n\n'
-          'This is optional. Bus tracking works if you decline, and you can change this choice any time in App settings. See Privacy notice for details.',
-          style: TextStyle(height: 1.5),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext, false),
-          child: const Text('Continue without analytics'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(dialogContext, true),
-          child: const Text('Allow analytics'),
-        ),
-      ],
-    ),
-  );
-
-  if (!mounted) return;
-  final enabled = choice == true;
-  await prefs.setBool('analytics_consent_v2', enabled);
-  await prefs.setBool('analytics_enabled', enabled);
-  if (!mounted) return;
-  setState(() => analyticsEnabled = enabled);
-  if (enabled) await _recordAppOpen();
-}
-
  Future<void> _initAnalytics() async {
   try {
    final prefs=await SharedPreferences.getInstance();
-   analyticsEnabled=prefs.getBool('analytics_consent_v2')??false;
    analyticsVisitorId=prefs.getString('analytics_visitor_id');
    if(analyticsVisitorId==null||analyticsVisitorId!.isEmpty){
     analyticsVisitorId=DateTime.now().microsecondsSinceEpoch.toString()+'-'+hashCode.toString();
@@ -556,12 +514,11 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
      };
     }catch(_){}
    }
-   if(analyticsEnabled)await _recordAppOpen();
+   await _recordAppOpen();
   } catch (_) {}
  }
 
  Future<void> _recordAppOpen() async {
-  if(!analyticsEnabled)return;
   await _sendAnalytics('app_open');
   final prefs=await SharedPreferences.getInstance();
   final firstOpenTracked=prefs.getBool('analytics_first_open_tracked')??false;
@@ -582,7 +539,6 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
  }
 
  Future<bool> _sendAnalytics(String name,[Map<String,Object>? parameters]) async {
-  if(!analyticsEnabled)return false;
   final visitor=analyticsVisitorId;
   if(visitor==null||visitor.isEmpty)return false;
   final now=DateTime.now();
@@ -620,7 +576,6 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
  }
 
  Future<void> _analytics(String name, [Map<String,Object>? parameters]) async {
-  if(!analyticsEnabled)return;
   final normalizedEvent = switch(name){
    'current_location_used' => 'location_used',
    'location_searched' => 'place_search',
@@ -1722,7 +1677,6 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   unawaited(_analytics('settings_opened'));
   var currentDark = widget.dark;
   var alertsEnabled = nearbyAlerts;
-  var currentAnalyticsEnabled = analyticsEnabled;
 
   showModalBottomSheet<void>(
     context: context,
@@ -1841,25 +1795,10 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     _openWebsitePage('cookies.html');
                   },
                 ),
-                SwitchListTile(
-                  value: currentAnalyticsEnabled,
-                  secondary: const Icon(Icons.insights_outlined),
-                  title: const Text('Usage analytics'),
-                  subtitle: Text(
-                    currentAnalyticsEnabled
-                        ? 'Enabled · app usage, device details and approximate network area'
-                        : 'Disabled · no new app analytics events will be sent',
-                  ),
-                  onChanged: (value) async {
-                    setSheetState(() => currentAnalyticsEnabled = value);
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.setBool('analytics_consent_v2', value);
-                    await prefs.setBool('analytics_enabled', value);
-                    if (mounted) {
-                      setState(() => analyticsEnabled = value);
-                      if (value) await _recordAppOpen();
-                    }
-                  },
+                const ListTile(
+                  leading: Icon(Icons.insights_outlined),
+                  title: Text('Usage analytics'),
+                  subtitle: Text('Always on. Records app activity, device details and approximate network area. See the privacy notice for details.'),
                 ),
                 ListTile(
                   leading: const Icon(Icons.info_outline),

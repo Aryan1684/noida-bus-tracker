@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.4.0",
+  "latest_version": "1.4.1",
   "minimum_version": "1.0.0",
-  "message": "A redesigned transit dashboard with a new colour palette, animated route controls and smoother search and bus cards.",
+  "message": "Usage analytics is always on in this version, including after updating from an earlier opt-out. The privacy notice explains what is collected.",
   "download_url": "https://github.com/Aryan1684/noida-bus-tracker/releases/download/mobile-latest/noida-bus-tracker.apk"
 }
